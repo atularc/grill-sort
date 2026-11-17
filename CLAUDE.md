@@ -71,7 +71,11 @@ Win:   all orders served / every non-empty skewer complete.
 
 ## 4. User's standing rules for the Unity build
 
-- **No runtime creation/loading in the canvas.** All UI is authored into the scene by an Editor builder script (menu item like "Grill Sort > Run Full Setup"), not instantiated from code at runtime. Gameplay objects (skewers, food) may be pooled.
+- **Everything lives on the Canvas, always present in the scene. Nothing is created or loaded at runtime** (user rule, 2026-11-17).
+  - The whole game (background, customers, every grill + skewer + 4 food slots, VFX images, flying pieces, HUD, boosters, tips, toast, every popup) is a uGUI object **authored into `Game.unity` by the Editor builder** ("Grill Sort > Run Full Setup").
+  - Runtime code may only **toggle (SetActive / alpha), re-skin (swap sprites/text) and tween** those existing objects. No `Instantiate`, no `new GameObject`, no `AddComponent`, no `Resources.Load`, no Addressables, no runtime-built prefabs or particle systems.
+  - Need more of something (e.g. more grills)? Raise the count in the builder and rebuild the scene; don't spawn.
+  - The only `Resources` folder is the one TextMeshPro itself needs (`Assets/TextMesh Pro/Resources`, TMP Essentials). Our own assets never go in `Resources`.
 - **No `Resources` folder.** Reference assets through a ScriptableObject (e.g. `GameArt`) wired in the Editor.
 - **Safe area must be handled** (notches / home bar) with a SafeArea component on the UI root.
 - **Smallest build size.** Strip unused packages, compress textures (ASTC on mobile), and sprite-atlas the UI and food.
@@ -159,14 +163,23 @@ Assets/GrillSort/
     VFX/                      flame, smoke, sparkle, steam
   Fonts/                      Fredoka-Bold.ttf, Fredoka-SemiBold.ttf
   Editor/ArtImportSettings.cs sprite import defaults for Art/
-  (Scripts/, Scenes/, Data/, Prefabs/ go here when the game is built)
-Assets/Scenes/SampleScene     template scene (replace with the Game scene)
+  Art/Generated/              baked helpers: food Shadows/, grill_dark, glow, soft_rect, badge, bar_fill/track, rounded
+  Audio/                      placeholder synthesized SFX (pick, drop, invalid, sizzle, serve, coin, win, click)
+  Scripts/Core/               pure C#: Board (+ MoveRule), Solver, LevelGenerator, LevelData, FoodCatalog, Mulberry32
+  Scripts/Game/               GameController, GrillView, CustomerView, GameArt, LevelBank, Tween, SaveData, AudioManager, Haptics
+  Scripts/UI/                 GameUi (scene refs), StageLayout, SafeArea, CanvasAspect, PressScale
+  Scripts/Services/           IAdsService / IIapService + placeholders
+  Editor/                     GrillSortSetup (Run Full Setup), GrillSortLevels (Bake And Verify), UiKit
+  Data/                       GameArt.asset, LevelBank.asset (30 baked levels)
+  Atlases/                    UI + Food sprite atlases (ASTC on mobile)
+  Scenes/Game.unity           the only build scene
+Assets/Scenes/SampleScene     old template scene (not in the build)
 ArtSource/                    full-size AI originals on white (Food/Grilled|Medium|Raw, Customers, Board, UI sheets)
 Docs/Mockups/                 approved screenshots + Themes/
 Docs/ArtPrompts.md            exact prompt for every asset
 Tools/ArtPipeline/            Python cut/compose scripts (see README there)
 ```
-Nothing gameplay-related has been built yet. This is the clean setup.
+**The playable prototype is built (2026-11-17).** See [Current state](#current-state-of-the-prototype) at the end.
 
 All art is in `Assets/GrillSort/Art/` as transparent PNGs, imported as **Sprites** by `Assets/GrillSort/Editor/ArtImportSettings.cs`.
 Full-size originals (white background, uncut) are in `ArtSource/` outside Assets, for re-cutting.
@@ -281,3 +294,20 @@ Goal: a playable portrait prototype that looks like `Docs/Mockups/Grill-Sort-Moc
    - Auto-play a few levels using the solver.
    - Zero console errors.
    - Report the difficulty curve from the bake report.
+
+---
+
+## Current state of the prototype
+
+Built 2026-11-17. Playable in `Assets/GrillSort/Scenes/Game.unity` (portrait, 1080×1920 design).
+
+- **Rebuild everything:** "Grill Sort > Run Full Setup" (textures, TMP font + outline materials, GameArt, atlases, the whole scene, player settings). Safe to re-run; it rebuilds `Game.unity` from scratch, so **never hand-edit the scene**: change `GrillSortSetup.cs` instead.
+- **Levels:** "Grill Sort > Bake And Verify Levels" bakes **30 levels** into `Data/LevelBank.asset`, re-solves and replays each, and writes `Docs/LevelReport.md`. Par rises 3 → ~25. Tiers live in `LevelGenerator.TierFor`. Past level 30 the same seeded generator runs on device (smaller solver budget). The bake takes ~7 min in the Editor (Mono); the solver needs speeding up before baking 2000.
+- **Move rules** (`GameController.moveRule`): `SingleTop` (**current default**: only the top piece moves; the user felt "it should only take the item I click"), `TopGroup` (classic Water Sort: the whole top run of the same food moves), `AnyWithAbove`. Aaron still has to confirm the final choice. Levels baked for `TopGroup` are also valid for `SingleTop`.
+- **Cooking stages:** not used yet. Play shows Grilled; `cookOnComplete` (Raw while sorting, Raw → Medium → Grilled on completion) is off. The user will decide how to use Raw/Medium later.
+- **Testing:** tick `Use Test Level` on the `Game` object and type a number in `Test Level` to start there (progress isn't saved). Changing the number during Play mode loads that level at once. Run Full Setup resets it to off.
+- **Other flags on GameController:** `cookOnComplete`, `limitToTenLevels`, `idleHintSeconds`, `verboseLog`.
+- **Gameplay done:** tap to lift/drop with arc flight + bounce, invalid shake, completion glow/steam/sparkles/"Perfect!", serve flight to the customer (✓, cheer, next customer arrives), Orders bar, win popup (stars vs par, coins, x2 rewarded ad), Undo / Hint / Shuffle / Extra skewer boosters (counts saved; at 0 a rewarded ad gives +1), stuck popup, pause (sound/vibration), tips on levels 1–3, free idle hint on levels ≤ 10, theme unlock toast (Wood 1, Beach 11, Food Truck 21, Night Market 31, Winter 41), PlayerPrefs save.
+- **Grill look:** grills 180 wide (stretched from 158) with food at ×1.0 so pieces sit on the grate; dark grill (v3) + deep food shadows; flickering ember glow behind each grill; faint smoke wisps above the coals.
+- **Verify loop:** set Game view to 1080×1920 (`PlayModeWindow.SetCustomRenderingResolution`), enter Play mode, `GameController.StartAutoPlayLevels(n)` plays with solver moves (`AutoPlayLog` holds the results), capture with `unity command capture game_view`. If you're auto-playing while the user clicks in the Game view, the two collide.
+- **Not done yet:** real sounds/music (placeholders are synthesized by `Tools/ArtPipeline/bake_game_fx.py`), stripping unused packages, home/level-map screen, shop, real ads/IAP SDKs, iOS haptics.
