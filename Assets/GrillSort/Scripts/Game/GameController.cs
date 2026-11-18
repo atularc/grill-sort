@@ -18,8 +18,8 @@ namespace GrillSort
         public AudioManager audioManager;
 
         [Header("Rules")]
-        [Tooltip("TopGroup = classic Water Sort (default): the whole top run of the same food moves. AnyWithAbove = grab any piece, everything above comes along. SingleTop = only the top piece moves.")]
-        public MoveRule moveRule = MoveRule.SingleTop;
+        [Tooltip("AnyWithAbove (default, client decision 2026-11-18): grab any piece, everything above comes along. TopGroup = classic Water Sort: the whole top run of the same food moves. SingleTop = only the top piece moves.")]
+        public MoveRule moveRule = MoveRule.AnyWithAbove;
         [Tooltip("Pieces show Raw while sorting and cook Raw > Medium > Grilled when a skewer completes.")]
         public bool cookOnComplete = false;
         [Tooltip("Demo / review builds: only levels 1-10 can be played.")]
@@ -105,6 +105,7 @@ namespace GrillSort
             _selectCo = _selectGlowCo = null;
             _levelNumber = Mathf.Max(1, number);
             _level = bank.Get(_levelNumber, moveRule);
+            bank.Prefetch(_levelNumber + 1, moveRule); // past the baked levels: generate the next one in the background
             _board = _level.ToBoard();
             _skewers = _board.SkewerCount;
             _moves = 0; _served = 0; _selected = -1; _busy = false; _extraUsed = false; _won = false; _idle = 0f;
@@ -286,10 +287,22 @@ namespace GrillSort
             float t = Time.time;
             for (int i = 0; i < _board.SkewerCount && i < ui.grills.Length; i++)
             {
-                var e = ui.grills[i].ember;
+                var gv = ui.grills[i];
+                var e = gv.ember;
                 if (e == null) continue;
                 float f = Mathf.PerlinNoise(t * 1.3f, i * 3.7f);
                 GrillView.SetAlpha(e, .2f + f * .22f);
+                if (gv.flames == null) continue;
+                for (int k = 0; k < gv.flames.Length; k++)
+                {
+                    // each flame dances on its own: stretch up, sway a little, breathe in and out
+                    float n = Mathf.PerlinNoise(t * 3.1f + k * 1.7f, i * 5.3f + k);
+                    float n2 = Mathf.PerlinNoise(t * 2.3f + 11f, i * 2.9f + k * 3.1f);
+                    var rt = gv.flames[k].rectTransform;
+                    rt.localScale = new Vector3(.85f + n2 * .25f, .7f + n * .6f, 1f);
+                    rt.localRotation = Quaternion.Euler(0f, 0f, (n2 - .5f) * 14f);
+                    GrillView.SetAlpha(gv.flames[k], .6f + n * .4f);
+                }
             }
             _smokeTimer -= Time.deltaTime;
             if (_smokeTimer <= 0f)

@@ -451,3 +451,35 @@ Premium mobile game food asset: one single half-grilled bacon-wrapped roll (a sm
 ```
 Premium mobile game food asset: one single half-grilled halloumi cheese block (a thick rectangular cube of cheese as on a skewer), seen from a slight top-down three-quarter view. Creamy white cheese with light golden toasting and faint pale grill marks, slightly softened glossy edges, a few oregano flecks, no dark grill marks yet. Appetizing, mouth-watering, high detail, polished stylized-realistic look like top casual cooking games. Soft bright studio lighting with gentle rim light. Centered, fully visible, isolated on a plain solid pure white background, no plate, no skewer, no text, no shadow.
 ```
+
+---
+
+# Cartoon set (2026-11-18, client feedback: cartoon food, human customers)
+
+Made as 2x2 sheets (1024x1024, model `gpt-image-2.5-flare`, same Figma file) and cut with `Tools/ArtPipeline/cut_cartoon.py` into `Assets/GrillSort/Art/FoodCartoon/Grilled/` and `Assets/GrillSort/Art/CustomersPeople/` (512x512). Sheets are in `ArtSource/Cartoon/`. Lineup: `Docs/Mockups/Cartoon-Set-Lineup.png`.
+Style reference: Aaron's own mock (cartoon food with clear grill marks, cartoon people behind a counter). Match the genre only; never copy its characters or layout.
+
+## Shared food style text (append after the subjects)
+
+```
+Each seen from a slight top-down three-quarter view. Bold cute cartoon style for a casual puzzle game: simple chunky readable shapes, saturated bright colors, smooth cel shading with soft gradients, glossy juicy highlights, very clear thick dark brown diagonal grill-mark stripes across each piece, juicy and appetizing. Clean thin outline slightly darker than each food's own color. Not realistic, not photographic. Centered, fully visible, isolated on a plain solid pure white background, no plate, no skewer, no text, no shadow.
+```
+
+Prefix: `Sprite sheet of 4 separate cartoon mobile game food assets, arranged in a clean 2 by 2 grid with lots of empty white space between them, items not touching: ` then the four subjects (top-left, top-right, bottom-left, bottom-right).
+
+| Sheet | Subjects |
+|---|---|
+| sheet_food_1 | plump grilled sausage chunk lying horizontally; thick round slice of grilled corn on the cob; whole grilled cherry tomato with a small green stem; (mushroom cap facing up: rejected, looked like a donut) |
+| sheet_food_2 | plump golden-brown grilled chicken kebab cube; grilled jumbo shrimp curled in a C shape, coral orange with white stripes and a tail; round grilled meatball, dark brown with sticky glossy BBQ glaze; whole grilled button mushroom seen from the side with a big smooth rounded domed tan-brown cap on top and a short thick pale stem below |
+| sheet_food_3 | grilled broccoli floret, vivid bright green bumpy crown with a short pale green stalk; square piece of grilled green bell pepper as on a kebab, slightly curved, glossy bright green skin; chunky wedge of grilled red onion showing curved layered purple and white rings; chunky cube of grilled pineapple, bright yellow fibrous flesh with a thin golden edge |
+| sheet_food_4 | chunky cube of grilled beef steak, deep dark brown seared outside with a juicy pink center showing on one cut side; thick round slice of grilled zucchini, dark green skin rim and pale green-cream center with seeds; thick cube of grilled salmon, bright pink-orange flesh with thin white fat lines; grilled squid ring, thick creamy white ring with light purple-pink tinted edges |
+| sheet_food_5 | halved grilled baby potato, golden-brown skin with a pale creamy yellow cut face; rolled-up grilled bacon strip forming a thick swirl, pink meat and white fat stripes with crispy reddish edges; thick rectangular slab of grilled halloumi cheese, creamy white with golden toasted grill stripes; (second mushroom take, unused) |
+
+## Customers (people)
+
+```
+Sprite sheet of 4 separate cartoon mobile game customer characters, arranged in a clean 2 by 2 grid with lots of empty white space between them, characters not touching. Each is head and upper body only, cut straight across at the chest, facing the viewer with a big happy friendly smile, as if standing behind a food stall counter waiting to order. Top-left: <A>. Top-right: <B>. Bottom-left: <C>. Bottom-right: <D>. Polished cute 2D cartoon style for a casual mobile game, big expressive eyes, rounded friendly proportions, slightly oversized heads, smooth cel shading, clean dark brown outlines, bright saturated colors. Isolated on a plain solid pure white background, no counter, no text, no shadow.
+```
+
+- sheet_people_1: `grandpa` a cheerful grandpa with a round white mustache, bald top and a mint green cardigan; `ponytail` a young woman with a high black ponytail, round glasses and a yellow hoodie; `redhead` a teenage boy with spiky red hair, freckles and a purple t-shirt with headphones around his neck; `curly` a smiling woman with dark skin, curly hair in a big puff with a coral headband and a teal apron-style top.
+- sheet_people_2: `dad` a friendly bearded dad with short brown hair, a red baseball cap and a navy blue polo shirt; `grandma` a sweet grandma with a grey hair bun, pink cheeks, small pearl earrings and a lavender cardigan; `pigtails` a little girl with two black pigtails tied with orange ribbons and a sky blue dress; `quiff` a young South Asian man with a stylish black quiff, light stubble and a denim jacket over a white t-shirt.

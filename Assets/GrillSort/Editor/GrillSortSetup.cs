@@ -78,7 +78,7 @@ namespace GrillSort.EditorTools
                 if (ti.mipmapEnabled) { ti.mipmapEnabled = false; dirty = true; }
                 if (borders.TryGetValue(path, out var b) && ti.spriteBorder != b) { ti.spriteBorder = b; dirty = true; }
                 bool isBg = path.Contains("/Backgrounds/");
-                int max = isBg ? 2048 : path.Contains("/Shadows/") ? 256 : 1024;
+                int max = isBg ? 2048 : path.Contains("/Shadows") ? 256 : 1024;
                 if (path.Contains("/Board/")) max = 2048;
                 if (ti.maxTextureSize != max) { ti.maxTextureSize = max; dirty = true; }
                 // atlased sprites stay uncompressed at the source; the atlas compresses them (ASTC on mobile)
@@ -103,7 +103,12 @@ namespace GrillSort.EditorTools
             }
         }
 
-        static readonly string[] AtlasFolders = { Art + "UI/", Art + "Customers/", Art + "VFX/", Art + "Food/Grilled/", Art + "Generated/Shadows/" };
+        // Cartoon art set (client direction 2026-11-18). The old realistic Food/Grilled, Customers (animals) and
+        // grill/skewer art stays in the project, unused.
+        const string FoodDir = "FoodCartoon/Grilled/", ShadowDir = "Generated/ShadowsCartoon/", CustomerDir = "CustomersPeople/";
+        static readonly string[] CustomerNames = { "grandpa", "ponytail", "redhead", "curly", "dad", "grandma", "pigtails", "quiff" };
+
+        static readonly string[] AtlasFolders = { Art + "UI/", Art + CustomerDir, Art + "VFX/", Art + FoodDir, Art + ShadowDir };
         static readonly string[] AtlasFiles = { "badge.png", "disc.png", "rounded.png", "bar_fill.png", "bar_track.png", "glow.png", "soft_rect.png" };
 
         static bool IsAtlased(string path)
@@ -179,16 +184,16 @@ namespace GrillSort.EditorTools
                 foods.Add(new GameArt.FoodArt
                 {
                     name = n,
-                    grilled = Load<Sprite>($"{Art}Food/Grilled/{n}.png"),
+                    grilled = Load<Sprite>($"{Art}{FoodDir}{n}.png"),
                     medium = Load<Sprite>($"{Art}Food/Medium/{n}.png"),
                     raw = Load<Sprite>($"{Art}Food/Raw/{n}.png"),
-                    shadow = Load<Sprite>($"{Art}Generated/Shadows/{n}.png"),
+                    shadow = Load<Sprite>($"{Art}{ShadowDir}{n}.png"),
                     shadowRaw = Load<Sprite>($"{Art}Generated/Shadows/{n}_raw.png"),
                     width = FoodWidth[n],
                 });
             }
             a.foods = foods.ToArray();
-            a.customers = new[] { "fox", "bear", "kitty", "panda" }.Select(n => Load<Sprite>($"{Art}Customers/{n}.png"));
+            a.customers = CustomerNames.Select(n => Load<Sprite>($"{Art}{CustomerDir}{n}.png"));
             a.themes = new[]
             {
                 Theme("Wood", "Wood Stall", 528, 1),
@@ -197,9 +202,9 @@ namespace GrillSort.EditorTools
                 Theme("NightMarket", "Night Market", 520, 31),
                 Theme("Winter", "Winter Market", 538, 41),
             };
-            a.grill = Load<Sprite>(Art + "Board/grill.png");
-            a.grillDark = Load<Sprite>(Art + "Generated/grill_dark.png");
-            a.skewer = Load<Sprite>(Art + "Board/skewer.png");
+            a.grill = Load<Sprite>(Art + "Board/grill_cartoon.png");
+            a.grillDark = Load<Sprite>(Art + "Generated/grill_cartoon_dark.png");
+            a.skewer = Load<Sprite>(Art + "Board/skewer_cartoon.png");
             a.starOn = Load<Sprite>(Art + "UI/Icons/icon_star.png");
             a.starOff = a.starOn;
             string au = Root + "Audio/";
@@ -246,14 +251,16 @@ namespace GrillSort.EditorTools
         static void MakeAtlases()
         {
             Directory.CreateDirectory(Root + "Atlases");
-            Atlas("UI", new[] { Art + "UI", Art + "Customers", Art + "VFX" }, 2048, new[] { Art + "Generated/badge.png", Art + "Generated/disc.png", Art + "Generated/rounded.png", Art + "Generated/bar_fill.png", Art + "Generated/bar_track.png", Art + "Generated/glow.png", Art + "Generated/soft_rect.png" });
-            Atlas("Food", new[] { Art + "Food/Grilled", Art + "Generated/Shadows" }, 2048, null);
+            Atlas("UI", new[] { Art + "UI", Art + CustomerDir.TrimEnd('/'), Art + "VFX" }, 2048, new[] { Art + "Generated/badge.png", Art + "Generated/disc.png", Art + "Generated/rounded.png", Art + "Generated/bar_fill.png", Art + "Generated/bar_track.png", Art + "Generated/glow.png", Art + "Generated/soft_rect.png" });
+            Atlas("Food", new[] { Art + FoodDir.TrimEnd('/'), Art + ShadowDir.TrimEnd('/') }, 2048, null);
         }
 
         static void Atlas(string name, string[] folders, int max, string[] files)
         {
             string path = $"{Root}Atlases/{name}.spriteatlasv2";
-            if (!File.Exists(path))
+            // rebuild every run so the packed folders always match the current art (sprites reference
+            // textures, not the atlas, so a fresh atlas asset is safe)
+            if (File.Exists(path)) AssetDatabase.DeleteAsset(path);
             {
                 var asset = new SpriteAtlasAsset();
                 var objs = new List<Object>();
@@ -391,6 +398,17 @@ namespace GrillSort.EditorTools
                 gv.highlight = Img("Highlight", root, glowSp, new Vector2(330, 980), Vector2.zero);
                 gv.highlight.color = new Color(1f, .97f, .85f, 0f);
                 gv.grill = Img("Grill", root, _art.grillDark, new Vector2(GrillView.GrillW, GrillView.GrillH), Vector2.zero);
+                // flames sit on the coals: above the grill, under the skewer and food
+                var flameSp = S("VFX/fx_flame.png");
+                gv.flames = new Image[GrillView.FlameSpots.Length];
+                for (int k = 0; k < gv.flames.Length; k++)
+                {
+                    var fs = GrillView.FlameSpots[k];
+                    var fl = ImgW($"Flame{k}", root, flameSp, fs.z, new Vector2(fs.x, fs.y));
+                    fl.rectTransform.pivot = new Vector2(.5f, .1f);   // flicker grows upward from the base
+                    fl.raycastTarget = false;
+                    gv.flames[k] = fl;
+                }
                 float skH = GrillView.GrillH - 20; float skW = skH * 97f / 1869f;
                 gv.skewer = Img("Skewer", root, _art.skewer, new Vector2(skW, skH), new Vector2(0, 6));
                 gv.slots = new RectTransform[4]; gv.foods = new Image[4]; gv.foodShadows = new Image[4];

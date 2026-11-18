@@ -31,11 +31,9 @@ Done:  a skewer holding C identical pieces is complete → locked, cooked/served
 Win:   all orders served / every non-empty skewer complete.
 ```
 
-**OPEN QUESTION (asked Aaron, no answer yet): which pieces move?**
-- `TopGroup` (classic Water Sort, Aaron's reference, **our recommendation**): only the top run of identical pieces moves.
-- `AnyWithAbove` (our old Dangle Pals rule): grab any piece and everything above it comes along.
-
-→ Implement the rule as a setting (`enum MoveRule { TopGroup, AnyWithAbove }`, default `TopGroup`) so either works. The solver and generator must respect the active rule.
+**DECIDED by Aaron (2026-11-18): `AnyWithAbove`.** "Follow Sort Streak closely: players can grab any piece, and everything above it comes along, same as your prototype." (Sort Streak is another reference game: same rule as ours, never copy it.)
+- The move takes the whole hanging stack, which must fit on the target. The target must be empty or have the grabbed piece's food on top.
+- The rule stays a setting (`enum MoveRule { AnyWithAbove, TopGroup, SingleTop }`, default `AnyWithAbove`). The solver, generator and bake all use the active rule.
 
 **Customers & orders:** 3–4 customers visible. Each wants one food; a completed skewer of that food serves them. Orders = number of food types in the level (one skewer each), shown as "Orders x / y".
 
@@ -87,8 +85,16 @@ Win:   all orders served / every non-empty skewer complete.
 
 ## 5. Art direction
 
-- **Food:** premium, juicy, **stylized-realistic** grilled food (like top casual cooking games), slight top-down 3/4 view, soft studio light.
-- **Customers:** chubby **3D vinyl-toy style** baby animals, head and upper body only (cut at the chest), drawn *behind* the counter.
+**Aaron's feedback on the mockups (2026-11-18):**
+- He liked the UI and the backgrounds of the **Wood** and **Beach** mockups. Both can go in the real game.
+- "Real assets" meant the actual in-game assets, not realistic food. The current food is **too realistic**.
+- Food must go back to **cartoon style** like their own mock: still juicy and appetizing, with **clear grill marks**.
+- Customers should be **people** (like their demo), not animals. Human characters connect better with this audience and work better in food-game ads.
+- Once the art direction is locked he wants a **build**.
+
+- **Food (new direction):** **cartoon** grilled food, juicy and appetizing, bold clear grill marks, simple readable shapes, slight top-down 3/4 view. The current `Food/` set is the rejected stylized-realistic version: keep it, but save the cartoon set as new files.
+- **Customers (new direction):** cartoon **people** (diverse, friendly), head and upper body only (cut at the chest), drawn *behind* the counter. The animal set in `Customers/` is rejected.
+- *(Old, rejected)* Food: stylized-realistic. Customers: chubby 3D vinyl-toy baby animals.
 - **UI:** glossy, bubbly 3D casual-game style, thick rounded shapes, subtle dark outline. Fredoka font.
 - **Readability (important).** In the first mockup the user noticed the food blending into the glowing grills. The approved fix is **v3 "deep shadow"**:
   - Draw **non-complete grills darker**: brightness ×0.62, saturation ×0.7.
@@ -191,7 +197,19 @@ Full-size originals (white background, uncut) are in `ArtSource/` outside Assets
 - Names: `bacon beef broccoli chicken corn halloumi meatball mushroom onion pepper pineapple potato salmon sausage shrimp squid tomato zucchini`
 - Medium/Raw are separate generations, so their shape is close to the grilled piece but not identical. Hide the swap with a puff of steam.
 
-**Customers** (`Customers/`, 512×512): `fox` (rainbow scarf), `bear` (blue bandana), `kitty` (grey tabby, pink bow), `panda` (green scarf). All face the viewer, smiling. No mood variants yet.
+**Cartoon set (new direction, 2026-11-18):**
+- `FoodCartoon/Grilled/`: all 18 foods, same names, 512×512. Grilled stage only; no Raw/Medium yet.
+- `CustomersPeople/`: 8 people, 512×512: `grandpa ponytail redhead curly dad grandma pigtails quiff`.
+- `Board/grill_cartoon.png` (373×1818, glossy red-enamel tray, cartoon coals, chrome bars), `Board/skewer_cartoon.png` (97×1869), `Generated/grill_cartoon_dark.png` (v3 darkened), `Generated/ShadowsCartoon/`.
+- **Every item is its own 1024 Figma generation** in `ArtSource/Cartoon/single/` (`food_<name>.png`, `people_<name>.png`); grill/skewer are `ArtSource/Cartoon/grill_v1.png`, `skewer_v1.png`.
+  - The 2×2 sheets (`sheet_*.png`) were only the style test and came out too soft.
+  - All of it is cut by `Tools/ArtPipeline/cut_cartoon.py` (sprites + shadows + grill/skewer). It never overwrites unless `OVERWRITE=1`. There is no automatic hole finder (it ate white highlights): list real background gaps in `HOLES`.
+- Prompts: end of `Docs/ArtPrompts.md`. For singles, use the same subject text with "one single …, filling most of the image". Lineup: `Docs/Mockups/Cartoon-Set-Lineup.png`.
+- **In the game** via `GrillSortSetup` (`FoodDir`, `ShadowDir`, `CustomerDir`, `CustomerNames`). The old realistic `Food/`, animal `Customers/` and `grill.png`/`skewer.png` stay unused, except Raw/Medium food for the optional `cookOnComplete`.
+- Fire: 5 small `fx_flame` sprites per grill (`GrillView.FlameSpots`, in the gaps between food slots), flickering in `GameController.LateUpdate`.
+- Figma account is the **Starter (free) plan**: generations use its monthly AI credits. ~33 images were used on 2026-11-18.
+
+**Customers, old animal set (rejected)** (`Customers/`, 512×512): `fox` (rainbow scarf), `bear` (blue bandana), `kitty` (grey tabby, pink bow), `panda` (green scarf). All face the viewer, smiling. No mood variants yet.
 
 **Board** (`Board/`):
 - `grill.png` (373×1818): tall cast-iron charcoal tray with glowing coals and chrome bars, empty. One per skewer.
@@ -302,12 +320,17 @@ Goal: a playable portrait prototype that looks like `Docs/Mockups/Grill-Sort-Moc
 Built 2026-11-17. Playable in `Assets/GrillSort/Scenes/Game.unity` (portrait, 1080×1920 design).
 
 - **Rebuild everything:** "Grill Sort > Run Full Setup" (textures, TMP font + outline materials, GameArt, atlases, the whole scene, player settings). Safe to re-run; it rebuilds `Game.unity` from scratch, so **never hand-edit the scene**: change `GrillSortSetup.cs` instead.
-- **Levels:** "Grill Sort > Bake And Verify Levels" bakes **30 levels** into `Data/LevelBank.asset`, re-solves and replays each, and writes `Docs/LevelReport.md`. Par rises 3 → ~25. Tiers live in `LevelGenerator.TierFor`. Past level 30 the same seeded generator runs on device (smaller solver budget). The bake takes ~7 min in the Editor (Mono); the solver needs speeding up before baking 2000.
-- **Move rules** (`GameController.moveRule`): `SingleTop` (**current default**: only the top piece moves; the user felt "it should only take the item I click"), `TopGroup` (classic Water Sort: the whole top run of the same food moves), `AnyWithAbove`. Aaron still has to confirm the final choice. Levels baked for `TopGroup` are also valid for `SingleTop`.
+- **Levels:** "Grill Sort > Bake And Verify Levels" bakes **30 levels** into `Data/LevelBank.asset`, re-solves and replays each, and writes `Docs/LevelReport.md`. Tiers live in `LevelGenerator.TierFor`. Past level 30 the same seeded generator runs on device (smaller solver budget).
+  - **Solver** (`Solver.cs`): A* on a compact, order-independent state (3 ulongs, own hash table, no per-node allocations). Heuristic = runs of identical pieces − food types left (+1/+2 when no move can merge yet). It is admissible, so par is the true minimum. Works for all three rules. A weighted fallback (`~` par) only runs when the node budget runs out.
+  - **Rebaked for `AnyWithAbove` (2026-11-18):** 30 levels in **~44 s**, 0 failures, no `~` pars. Par rises 3, 6, 7, 8 … 27 (+1 per level; a repeat only where the tier drops an empty skewer or adds a food/look-alikes). Target pars live in `LevelGenerator.TargetPars`.
+  - True par per food count (AnyWithAbove): 3 foods ≈ 7, 4 ≈ 10, 5 ≈ 14, 6 ≈ 17, 7 ≈ 20, 8 ≈ 24 (max ≈ 29). With 9 grills (8 foods + 1 empty), par tops out near 27, so levels past 30 hover at 24–27. To keep climbing, more grills are needed (two rows).
+  - `NextMove` (Hint) takes ~15 ms in the Editor on level 30. Levels past 30 are generated on a worker thread (`LevelBank.Prefetch`, ~0.5 s each in the Editor) while the previous level is played.
+- **Move rules** (`GameController.moveRule`): `AnyWithAbove` (**default, Aaron's decision 2026-11-18**: grab any piece, everything above comes along), `TopGroup` (classic Water Sort), `SingleTop`. Levels are baked for `GrillSortLevels.BakeRule` (= `AnyWithAbove`). If the game's rule doesn't match the bank, levels are generated on the device instead (slower).
 - **Cooking stages:** not used yet. Play shows Grilled; `cookOnComplete` (Raw while sorting, Raw → Medium → Grilled on completion) is off. The user will decide how to use Raw/Medium later.
 - **Testing:** tick `Use Test Level` on the `Game` object and type a number in `Test Level` to start there (progress isn't saved). Changing the number during Play mode loads that level at once. Run Full Setup resets it to off.
 - **Other flags on GameController:** `cookOnComplete`, `limitToTenLevels`, `idleHintSeconds`, `verboseLog`.
 - **Gameplay done:** tap to lift/drop with arc flight + bounce, invalid shake, completion glow/steam/sparkles/"Perfect!", serve flight to the customer (✓, cheer, next customer arrives), Orders bar, win popup (stars vs par, coins, x2 rewarded ad), Undo / Hint / Shuffle / Extra skewer boosters (counts saved; at 0 a rewarded ad gives +1), stuck popup, pause (sound/vibration), tips on levels 1–3, free idle hint on levels ≤ 10, theme unlock toast (Wood 1, Beach 11, Food Truck 21, Night Market 31, Winter 41), PlayerPrefs save.
-- **Grill look:** grills 180 wide (stretched from 158) with food at ×1.0 so pieces sit on the grate; dark grill (v3) + deep food shadows; flickering ember glow behind each grill; faint smoke wisps above the coals.
+- **Grill look:** cartoon red-enamel grills 180 wide with food at ×1.0 so pieces sit on the grate; dark grill (v3) + deep food shadows; flickering ember glow behind each grill; small flickering flames between the food; faint smoke wisps above the coals.
+- **Atlases** are deleted and rebuilt on every Run Full Setup, so they always match the art folders in `GrillSortSetup`.
 - **Verify loop:** set Game view to 1080×1920 (`PlayModeWindow.SetCustomRenderingResolution`), enter Play mode, `GameController.StartAutoPlayLevels(n)` plays with solver moves (`AutoPlayLog` holds the results), capture with `unity command capture game_view`. If you're auto-playing while the user clicks in the Game view, the two collide.
 - **Not done yet:** real sounds/music (placeholders are synthesized by `Tools/ArtPipeline/bake_game_fx.py`), stripping unused packages, home/level-map screen, shop, real ads/IAP SDKs, iOS haptics.

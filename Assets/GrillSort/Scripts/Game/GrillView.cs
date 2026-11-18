@@ -15,6 +15,14 @@ namespace GrillSort
         public RectTransform rect;
         public Image shadow, ember, glow, highlight, grill, skewer;
         public Image smoke;
+        public Image[] flames;            // small cartoon flames licking up between the food (flicker in GameController)
+
+        /// <summary>Flame spots (x, y, width) in grill-local design px: in the gaps between food slots, alternating sides.</summary>
+        public static readonly Vector3[] FlameSpots =
+        {
+            new Vector3(-50f, -350f, 40f), new Vector3(48f, -187f, 46f), new Vector3(-46f, -24f, 42f),
+            new Vector3(50f, 140f, 46f), new Vector3(-48f, 300f, 40f),
+        };
         public RectTransform[] slots;     // bottom -> top
         public Image[] foods;
         public Image[] foodShadows;
