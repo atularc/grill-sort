@@ -483,3 +483,13 @@ Sprite sheet of 4 separate cartoon mobile game customer characters, arranged in 
 
 - sheet_people_1: `grandpa` a cheerful grandpa with a round white mustache, bald top and a mint green cardigan; `ponytail` a young woman with a high black ponytail, round glasses and a yellow hoodie; `redhead` a teenage boy with spiky red hair, freckles and a purple t-shirt with headphones around his neck; `curly` a smiling woman with dark skin, curly hair in a big puff with a coral headband and a teal apron-style top.
 - sheet_people_2: `dad` a friendly bearded dad with short brown hair, a red baseball cap and a navy blue polo shirt; `grandma` a sweet grandma with a grey hair bun, pink cheeks, small pearl earrings and a lavender cardigan; `pigtails` a little girl with two black pigtails tied with orange ribbons and a sky blue dress; `quiff` a young South Asian man with a stylish black quiff, light stubble and a denim jacket over a white t-shirt.
+
+## Food style B (2026-11-18, flatter cartoon)
+
+One 1024 generation per food (`ArtSource/Cartoon/singleB/food_<name>.png`), same subjects as the singles above (squid = a squid tube, mushroom seen from the side). Template, swap `<subject>`:
+
+```
+Cute cartoon mobile game food icon of one single <subject>, filling most of the image, slight top-down three-quarter view. Style: polished 2D cartoon like a top casual puzzle game, hand-drawn vector look. Bold clean dark brown outline around the shape. Cel shading with a few smooth tones: a soft darker side, a lighter top face, a couple of glossy white juicy highlight shapes and a few small juice droplets. Simple chunky rounded shape with soft corners. Three thick bold dark brown diagonal grill-mark stripes with clean edges. Juicy, appetizing, bright saturated colors. No realistic texture, no fine fibers, no specks, no painterly brush strokes, not photographic, not a 3D render. Centered, isolated on a plain solid pure white background, no plate, no skewer, no text, no shadow.
+```
+
+Rejected test: "flat" variant (only 2-3 flat tones, one highlight blob): very clean but looked like an icon, not tasty (`ArtSource/Cartoon/v2test/flat_sausage.png`).

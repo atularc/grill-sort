@@ -199,6 +199,9 @@ Full-size originals (white background, uncut) are in `ArtSource/` outside Assets
 
 **Cartoon set (new direction, 2026-11-18):**
 - `FoodCartoon/Grilled/`: all 18 foods, same names, 512×512. Grilled stage only; no Raw/Medium yet.
+- **`FoodCartoonB/Grilled/` = food style B (2026-11-18).** The user found style A still a bit realistic (painted texture, specks, fibres), so all 18 were regenerated flatter: no texture, smooth cel shading, bold outline, thick clean grill stripes, glossy highlights and juice drops. Sources `ArtSource/Cartoon/singleB/`, shadows `Generated/ShadowsCartoonB/`, cut with `STYLE=B python -I Tools/ArtPipeline/cut_cartoon.py`. A **sear pass** (`SEAR=1`, `sear()` in that script) was tried to burn the grill marks in; the user said it **only looked darker** and it was reverted (off by default). A Figma prompt for charred marks drifted back to realistic texture (`ArtSource/Cartoon/v2test/charred_chicken_rejected.png`). **All sets are kept for the client to choose** (`Docs/Mockups/Food-Style-A-B-C.png`, `-ingame.png`).
+- **`FoodCartoonC/Grilled/` = food style C** = style B + a "grilled" pass (`STYLE=C`, `grill()` in `cut_cartoon.py`): amber caramel glow around the marks at the same brightness, chocolate-red marks instead of flat ink, a glossy pressed-in lip. Only thin dark bands count as marks. The user asked for a grilled look **without darkening** and to keep B unchanged.
+  - In game: `GameArt.foods` (A), `foodsB` (B), `foodsC` (C); code reads `art.Foods`. Pause menu button "Food Style: A/B/C" cycles live (`SaveData.FoodStyle`, default **B**). Once Aaron picks, drop the other sets, their atlases (`FoodB`, `FoodC`) and the button.
 - `CustomersPeople/`: 8 people, 512×512: `grandpa ponytail redhead curly dad grandma pigtails quiff`.
 - `Board/grill_cartoon.png` (373×1818, glossy red-enamel tray, cartoon coals, chrome bars), `Board/skewer_cartoon.png` (97×1869), `Generated/grill_cartoon_dark.png` (v3 darkened), `Generated/ShadowsCartoon/`.
 - **Every item is its own 1024 Figma generation** in `ArtSource/Cartoon/single/` (`food_<name>.png`, `people_<name>.png`); grill/skewer are `ArtSource/Cartoon/grill_v1.png`, `skewer_v1.png`.
@@ -207,7 +210,15 @@ Full-size originals (white background, uncut) are in `ArtSource/` outside Assets
 - Prompts: end of `Docs/ArtPrompts.md`. For singles, use the same subject text with "one single …, filling most of the image". Lineup: `Docs/Mockups/Cartoon-Set-Lineup.png`.
 - **In the game** via `GrillSortSetup` (`FoodDir`, `ShadowDir`, `CustomerDir`, `CustomerNames`). The old realistic `Food/`, animal `Customers/` and `grill.png`/`skewer.png` stay unused, except Raw/Medium food for the optional `cookOnComplete`.
 - Fire: 5 small `fx_flame` sprites per grill (`GrillView.FlameSpots`, in the gaps between food slots), flickering in `GameController.LateUpdate`.
-- Figma account is the **Starter (free) plan**: generations use its monthly AI credits. ~33 images were used on 2026-11-18.
+- Figma account is the **Starter (free) plan**: generations use its monthly AI credits. ~54 images were used on 2026-11-18 (33 style A + 21 style B incl. 3 tests).
+
+**Aaron's level-screen feedback (2026-11-18): he chose food style B.** Done the same day, every change as NEW files (originals kept as backups):
+1. Grill area too dark → `Generated/grill_cartoon_dim.png` (brightness ×0.86, saturation ×0.9, coals lifted) replaces `grill_cartoon_dark.png` as the non-complete grill; grill shadow alpha .59 → .42; Wood counter front → `Backgrounds/Wood/layer_front_bright.png` (planks +30%). Script: `Tools/ArtPipeline/brighten_board.py`. A theme uses `layer_front_bright.png` when it exists.
+2. Fire sparks removed (the small `fx_flame` sprites between the food). Add back later as particles.
+3. Food too glossy → `FoodFinal_v2/Grilled/` = half the shine (50/50 blend of `FoodCartoonB` and `FoodFinal`). `FoodFinal/` (v1) removed the shine completely, and the user said that went too far. Shadows: `Generated/ShadowsFinal/`. Script: `cut_cartoon.py` `STYLE=FINAL` / `STYLE=FINAL2`.
+- The A/B/C pause switch is gone; the game uses only `FoodFinal_v2`. A (`FoodCartoon`), B (`FoodCartoonB`), C (`FoodCartoonC`) stay on disk, unused.
+- Level-1 tip now matches AnyWithAbove: "Tap any food to pick it up with the food above it".
+- Images: `Docs/Mockups/Level-Screen-Before-After.png`, `Level-Screen-Final.png`.
 
 **Customers, old animal set (rejected)** (`Customers/`, 512×512): `fox` (rainbow scarf), `bear` (blue bandana), `kitty` (grey tabby, pink bow), `panda` (green scarf). All face the viewer, smiling. No mood variants yet.
 
@@ -330,7 +341,7 @@ Built 2026-11-17. Playable in `Assets/GrillSort/Scenes/Game.unity` (portrait, 10
 - **Testing:** tick `Use Test Level` on the `Game` object and type a number in `Test Level` to start there (progress isn't saved). Changing the number during Play mode loads that level at once. Run Full Setup resets it to off.
 - **Other flags on GameController:** `cookOnComplete`, `limitToTenLevels`, `idleHintSeconds`, `verboseLog`.
 - **Gameplay done:** tap to lift/drop with arc flight + bounce, invalid shake, completion glow/steam/sparkles/"Perfect!", serve flight to the customer (✓, cheer, next customer arrives), Orders bar, win popup (stars vs par, coins, x2 rewarded ad), Undo / Hint / Shuffle / Extra skewer boosters (counts saved; at 0 a rewarded ad gives +1), stuck popup, pause (sound/vibration), tips on levels 1–3, free idle hint on levels ≤ 10, theme unlock toast (Wood 1, Beach 11, Food Truck 21, Night Market 31, Winter 41), PlayerPrefs save.
-- **Grill look:** cartoon red-enamel grills 180 wide with food at ×1.0 so pieces sit on the grate; dark grill (v3) + deep food shadows; flickering ember glow behind each grill; small flickering flames between the food; faint smoke wisps above the coals.
+- **Grill look:** cartoon red-enamel grills 180 wide with food at ×1.0 so pieces sit on the grate; dimmed grill (`grill_cartoon_dim`, lighter than v3 per Aaron) + deep food shadows; flickering ember glow behind each grill; faint smoke wisps above the coals. The small flames between the food were removed (Aaron).
 - **Atlases** are deleted and rebuilt on every Run Full Setup, so they always match the art folders in `GrillSortSetup`.
 - **Verify loop:** set Game view to 1080×1920 (`PlayModeWindow.SetCustomRenderingResolution`), enter Play mode, `GameController.StartAutoPlayLevels(n)` plays with solver moves (`AutoPlayLog` holds the results), capture with `unity command capture game_view`. If you're auto-playing while the user clicks in the Game view, the two collide.
 - **Not done yet:** real sounds/music (placeholders are synthesized by `Tools/ArtPipeline/bake_game_fx.py`), stripping unused packages, home/level-map screen, shop, real ads/IAP SDKs, iOS haptics.

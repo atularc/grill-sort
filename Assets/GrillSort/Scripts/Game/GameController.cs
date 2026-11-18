@@ -1005,7 +1005,7 @@ namespace GrillSort
 
         static readonly string[] Tips =
         {
-            "Tap a skewer to pick up the top food,\nthen tap another skewer to drop it.",
+            "Tap any food to pick it up with the food above it,\nthen tap another skewer to drop it.",
             "Food only goes onto the same food\nor onto an empty skewer.",
             "Fill a skewer with 4 of the same food\nto serve a hungry customer!",
         };

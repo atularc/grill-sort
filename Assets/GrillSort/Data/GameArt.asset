@@ -14,129 +14,129 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GrillSort.GameArt
   foods:
   - name: bacon
-    grilled: {fileID: 21300000, guid: 004c6a6188d25c54d9f6ab7839384354, type: 3}
+    grilled: {fileID: 21300000, guid: 2eb22d199a858324999d26b79a83de76, type: 3}
     medium: {fileID: 21300000, guid: acf41db51b603fb44b6c7db5d3f5cf6a, type: 3}
     raw: {fileID: 21300000, guid: 29eae51359de99649bdcb5310185d2dd, type: 3}
-    shadow: {fileID: 21300000, guid: 57cfd3cb418dc44408ba5694fd1b796d, type: 3}
+    shadow: {fileID: 21300000, guid: 27ae66d1f19dd264ebd828a8f06ff248, type: 3}
     shadowRaw: {fileID: 21300000, guid: 34eb9b32433b0604fa2633b91eb08717, type: 3}
     width: 156
   - name: beef
-    grilled: {fileID: 21300000, guid: d76fff5f56614c142a858f2223bbb6cc, type: 3}
+    grilled: {fileID: 21300000, guid: 82e4e3567ea0bdf4bb5ef3ca9e82a526, type: 3}
     medium: {fileID: 21300000, guid: 34d21db4c831c734293fc9a30c72b401, type: 3}
     raw: {fileID: 21300000, guid: 31132bb2f3aa28a4bb692e906f0758ad, type: 3}
-    shadow: {fileID: 21300000, guid: aa80e10b53a14cf4eb590a28a916d721, type: 3}
+    shadow: {fileID: 21300000, guid: a91550364af48644e87a747d92116bdf, type: 3}
     shadowRaw: {fileID: 21300000, guid: 149ce0f06ed9a5a4ca0773f73dd51ce1, type: 3}
     width: 148
   - name: broccoli
-    grilled: {fileID: 21300000, guid: 5291f171ba7cc4d43aac536c30bd8e39, type: 3}
+    grilled: {fileID: 21300000, guid: d137ccec2de9b91459ebcd02330ededa, type: 3}
     medium: {fileID: 21300000, guid: 4d8cf1c9f8cd7a64c8fec0115db159f7, type: 3}
     raw: {fileID: 21300000, guid: 4d52f5bb9064f1745ada88774dcd95ff, type: 3}
-    shadow: {fileID: 21300000, guid: 588959ac02e43ae4e8e98e2c5bd05c8d, type: 3}
+    shadow: {fileID: 21300000, guid: a6ff333a30d7b7b4d984ba365ec3dac9, type: 3}
     shadowRaw: {fileID: 21300000, guid: e04776ce444bb5648aa5fb569a9ac7f3, type: 3}
     width: 156
   - name: chicken
-    grilled: {fileID: 21300000, guid: 1fdddf129745ce848a29b7985e587cd5, type: 3}
+    grilled: {fileID: 21300000, guid: 7ef77304df0c32d4c9485f34cc66370b, type: 3}
     medium: {fileID: 21300000, guid: a890cb9a9ce13294b844ef544e84c8a3, type: 3}
     raw: {fileID: 21300000, guid: dc0578fd619b95c4fb84704004c7fe65, type: 3}
-    shadow: {fileID: 21300000, guid: 2c81e82392b786b4cbff3bdd4c925411, type: 3}
+    shadow: {fileID: 21300000, guid: 4b3361a85eb58aa42818dcae3a9ef53f, type: 3}
     shadowRaw: {fileID: 21300000, guid: 16d39caa40616544e80177edb7769cfe, type: 3}
     width: 150
   - name: corn
-    grilled: {fileID: 21300000, guid: 6cb5ccda2753b774bbce3c22008494f0, type: 3}
+    grilled: {fileID: 21300000, guid: 424e18aff4a238748b114040d50808eb, type: 3}
     medium: {fileID: 21300000, guid: 44db7c103fda15f478a3c85518adc070, type: 3}
     raw: {fileID: 21300000, guid: 6306607d0e461594f91767e1626af42e, type: 3}
-    shadow: {fileID: 21300000, guid: ca51e0800738e924c8c8f51f95403969, type: 3}
+    shadow: {fileID: 21300000, guid: dcbbbc0dbba36fa4f878d01dab61ce10, type: 3}
     shadowRaw: {fileID: 21300000, guid: feb618451469b794c9a7eee088ede9d2, type: 3}
     width: 160
   - name: halloumi
-    grilled: {fileID: 21300000, guid: e0c9ea94f9992fd4e898271a84cc31e9, type: 3}
+    grilled: {fileID: 21300000, guid: 31b07f5ee4875d647aec2ebc0f96abd2, type: 3}
     medium: {fileID: 21300000, guid: 4e7f06a46e6dd0043be20c73bfb5533d, type: 3}
     raw: {fileID: 21300000, guid: d7d6097af9aa8094684a7c7eabe5e20d, type: 3}
-    shadow: {fileID: 21300000, guid: 416054de7c0f65a46a7713b581ad116b, type: 3}
+    shadow: {fileID: 21300000, guid: 19b449b67ff0d534fb6def2277dcdf75, type: 3}
     shadowRaw: {fileID: 21300000, guid: ace5b49fd3a8d454d9a3bedc452eb8e4, type: 3}
     width: 150
   - name: meatball
-    grilled: {fileID: 21300000, guid: eca0826aa87bcc6499c310221eb53b7a, type: 3}
+    grilled: {fileID: 21300000, guid: 8018aeadc44a42547b76ec80fa82a5f0, type: 3}
     medium: {fileID: 21300000, guid: 7dbd711c21f696d41a72006ef3ba9cf3, type: 3}
     raw: {fileID: 21300000, guid: b6438899945f04b4493cfedbcb70f4ea, type: 3}
-    shadow: {fileID: 21300000, guid: 4c6fafe738f2d134893f47e66006613c, type: 3}
+    shadow: {fileID: 21300000, guid: 77515e2ecf99f3c44854b8b185c888d4, type: 3}
     shadowRaw: {fileID: 21300000, guid: e3802fbf5a22c084ab51b729be15e065, type: 3}
     width: 146
   - name: mushroom
-    grilled: {fileID: 21300000, guid: ad897b7faa5c11840ad9fd6409e667ee, type: 3}
+    grilled: {fileID: 21300000, guid: 1afc16f1865a149488a1b6d37ddf1534, type: 3}
     medium: {fileID: 21300000, guid: 37665f6b92d105c4b81ae598259ed3df, type: 3}
     raw: {fileID: 21300000, guid: a92d2e77fe4273b4b9cc73bdc8d916c4, type: 3}
-    shadow: {fileID: 21300000, guid: 407e6739a6fbea54bbdc09a40c9d6375, type: 3}
+    shadow: {fileID: 21300000, guid: 5cb8bd5d90de0e2409b46f79c4bbb64a, type: 3}
     shadowRaw: {fileID: 21300000, guid: 3f0918ec6e4ea8c41854d2a3b2948a4e, type: 3}
     width: 150
   - name: onion
-    grilled: {fileID: 21300000, guid: b05b80b29f5c0c5449145346b99f4bb7, type: 3}
+    grilled: {fileID: 21300000, guid: e3fc8b3b85b5f194db3342dfa854ac63, type: 3}
     medium: {fileID: 21300000, guid: a7bcecc2f4a64ab419c78497366a2cd5, type: 3}
     raw: {fileID: 21300000, guid: a2ce3f46fee414147a9763063b3ad603, type: 3}
-    shadow: {fileID: 21300000, guid: 217e05d328856ea4dbda72e8287792b7, type: 3}
+    shadow: {fileID: 21300000, guid: 32ee2c469ad96344caf74be4d7317861, type: 3}
     shadowRaw: {fileID: 21300000, guid: d4a94befbd94bd34da42a71b39833a65, type: 3}
     width: 150
   - name: pepper
-    grilled: {fileID: 21300000, guid: 1eb81900aabd567419c471930fd40bb8, type: 3}
+    grilled: {fileID: 21300000, guid: 4eeb3cf7e509c7f41a9ce8bdd8d0f315, type: 3}
     medium: {fileID: 21300000, guid: ec7f40fe603168e40843beeaac2ece34, type: 3}
     raw: {fileID: 21300000, guid: 2ebaccac558c804459873e7991bd89fc, type: 3}
-    shadow: {fileID: 21300000, guid: e458ccebd5607b34dbdc44502e1394ce, type: 3}
+    shadow: {fileID: 21300000, guid: eadd9a120c8b07a4683083f70ff7982a, type: 3}
     shadowRaw: {fileID: 21300000, guid: 66255a1c702376d4ca8e1f7fc5f90cb5, type: 3}
     width: 156
   - name: pineapple
-    grilled: {fileID: 21300000, guid: 856522d02a2b54e4696529e21837e07b, type: 3}
+    grilled: {fileID: 21300000, guid: d26755a6bd0c1704e88d6365f8d58d6a, type: 3}
     medium: {fileID: 21300000, guid: 3bb2c352fd0a8e8418522416b2d008ce, type: 3}
     raw: {fileID: 21300000, guid: 34952e29cdec20a488fcbfdd78d3e812, type: 3}
-    shadow: {fileID: 21300000, guid: 6e8e328fdbd350441a3bc400475928be, type: 3}
+    shadow: {fileID: 21300000, guid: ba969beb3c192e8419b677a745d23e50, type: 3}
     shadowRaw: {fileID: 21300000, guid: 6e32b65a8f60fe1449b50757b600dd16, type: 3}
     width: 150
   - name: potato
-    grilled: {fileID: 21300000, guid: c72a9c7079defd14da26b71f71645611, type: 3}
+    grilled: {fileID: 21300000, guid: 7c846837226c171429adf48a4e6145be, type: 3}
     medium: {fileID: 21300000, guid: d6464a5c1c30e624f9c00dada869f687, type: 3}
     raw: {fileID: 21300000, guid: 15fa12c48c83e7f4dbb77e14c9ede49f, type: 3}
-    shadow: {fileID: 21300000, guid: 5c4403fd6029dd74a9e4638c1324d2f4, type: 3}
+    shadow: {fileID: 21300000, guid: e138ceeab7a540e408484cecb774761a, type: 3}
     shadowRaw: {fileID: 21300000, guid: 91ad0b38f07509643bd690d305df54e6, type: 3}
     width: 146
   - name: salmon
-    grilled: {fileID: 21300000, guid: 2ab631b02d215e944b233ad9ed4784b9, type: 3}
+    grilled: {fileID: 21300000, guid: 31f6a71827c3c4b4fbd4596695f49cb5, type: 3}
     medium: {fileID: 21300000, guid: c7e490417cd5fbf4694f510d485d7295, type: 3}
     raw: {fileID: 21300000, guid: 8a9045e32e3c16d4db716d05c80118d7, type: 3}
-    shadow: {fileID: 21300000, guid: 2b02a62522c59f948ad1bcf95d6eeff0, type: 3}
+    shadow: {fileID: 21300000, guid: e7a2e7daffd198e418859517c7136f6b, type: 3}
     shadowRaw: {fileID: 21300000, guid: e292975d7a6b5774792ac8547910be94, type: 3}
     width: 150
   - name: sausage
-    grilled: {fileID: 21300000, guid: b0b037300fa56024b9caba3cb9a3c6f1, type: 3}
+    grilled: {fileID: 21300000, guid: c8fc0b134a83f0845b95d0a481fefa03, type: 3}
     medium: {fileID: 21300000, guid: 007c9f525da36d444aca874a9d010c9d, type: 3}
     raw: {fileID: 21300000, guid: b6dc4308d4c3fe4468179ce3cc0dbaeb, type: 3}
-    shadow: {fileID: 21300000, guid: 8d623084300aaf54193ad45d04a6b6f4, type: 3}
+    shadow: {fileID: 21300000, guid: c65655e47c0dea54a8e906e888e70821, type: 3}
     shadowRaw: {fileID: 21300000, guid: 86018ef8d2ed2bd47963a1547af811a5, type: 3}
     width: 170
   - name: shrimp
-    grilled: {fileID: 21300000, guid: 16d0ffc11ec63104b9b1fb0a91d60fee, type: 3}
+    grilled: {fileID: 21300000, guid: d81cc86209b189e4280f64d05ffe9cce, type: 3}
     medium: {fileID: 21300000, guid: 57a1488ffc87d5241be7df8e7076cd12, type: 3}
     raw: {fileID: 21300000, guid: 6a825068788c8b648ba6bd92d7e30ac7, type: 3}
-    shadow: {fileID: 21300000, guid: ea352d4676dfec445bb17c4bb346a619, type: 3}
+    shadow: {fileID: 21300000, guid: 878752bb1fafbad4288a6ca947d5a195, type: 3}
     shadowRaw: {fileID: 21300000, guid: 22a0528af148bf74ebc9fb0314a948e5, type: 3}
     width: 156
   - name: squid
-    grilled: {fileID: 21300000, guid: e4b9cb609feb09044a656646de636a51, type: 3}
+    grilled: {fileID: 21300000, guid: fc97d934ef1c480488c818c6a65543a4, type: 3}
     medium: {fileID: 21300000, guid: 484a4c06f2b67e242841b8fc8484ac01, type: 3}
     raw: {fileID: 21300000, guid: ba24566c58d770a40921dc040931ba7f, type: 3}
-    shadow: {fileID: 21300000, guid: 87058b9dc58b1584d9149c7eed2975de, type: 3}
+    shadow: {fileID: 21300000, guid: 34dc31cdd2628ec40bd0fe5253a27322, type: 3}
     shadowRaw: {fileID: 21300000, guid: 4ea5959902d855046afda493c01c0e8e, type: 3}
     width: 160
   - name: tomato
-    grilled: {fileID: 21300000, guid: 4cf40dc8e564d16479e01986c4271722, type: 3}
+    grilled: {fileID: 21300000, guid: c677a6808080dc043acc1a8865a62d2e, type: 3}
     medium: {fileID: 21300000, guid: 10f0975800531444591fb299f198aa8f, type: 3}
     raw: {fileID: 21300000, guid: 3e2f555fc5f5cff47857e4b0d81f42ee, type: 3}
-    shadow: {fileID: 21300000, guid: 406cbf4bb10068e4281512384f95b0ba, type: 3}
+    shadow: {fileID: 21300000, guid: b21ff0b60640f9c47998d126347938b8, type: 3}
     shadowRaw: {fileID: 21300000, guid: ea677cbe734e9794ca9c7db7052e5edf, type: 3}
     width: 140
   - name: zucchini
-    grilled: {fileID: 21300000, guid: c7a37627b6b920944943d0bcfd63712d, type: 3}
+    grilled: {fileID: 21300000, guid: ed215583a2af58a449a68ac3afddd88a, type: 3}
     medium: {fileID: 21300000, guid: 3f93fccc310566f439b98ff205442317, type: 3}
     raw: {fileID: 21300000, guid: cd2d43847eff34b4f8c7e202279c0d1d, type: 3}
-    shadow: {fileID: 21300000, guid: 87ae3d563594fbf47b0a322e0b592400, type: 3}
+    shadow: {fileID: 21300000, guid: c2e5222761fdf38418c43be99a9e6e6a, type: 3}
     shadowRaw: {fileID: 21300000, guid: 8487b632059a10c46a14f33b199da91c, type: 3}
     width: 150
   customers:
@@ -153,7 +153,7 @@ MonoBehaviour:
     displayName: Wood Stall
     background: {fileID: 21300000, guid: 21e8aae38c721914281f3b87accc7a82, type: 3}
     backgroundCalm: {fileID: 0}
-    front: {fileID: 21300000, guid: 9cefb80ea67daf944b47991719f1d819, type: 3}
+    front: {fileID: 21300000, guid: 4082c0f96e2b4ab4e9f189fcd13606b6, type: 3}
     counterTop: 528
     unlockLevel: 1
   - name: Beach
@@ -185,7 +185,7 @@ MonoBehaviour:
     counterTop: 538
     unlockLevel: 41
   grill: {fileID: 21300000, guid: 277b83891999bdc43827a876e7607d61, type: 3}
-  grillDark: {fileID: 21300000, guid: acec91051968b7048962fe8408f73022, type: 3}
+  grillDark: {fileID: 21300000, guid: 01685b721fe0baf4d8c9482a6e3541ad, type: 3}
   skewer: {fileID: 21300000, guid: 386396d79e9ff8447bee1db49444df71, type: 3}
   starOn: {fileID: 21300000, guid: 6a282af2e06435741accee4ed4c23fb4, type: 3}
   starOff: {fileID: 21300000, guid: 6a282af2e06435741accee4ed4c23fb4, type: 3}

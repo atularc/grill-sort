@@ -105,7 +105,12 @@ namespace GrillSort.EditorTools
 
         // Cartoon art set (client direction 2026-11-18). The old realistic Food/Grilled, Customers (animals) and
         // grill/skewer art stays in the project, unused.
-        const string FoodDir = "FoodCartoon/Grilled/", ShadowDir = "Generated/ShadowsCartoon/", CustomerDir = "CustomersPeople/";
+        /// <summary>Food icon size inside the order bubble (was 112 in the mockup; user asked for smaller, 2026-11-18).</summary>
+        const float OrderIcon = 88f;
+        // Final food (2026-11-18): Aaron chose style B and asked for less shine. FoodFinal_v2 = half the shine (STYLE=FINAL2);
+        // FoodFinal (v1, shine removed: user found it too matte) is the backup.
+        // FoodCartoon (A), FoodCartoonB, FoodCartoonC stay on disk as unused alternatives.
+        const string FoodDir = "FoodFinal_v2/Grilled/", ShadowDir = "Generated/ShadowsFinal/", CustomerDir = "CustomersPeople/";
         static readonly string[] CustomerNames = { "grandpa", "ponytail", "redhead", "curly", "dad", "grandma", "pigtails", "quiff" };
 
         static readonly string[] AtlasFolders = { Art + "UI/", Art + CustomerDir, Art + "VFX/", Art + FoodDir, Art + ShadowDir };
@@ -203,7 +208,7 @@ namespace GrillSort.EditorTools
                 Theme("Winter", "Winter Market", 538, 41),
             };
             a.grill = Load<Sprite>(Art + "Board/grill_cartoon.png");
-            a.grillDark = Load<Sprite>(Art + "Generated/grill_cartoon_dark.png");
+            a.grillDark = Load<Sprite>(Art + "Generated/grill_cartoon_dim.png"); // brighter than the v3 grill_cartoon_dark (Aaron: bottom too dark)
             a.skewer = Load<Sprite>(Art + "Board/skewer_cartoon.png");
             a.starOn = Load<Sprite>(Art + "UI/Icons/icon_star.png");
             a.starOff = a.starOn;
@@ -232,7 +237,8 @@ namespace GrillSort.EditorTools
                 displayName = display,
                 background = Load<Sprite>(p + "background.png"),
                 backgroundCalm = File.Exists(p + "background-calm.png") ? Load<Sprite>(p + "background-calm.png") : null,
-                front = Load<Sprite>(p + "layer_front.png"),
+                // brightened planks where made (Tools/ArtPipeline/brighten_board.py; Wood, Aaron: bottom too dark)
+                front = Load<Sprite>(p + (File.Exists(p + "layer_front_bright.png") ? "layer_front_bright.png" : "layer_front.png")),
                 counterTop = counterTop,
                 unlockLevel = unlock,
             };
@@ -272,7 +278,7 @@ namespace GrillSort.EditorTools
             }
             var imp = AssetImporter.GetAtPath(path) as SpriteAtlasImporter;
             if (imp == null) return;
-            var pack = imp.packingSettings; pack.enableRotation = false; pack.enableTightPacking = false; pack.padding = 4; imp.packingSettings = pack;
+            var pack = imp.packingSettings; pack.enableRotation = false; pack.enableTightPacking = false; pack.padding = 8; imp.packingSettings = pack; // padding >= ASTC 6x6 block: a 4 px gap let compression blocks mix neighbours (purple lines above the HUD pills)
             var tex = imp.textureSettings; tex.generateMipMaps = false; imp.textureSettings = tex;
             foreach (var plat in new[] { "Android", "iPhone" })
             {
@@ -369,7 +375,7 @@ namespace GrillSort.EditorTools
                 var bsh = Img("Shadow", cv.bubble, S("Generated/glow.png"), new Vector2(190, 40), new Vector2(0, -52));
                 bsh.color = new Color(.08f, .03f, 0f, .35f);
                 ImgW("Bubble", cv.bubble, bubbleSp, 196, Vector2.zero);
-                cv.order = Img("Order", cv.bubble, _art.foods[i].grilled, new Vector2(112, 112), new Vector2(0, 8));
+                cv.order = Img("Order", cv.bubble, _art.foods[i].grilled, new Vector2(OrderIcon, OrderIcon), new Vector2(0, 10));
                 cv.order.preserveAspect = true;
                 cv.check = ImgW("Check", cv.bubble, check, 62, new Vector2(80, 46));
                 cv.check.gameObject.SetActive(false);
@@ -390,7 +396,7 @@ namespace GrillSort.EditorTools
                 var gv = root.gameObject.AddComponent<GrillView>();
                 gv.index = g; gv.rect = root;
                 gv.shadow = Img("Shadow", root, softRect, new Vector2(GrillView.GrillW * 1.65f, 929), new Vector2(2, -20));
-                gv.shadow.color = new Color(1, 1, 1, .59f);
+                gv.shadow.color = new Color(1, 1, 1, .42f);
                 gv.ember = Img("Ember", root, glowSp, new Vector2(300, 940), Vector2.zero);
                 gv.ember.color = new Color32(255, 110, 30, 80);
                 gv.glow = Img("Glow", root, glowSp, new Vector2(420, 1080), Vector2.zero);
@@ -398,17 +404,8 @@ namespace GrillSort.EditorTools
                 gv.highlight = Img("Highlight", root, glowSp, new Vector2(330, 980), Vector2.zero);
                 gv.highlight.color = new Color(1f, .97f, .85f, 0f);
                 gv.grill = Img("Grill", root, _art.grillDark, new Vector2(GrillView.GrillW, GrillView.GrillH), Vector2.zero);
-                // flames sit on the coals: above the grill, under the skewer and food
-                var flameSp = S("VFX/fx_flame.png");
-                gv.flames = new Image[GrillView.FlameSpots.Length];
-                for (int k = 0; k < gv.flames.Length; k++)
-                {
-                    var fs = GrillView.FlameSpots[k];
-                    var fl = ImgW($"Flame{k}", root, flameSp, fs.z, new Vector2(fs.x, fs.y));
-                    fl.rectTransform.pivot = new Vector2(.5f, .1f);   // flicker grows upward from the base
-                    fl.raycastTarget = false;
-                    gv.flames[k] = fl;
-                }
+                // fire sparks removed (Aaron 2026-11-18: too busy, add back later as particles)
+                gv.flames = new Image[0];
                 float skH = GrillView.GrillH - 20; float skW = skH * 97f / 1869f;
                 gv.skewer = Img("Skewer", root, _art.skewer, new Vector2(skW, skH), new Vector2(0, 6));
                 gv.slots = new RectTransform[4]; gv.foods = new Image[4]; gv.foodShadows = new Image[4];
@@ -464,7 +461,7 @@ namespace GrillSort.EditorTools
             ui.tip.alpha = 0f;
             var tipBg = Sliced("Bg", tipRt, S("Generated/rounded.png"), new Vector2(940, 120), Vector2.zero);
             tipBg.color = new Color(.16f, .07f, .02f, .82f);
-            ui.tipText = Text("Text", tipRt, "Tap a skewer to pick up the top food,\nthen tap another skewer to drop it.", 36, Cream, new Vector2(900, 110), Vector2.zero, _matPlain);
+            ui.tipText = Text("Text", tipRt, "Tap any food to pick it up with the food above it,\nthen tap another skewer to drop it.", 36, Cream, new Vector2(900, 110), Vector2.zero, _matPlain);
 
             // ---------------- safe area: HUD + boosters + toast
             var safe = Stretch("SafeArea", croot);
