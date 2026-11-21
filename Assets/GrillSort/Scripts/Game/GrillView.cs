@@ -6,15 +6,19 @@ using UnityEngine.UI;
 namespace GrillSort
 {
     /// <summary>
-    /// One grill + skewer + 4 food slots, fully authored in the scene by the builder. Runtime only swaps sprites,
-    /// toggles objects and moves the slot transforms.
+    /// One grill (= one order tray) + skewer + food slots, fully authored in the scene by the builder. Runtime only
+    /// swaps sprites, toggles objects and moves the slot transforms. Input: tap-tap or drag (Sort Streak style).
     /// </summary>
-    public sealed class GrillView : MonoBehaviour, IPointerClickHandler
+    public sealed class GrillView : MonoBehaviour, IPointerClickHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
     {
         public int index;
         public RectTransform rect;
         public Image shadow, ember, glow, highlight, grill, skewer;
-        public Image smoke;
+        /// <summary>Red coal glow on top of the grill (split out of the grill art) - flickers in GameController.</summary>
+        public Image coalGlow;
+        /// <summary>Smoke wisps, spread along the whole grill.</summary>
+        public Image[] smokes;
+        public const int SmokeCount = 4;
         public Image[] flames;            // small cartoon flames licking up between the food (flicker in GameController)
 
         /// <summary>Flame spots (x, y, width) in grill-local design px: in the gaps between food slots, alternating sides.</summary>
@@ -30,27 +34,67 @@ namespace GrillSort
         public Image[] sparkles;
         public Image perfect;
 
-        /// <summary>Slot centers (bottom -> top) in grill-local design px, from the mockup.</summary>
-        public static readonly float[] SlotY = { -268f, -105f, 58f, 221f };
-        public const float GrillW = 180f, GrillH = 770f, FoodScale = 1.0f, ShadowRatio = 712f / 512f;
+        /// <summary>
+        /// Slot centers in grill-local design px for the current tray size (<see cref="SetCapacity"/>). Sort Streak
+        /// style: food hangs from the top, so slot 0 (the fixed end) is at the top and the last piece (the free end,
+        /// the one you can drop onto) is at the bottom. 4 slots = the mockup spacing (163); 5-6 share the coal bed.
+        /// Always <see cref="MaxSlots"/> long so loops over the authored slots stay in range.
+        /// </summary>
+        public static float[] SlotY { get; private set; } = Layout(4, out _);
+        /// <summary>Slots in use per tray this level.</summary>
+        public static int Capacity { get; private set; } = 4;
+        /// <summary>Food display scale for the current tray size.</summary>
+        public static float FoodScale { get; private set; } = 1f;
+        public const int MaxSlots = 6;
+        public const float GrillW = 180f, GrillH = 770f, ShadowRatio = 712f / 512f;
         public static readonly Vector2 ShadowOffset = new Vector2(8f, -18f);
+        const float TopY = 268f, BottomY = -290f;   // highest / lowest food centre on the coal bed
+
+        public static void SetCapacity(int capacity)
+        {
+            Capacity = Mathf.Clamp(capacity, 1, MaxSlots);
+            SlotY = Layout(Capacity, out float scale);
+            FoodScale = scale;
+        }
+
+        static float[] Layout(int capacity, out float scale)
+        {
+            float step = capacity <= 4 ? 163f : (TopY - BottomY) / (capacity - 1);
+            scale = Mathf.Min(1f, step / 138f);
+            var y = new float[MaxSlots];
+            for (int i = 0; i < MaxSlots; i++) y[i] = TopY - step * i;   // hangs down from the top
+            return y;
+        }
 
         public Action<int, int> onTap;   // (grill, tapped slot index)
+        /// <summary>Drag callbacks: (grill, slot under the finger, screen position) / screen position / screen position.</summary>
+        public Action<int, int, Vector2> onDragStart;
+        public Action<Vector2> onDragMove, onDragEnd;
 
         public int[] Shown { get; private set; } = new int[0];
 
         public void OnPointerClick(PointerEventData e)
         {
             if (onTap == null) return;
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(rect, e.position, e.pressEventCamera, out var local);
+            onTap(index, SlotAt(e.position, e.pressEventCamera));
+        }
+
+        /// <summary>Slot nearest to a screen point (by height).</summary>
+        public int SlotAt(Vector2 screen, Camera cam)
+        {
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(rect, screen, cam, out var local);
             int best = 0; float bd = float.MaxValue;
-            for (int i = 0; i < SlotY.Length; i++)
+            for (int i = 0; i < Capacity; i++)
             {
                 float d = Mathf.Abs(local.y - SlotY[i]);
                 if (d < bd) { bd = d; best = i; }
             }
-            onTap(index, best);
+            return best;
         }
+
+        public void OnBeginDrag(PointerEventData e) => onDragStart?.Invoke(index, SlotAt(e.pressPosition, e.pressEventCamera), e.position);
+        public void OnDrag(PointerEventData e) => onDragMove?.Invoke(e.position);
+        public void OnEndDrag(PointerEventData e) => onDragEnd?.Invoke(e.position);
 
         public void SetFood(int slot, GameArt.FoodArt art, bool raw)
         {
@@ -72,7 +116,7 @@ namespace GrillSort
             Shown = stack;
             for (int i = 0; i < slots.Length; i++)
             {
-                SetFood(i, i < stack.Length ? art.foods[stack[i]] : null, raw);
+                SetFood(i, i < stack.Length && i < Capacity ? art.foods[stack[i]] : null, raw);
                 ResetSlot(i);
             }
         }
@@ -86,7 +130,15 @@ namespace GrillSort
 
         public void HideSlot(int i) { foods[i].enabled = false; foodShadows[i].enabled = false; }
 
-        public void SetLit(bool lit, GameArt art) => grill.sprite = lit ? art.grill : art.grillDark;
+        /// <summary>Helper tray (no customer, just for space): steel frame.</summary>
+        [NonSerialized] public bool helper;
+
+        public void SetLit(bool lit, GameArt art)
+        {
+            if (helper && art.grillHelper != null) { grill.sprite = art.grillHelper; if (coalGlow != null) coalGlow.sprite = art.grillDarkGlow; return; }
+            grill.sprite = lit ? art.grill : art.grillDark;
+            if (coalGlow != null) coalGlow.sprite = lit ? art.grillGlow : art.grillDarkGlow;
+        }
 
         public void ResetFx()
         {
@@ -94,7 +146,7 @@ namespace GrillSort
             foreach (var s in steam) s.gameObject.SetActive(false);
             foreach (var s in sparkles) s.gameObject.SetActive(false);
             perfect.gameObject.SetActive(false);
-            if (smoke != null) smoke.gameObject.SetActive(false);
+            if (smokes != null) foreach (var s in smokes) s.gameObject.SetActive(false);
             for (int i = 0; i < slots.Length; i++) ResetSlot(i);
         }
 

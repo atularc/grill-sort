@@ -22,26 +22,30 @@ A casual mobile **BBQ skewer sort puzzle** (Water Sort core) for **Google Play a
 
 ## 2. Core rules
 
-```
-State: N skewers, each a bottom→top stack of food ids, capacity C = 4.
-Move:  tap a source skewer (picks up its movable group), tap a target skewer.
-       Valid if target is empty, OR target's top food == moving food AND target has room.
-       Moves as many pieces of the group as fit.
-Done:  a skewer holding C identical pieces is complete → locked, cooked/served, freed.
-Win:   all orders served / every non-empty skewer complete.
-```
+**REWORKED 2026-11-19 after Aaron played the demo (2026-11-18):** "we're still following Sort Streak for the core, only with a new theme. We don't want it to play like Water Sort ... The main action is still dragging pieces from the bottom across the trays, so the 5th grill isn't needed." And: "each customer's order should line up with a row, so players need to sort the matching items into that row to serve it." (Sort Streak: Oakever Games, `com.oakever.sortparade`; flowers on ropes, completed groups go into the matching pot. Never copy it.)
 
-**DECIDED by Aaron (2026-11-18): `AnyWithAbove`.** "Follow Sort Streak closely: players can grab any piece, and everything above it comes along, same as your prototype." (Sort Streak is another reference game: same rule as ours, never copy it.)
-- The move takes the whole hanging stack, which must fit on the target. The target must be empty or have the grabbed piece's food on top.
-- The rule stays a setting (`enum MoveRule { AnyWithAbove, TopGroup, SingleTop }`, default `AnyWithAbove`). The solver, generator and bake all use the active rule.
+**Aaron 2026-11-19 (after our space question + the Sort Streak video in `WhatsApp Video 2026-11-19 at 09.53.46.mp4`):** "follow it closely ... each customer tray holds the number of pieces in that customer's order (e.g. 4 or 5 depending on the level, and later levels can ask for more), plus 2 helper trays without customers, one on each side, used only to move pieces around. The helper trays look clearly different." And: "could we drag from the bottom like in Sort Streak?"
 
-**Customers & orders:** 3–4 customers visible. Each wants one food; a completed skewer of that food serves them. Orders = number of food types in the level (one skewer each), shown as "Orders x / y".
+```
+State: helper | customer trays (2-5) | helper. Each tray holds exactly P pieces (P = order size: 4, later 5).
+       Food HANGS from the top of each tray (slot 0 at the top); the bottom piece is the free end.
+       Customer k stands right above the k-th customer tray; helper trays have no customer (steel frame).
+Move:  drag any piece; every piece BELOW it comes along. Valid if the whole group fits and the target tray is
+       empty or its bottom piece is the same food ("Match the bottom food to drop here!" /
+       "This tray can't hold that many!"). Tap-tap still works.
+Done:  a customer tray holding its P pieces (nothing else) is served; it empties and stays as free space.
+Win:   every order served.
+```
+- Logic is unchanged from a normal stack (index 0 = fixed end); only the drawing is flipped (`GrillView.SlotY`).
+- `MoveRule` stays a setting (`AnyWithAbove` default = "the grabbed piece and everything toward the free end").
+
+**Customers & orders:** one customer above each customer tray, all visible at once (2–5). The bubble shows the food for the tray below. "Orders x / y".
 
 **Cooking stages (we have Raw → Medium → Grilled art for all 18 foods). How to use them is OPEN; ask the user.** Default plan:
 - During play the food shows **Grilled**. This is what the client approved in the mockup.
 - Optional flag `cookOnComplete`: pieces show **Raw** while sorting. When a skewer completes it cooks Raw → Medium → Grilled (~0.35 s per step, sizzle + steam + sparkle), then it's served.
 
-**Boosters** (bottom bar, yellow tiles with red count badges): **Undo**, **Hint**, **Shuffle**, **Extra skewer (+)**.
+**Boosters** (bottom bar, yellow tiles with red count badges): **Undo**, **Hint**, **Shuffle**, **Extra tray (+)** (an empty tray without a customer; Sort Streak has "Add a Rope").
 
 **Fail/stuck:** detect when no valid moves remain → offer Undo / Shuffle / Extra skewer (rewarded ad) / Retry.
 
@@ -58,7 +62,7 @@ Win:   all orders served / every non-empty skewer complete.
   - orange: salmon, shrimp, squid
   - green: pepper, zucchini, broccoli
 - Early levels need tips. In the last project the user found the rules confusing at first, so levels 1–3 got hand-holding and a free idle hint on levels ≤ 10.
-- **Layout:** the mockup fits **5 grills** across a 1080-wide portrait screen. For more skewers, use two rows or narrower grills. Design levels to fit.
+- **Layout:** one row of trays, max 5 orders (+1 extra tray), each customer centred above their tray (`StageLayout`).
 - **Reference implementation** (rope rules, but the solver, generator, bake/verify and difficulty tiers carry over): the old Dangle Pals Unity project at https://github.com/atularc/animals-sort.
   - `Assets/DanglePals/Scripts/Core/`: `Puzzle.cs` (solver: `Solve(out exhausted)`, `Replays`), `LevelGenerator.cs`, `LevelBank.cs`, `Mulberry32.cs` (seeded RNG).
   - `Assets/DanglePals/Scripts/Game/`: `GameController.cs` (idle hint, dead-end detection, `limitToTenLevels`), `GameArt.cs`, `Fx.cs`, `Ease.cs`, `AudioManager.cs`, `Haptics.cs`, `SaveData.cs`.
@@ -220,6 +224,9 @@ Full-size originals (white background, uncut) are in `ArtSource/` outside Assets
 - Level-1 tip now matches AnyWithAbove: "Tap any food to pick it up with the food above it".
 - Images: `Docs/Mockups/Level-Screen-Before-After.png`, `Level-Screen-Final.png`.
 
+**Aaron's art sign-off feedback (2026-11-18), grill marks:** "too strong (see the corn) ... softer and lighter, like in our mock. Some items don't need grill marks at all." Reference he named for overall style: **Skewer Jam: Food Game** (iKame's own game, `com.ig.skewer.jam.food.sort`): thin, light, same-hue marks; corn, shrimp, peppers, tomatoes shown without marks.
+- `FoodFinal_v3/Grilled/` (2026-11-19) = `FoodFinal_v2` with the marks softened: thinner, lighter, tinted with the food's own colour. Marks removed on corn, shrimp, tomato, broccoli (our pick, Aaron only named corn; the user wanted the pepper to keep its marks). Alpha unchanged, so `Generated/ShadowsFinal/` still fits. Script: `Tools/ArtPipeline/soften_marks.py` (knobs `STRENGTH`, `THIN`, `NO_MARKS`). Comparison: `Docs/Mockups/Food-Grill-Marks-Before-After.png`. The game still uses `FoodFinal_v2` until `GrillSortSetup.FoodDir` is switched.
+
 **Customers, old animal set (rejected)** (`Customers/`, 512×512): `fox` (rainbow scarf), `bear` (blue bandana), `kitty` (grey tabby, pink bow), `panda` (green scarf). All face the viewer, smiling. No mood variants yet.
 
 **Board** (`Board/`):
@@ -327,6 +334,15 @@ Goal: a playable portrait prototype that looks like `Docs/Mockups/Grill-Sort-Moc
 ---
 
 ## Current state of the prototype
+
+**Update 2026-11-19 (not committed yet):**
+- **Core = Sort Streak** (see §2): helper | customer trays | helper, tray size = order size (4, then 5 from level 24), food hangs from the top, drag a piece + everything below it, drop on a matching bottom piece. Helper trays: `Generated/grill_helper_base.png` (steel frame, `Tools/ArtPipeline/make_helper_grill.py`), `GrillView.helper`. Up to 8 grills authored (`LevelGenerator.MaxGrills` = 5 customers + 2 helpers + 1 Extra tray).
+- **Solver** (`Solver.cs`): ordered trays with targets, h = unsettled runs (+1 if no reducing move), admissible/consistent, up to 8 trays x 7 slots. ~1-20 ms per level.
+- **Levels:** 50 baked, 0 failures, 0.2 s. Tiers in `LevelGenerator.Tiers` (start level, customers, pieces, look-alikes, par range): L1 2x4, L2 3x4, L4 4x4, L9 5x4, L16 5x4 + look-alikes, L24 5x5, L38 5x5 + more look-alikes. Par 4 -> 24 by L41, then 23-25.
+- **Fire:** coal glow split out of the grill art (`Generated/grill_cartoon*_base.png` + `_glow.png`, `split_grill_glow.py`), flickers in `GameController.LateUpdate`. **Smoke:** 4 light wisps per grill along its length.
+- **Backgrounds:** Beach for levels 1-50 (Aaron wants the demo's Beach), then Food Truck 51, Winter 61, Wood 71, Night Market 81.
+- **Food:** `FoodFinal_v3` (soft marks; Aaron: "look much better now").
+- Verified in the Editor: autoplay L1-3 and L40 at par, drag / invalid drop + toast tested by sending drag events (the CLI's simulated pointer doesn't reach the UI), zero console errors. Not yet tried with a real finger on a phone.
 
 Built 2026-11-17. Playable in `Assets/GrillSort/Scenes/Game.unity` (portrait, 1080×1920 design).
 

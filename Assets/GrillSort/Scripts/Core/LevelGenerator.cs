@@ -4,53 +4,85 @@ using System.Collections.Generic;
 namespace GrillSort
 {
     /// <summary>
-    /// Deterministic level generator. Level N always gives the same puzzle (seeded), every level is solved before it
-    /// is accepted, and the chosen candidate's par keeps rising from level to level (no plateau).
+    /// Deterministic level generator, Sort Streak style (Aaron 2026-11-19): one tray per customer that holds exactly
+    /// that customer's order (4 or 5 pieces), plus 2 helper trays without customers, one on each side, for moving
+    /// pieces around. Level N always gives the same puzzle (seeded), every level is solved before it is accepted, and
+    /// the chosen candidate's par keeps rising from level to level.
+    /// Tray order on the board (= on screen): helper, customer trays..., helper.
     /// </summary>
     public static class LevelGenerator
     {
-        public const int Capacity = 4;
-        /// <summary>Most skewers a level starts with (the scene has one more grill for the Extra skewer booster).</summary>
-        public const int MaxSkewers = 9;
+        /// <summary>Most customer trays a level has (= customers at the counter).</summary>
+        public const int MaxSkewers = 5;
+        /// <summary>Helper trays per level (one each side).</summary>
+        public const int Helpers = 2;
+        /// <summary>Most grills a level can show: customers + helpers + 1 for the Extra tray booster.</summary>
+        public const int MaxGrills = MaxSkewers + Helpers + 1;
+        /// <summary>Biggest order (= tray size); the scene authors this many food slots per grill.</summary>
+        public const int MaxCapacity = 6;
 
         public struct Tier
         {
-            public int Types, Empties, MaxPerLookAlikeGroup;
+            /// <summary>Customers = customer trays = food types.</summary>
+            public int Types;
+            /// <summary>Pieces per order = slots per tray.</summary>
+            public int Pieces;
+            public int MaxPerLookAlikeGroup;
             /// <summary>Par (minimum moves) the generator aims for.</summary>
             public int TargetPar;
-            public override string ToString() => $"{Types} foods + {Empties} empty, look-alikes/group {MaxPerLookAlikeGroup}, target par {TargetPar}";
+            public override string ToString() => $"{Types} customers x {Pieces} pieces + {Helpers} helpers, look-alikes/group {MaxPerLookAlikeGroup}, target par {TargetPar}";
         }
 
-        // Target par for levels 1..30 under AnyWithAbove. Measured true pars of random boards (A*, 40 samples each):
-        // 3 foods 6-10, 4 foods 7-13, 5 foods 11-17, 6 foods 14-20, 7 foods 16-23, 8 foods 19-29 (one empty skewer is
-        // as good as two for par, but two is friendlier). Each food type adds ~3.5 moves, so the curve climbs about one
-        // move per level; where par repeats, the level drops an empty skewer or adds look-alikes instead.
-        static readonly int[] TargetPars =
+        // Difficulty tiers: first level, customers, pieces per order, look-alikes per group, target par range (climbs
+        // from lo at the tier's first level to hi at its last). Par ranges measured 2026-11-19 (40 random boards each,
+        // 2 helpers, AnyWithAbove), min-max: 2x4 3-7, 3x4 5-12, 4x4 10-17, 5x4 14-20, 4x5 12-20, 5x5 18-25.
+        static readonly (int start, int types, int pieces, int look, int lo, int hi)[] Tiers =
         {
-            0,
-            3, 6, 7, 8, 9, 10, 11, 12, 13, 14,      // 1-10
-            15, 15, 16, 17, 18, 19, 19, 20, 21, 22, // 11-20
-            22, 23, 23, 24, 24, 25, 25, 26, 26, 27, // 21-30
+            (1, 2, 4, 1, 4, 4),     // tutorial
+            (2, 3, 4, 1, 6, 9),
+            (4, 4, 4, 1, 10, 15),
+            (9, 5, 4, 1, 15, 18),
+            (16, 5, 4, 2, 18, 20),  // look-alikes start
+            (24, 5, 5, 2, 20, 23),  // bigger orders (5 pieces)
+            (38, 5, 5, 3, 23, 25),
         };
+
+        // Target par for levels 1..50 (declared after Tiers, which it reads)
+        static readonly int[] TargetPars = BuildTargets();
+
+        static int TierIndex(int level)
+        {
+            int i = 0;
+            while (i + 1 < Tiers.Length && Tiers[i + 1].start <= level) i++;
+            return i;
+        }
+
+        static int[] BuildTargets()
+        {
+            var t = new int[51];
+            for (int lv = 1; lv <= 50; lv++)
+            {
+                int i = TierIndex(lv);
+                int first = Tiers[i].start, last = i + 1 < Tiers.Length ? Tiers[i + 1].start - 1 : 50;
+                float k = last == first ? 1f : (lv - first) / (float)(last - first);
+                t[lv] = (int)Math.Round(Tiers[i].lo + (Tiers[i].hi - Tiers[i].lo) * k);
+            }
+            for (int lv = 2; lv <= 50; lv++) t[lv] = Math.Max(t[lv], t[lv - 1]); // never easier than the level before
+            return t;
+        }
+
+        static Tier KnobsFor(int level)
+        {
+            var r = Tiers[TierIndex(level)];
+            return new Tier { Types = r.types, Pieces = r.pieces, MaxPerLookAlikeGroup = r.look };
+        }
 
         /// <summary>Difficulty knobs per level.</summary>
         public static Tier TierFor(int level)
         {
-            Tier t;
-            if (level <= 1) t = new Tier { Types = 2, Empties = 1, MaxPerLookAlikeGroup = 1 };
-            else if (level <= 3) t = new Tier { Types = 3, Empties = 2, MaxPerLookAlikeGroup = 1 };
-            else if (level <= 6) t = new Tier { Types = 4, Empties = 2, MaxPerLookAlikeGroup = 1 };
-            else if (level <= 7) t = new Tier { Types = 4, Empties = 1, MaxPerLookAlikeGroup = 1 };
-            else if (level <= 9) t = new Tier { Types = 5, Empties = 2, MaxPerLookAlikeGroup = 1 };
-            else if (level <= 11) t = new Tier { Types = 5, Empties = 1, MaxPerLookAlikeGroup = 2 };
-            else if (level <= 13) t = new Tier { Types = 6, Empties = 2, MaxPerLookAlikeGroup = 2 };
-            else if (level <= 16) t = new Tier { Types = 6, Empties = 1, MaxPerLookAlikeGroup = 2 };
-            else if (level <= 18) t = new Tier { Types = 7, Empties = 2, MaxPerLookAlikeGroup = 2 };
-            else if (level <= 22) t = new Tier { Types = 7, Empties = 1, MaxPerLookAlikeGroup = 3 };
-            else if (level <= 26) t = new Tier { Types = 8, Empties = 1, MaxPerLookAlikeGroup = 3 };
-            else t = new Tier { Types = 8, Empties = 1, MaxPerLookAlikeGroup = 4 };
-            // past 30: 8 foods + 1 empty fill the 9 grills; par stays near the top of what that board size allows
-            t.TargetPar = level < TargetPars.Length ? TargetPars[level] : 26 + (level % 3);
+            var t = KnobsFor(level);
+            // past 50 the board is as big as the counter allows; par stays near the top of its range
+            t.TargetPar = level < TargetPars.Length ? TargetPars[level] : TargetPars[50] - 1 + level % 3;
             return t;
         }
 
@@ -59,18 +91,16 @@ namespace GrillSort
         /// <summary>
         /// Generates level <paramref name="level"/>: solves seeded candidates and keeps the one whose par is closest to
         /// the tier's target (never below <paramref name="prevPar"/> when possible), preferring proven-minimal pars.
-        /// <paramref name="exactBudget"/> is the A* node budget per candidate (smaller on device); a candidate the exact
-        /// search can't finish is still verified by the weighted fallback, but its par is only an upper bound.
         /// </summary>
         public static LevelData Generate(int level, int prevPar, MoveRule rule, int candidates = -1, int exactBudget = 2000000, int fallbackBudget = 200000)
         {
             var tier = TierFor(level);
-            if (candidates <= 0) candidates = tier.Types >= 8 ? 48 : 24;
+            if (candidates <= 0) candidates = 24;
             var rng = new Mulberry32(SeedFor(level));
             int desired = Math.Max(tier.TargetPar, prevPar);
             int attempts = 0, found = 0;
             LevelData best = null;
-            while (found < candidates && attempts < candidates * 20)
+            while (found < candidates && attempts < candidates * 100) // small boards are often stuck: try more
             {
                 attempts++;
                 var lv = Candidate(level, tier, rng, rule);
@@ -96,36 +126,55 @@ namespace GrillSort
             return a.par > b.par;
         }
 
-        static LevelData Candidate(int level, Tier tier, Mulberry32 rng, MoveRule rule)
+        public static LevelData Candidate(int level, Tier tier, Mulberry32 rng, MoveRule rule)
         {
             var foods = PickFoods(tier, rng, out int pairs);
             if (foods == null) return null;
+            int n = tier.Types, p = tier.Pieces, trays = n + Helpers;
             var pieces = new List<int>();
-            foreach (var f in foods) for (int k = 0; k < Capacity; k++) pieces.Add(f);
+            foreach (var f in foods) for (int k = 0; k < p; k++) pieces.Add(f);
             rng.Shuffle(pieces);
 
-            var b = new Board(Capacity);
-            for (int s = 0; s < tier.Types; s++) b.AddSkewer(pieces.GetRange(s * Capacity, Capacity));
-            for (int e = 0; e < tier.Empties; e++) b.AddSkewer();
-
-            // reject boards that start with a finished skewer or a 3-of-a-kind on top (too easy)
-            for (int s = 0; s < b.SkewerCount; s++)
+            // tray heights: customer trays start full, helpers empty; then pieces move around so the free room is
+            // spread over the board (some customer trays start part-empty, helpers may start with food)
+            var counts = new int[trays];
+            for (int s = 1; s <= n; s++) counts[s] = p;
+            int shifts = Helpers * p + rng.Range(Helpers * p + 1);
+            for (int k = 0; k < shifts; k++)
             {
-                if (b.IsComplete(s)) return null;
-                if (level > 1 && b.TopGroup(s) >= 3) return null;
+                int a = rng.Range(trays), b = rng.Range(trays);
+                if (a == b || counts[a] == 0 || counts[b] >= p) continue;
+                counts[a]--; counts[b]++;
             }
 
-            var orders = new List<int>(foods);
-            rng.Shuffle(orders);
+            // tray 0 and the last tray are helpers (no customer); tray s in between belongs to the customer above it
+            var orders = new int[trays];
+            var shuffled = new List<int>(foods);
+            rng.Shuffle(shuffled);
+            orders[0] = orders[trays - 1] = -1;
+            for (int s = 1; s <= n; s++) orders[s] = shuffled[s - 1];
+
+            var b2 = new Board(p, p);
+            int at = 0;
+            for (int s = 0; s < trays; s++) { b2.AddSkewer(pieces.GetRange(at, counts[s]), orders[s]); at += counts[s]; }
+
+            // too easy: an order already done, or most of it already sitting in place
+            for (int s = 0; s < trays; s++)
+            {
+                if (b2.IsComplete(s)) return null;
+                if (level > 1 && b2.Settled(s) >= p - 1) return null;
+                if (level > 1 && b2.TopGroup(s) >= p - 1) return null;
+            }
+
             return new LevelData
             {
                 number = level,
-                capacity = Capacity,
-                skewers = b.SkewerCount,
-                cells = LevelData.Cells(b),
-                orders = orders.ToArray(),
-                foodTypes = tier.Types,
-                empties = tier.Empties,
+                capacity = p,
+                pieces = p,
+                skewers = trays,
+                cells = LevelData.Cells(b2),
+                orders = orders,
+                foodTypes = n,
                 lookAlikePairs = pairs,
                 seed = SeedFor(level),
                 rule = rule,

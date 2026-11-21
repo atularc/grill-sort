@@ -107,10 +107,14 @@ namespace GrillSort.EditorTools
         // grill/skewer art stays in the project, unused.
         /// <summary>Food icon size inside the order bubble (was 112 in the mockup; user asked for smaller, 2026-11-18).</summary>
         const float OrderIcon = 88f;
+        /// <summary>Message strip (tips + toasts) just above the booster tiles (tile centre 130, half height ~85).</summary>
+        const float MsgW = 860f, MsgH = 92f, MsgY = 276f;
         // Final food (2026-11-18): Aaron chose style B and asked for less shine. FoodFinal_v2 = half the shine (STYLE=FINAL2);
         // FoodFinal (v1, shine removed: user found it too matte) is the backup.
         // FoodCartoon (A), FoodCartoonB, FoodCartoonC stay on disk as unused alternatives.
-        const string FoodDir = "FoodFinal_v2/Grilled/", ShadowDir = "Generated/ShadowsFinal/", CustomerDir = "CustomersPeople/";
+        // FoodFinal_v3 (2026-11-19): Aaron's sign-off note, grill marks softer and lighter, none on some foods
+        // (Tools/ArtPipeline/soften_marks.py). FoodFinal_v2 is the backup.
+        const string FoodDir = "FoodFinal_v3/Grilled/", ShadowDir = "Generated/ShadowsFinal/", CustomerDir = "CustomersPeople/";
         static readonly string[] CustomerNames = { "grandpa", "ponytail", "redhead", "curly", "dad", "grandma", "pigtails", "quiff" };
 
         static readonly string[] AtlasFolders = { Art + "UI/", Art + CustomerDir, Art + "VFX/", Art + FoodDir, Art + ShadowDir };
@@ -201,14 +205,21 @@ namespace GrillSort.EditorTools
             a.customers = CustomerNames.Select(n => Load<Sprite>($"{Art}{CustomerDir}{n}.png"));
             a.themes = new[]
             {
-                Theme("Wood", "Wood Stall", 528, 1),
-                Theme("Beach", "Beach Shack", 500, 11),
-                Theme("FoodTruck", "Food Truck", 527, 21),
-                Theme("NightMarket", "Night Market", 520, 31),
-                Theme("Winter", "Winter Market", 538, 41),
+                // Aaron 2026-11-18: bright backgrounds for normal levels, darker ones saved for later levels.
+                // Mean brightness: Food Truck 212, Beach 185, Winter 146, Wood 73, Night Market 69.
+                // Aaron 2026-11-19: keep the Beach background from the demo -> Beach for the whole 50-level build.
+                Theme("Beach", "Beach Shack", 500, 1),
+                Theme("FoodTruck", "Food Truck", 527, 51),
+                Theme("Winter", "Winter Market", 538, 61),
+                Theme("Wood", "Wood Stall", 528, 71),
+                Theme("NightMarket", "Night Market", 520, 81),
             };
-            a.grill = Load<Sprite>(Art + "Board/grill_cartoon.png");
-            a.grillDark = Load<Sprite>(Art + "Generated/grill_cartoon_dim.png"); // brighter than the v3 grill_cartoon_dark (Aaron: bottom too dark)
+            // the coal glow is split into its own layer so it can flicker (Aaron 2026-11-18; Tools/ArtPipeline/split_grill_glow.py)
+            a.grill = Load<Sprite>(Art + "Generated/grill_cartoon_base.png");
+            a.grillGlow = Load<Sprite>(Art + "Generated/grill_cartoon_glow.png");
+            a.grillDark = Load<Sprite>(Art + "Generated/grill_cartoon_dim_base.png"); // brighter than the v3 grill_cartoon_dark (Aaron: bottom too dark)
+            a.grillDarkGlow = Load<Sprite>(Art + "Generated/grill_cartoon_dim_glow.png");
+            a.grillHelper = Load<Sprite>(Art + "Generated/grill_helper_base.png"); // helper trays: steel frame (Tools/ArtPipeline/make_helper_grill.py)
             a.skewer = Load<Sprite>(Art + "Board/skewer_cartoon.png");
             a.starOn = Load<Sprite>(Art + "UI/Icons/icon_star.png");
             a.starOff = a.starOn;
@@ -361,10 +372,12 @@ namespace GrillSort.EditorTools
 
             // customers (positions relative to the counter line, design px)
             var bubbleSp = S("UI/Panels/bubble_order.png"); var check = S("UI/Icons/icon_check.png");
-            ui.customers = new CustomerView[4];
-            for (int i = 0; i < 4; i++)
+            // one customer above each order tray (Sort Streak style, Aaron 2026-11-18); StageLayout lines them up
+            ui.customers = new CustomerView[LevelGenerator.MaxSkewers];
+            layout.customerSlots = new RectTransform[LevelGenerator.MaxSkewers];
+            for (int i = 0; i < ui.customers.Length; i++)
             {
-                var slot = Rect($"Customer{i}", customers, new Vector2(260, 10), new Vector2(CustomerView.SlotX[i], 0));
+                var slot = Rect($"Customer{i}", customers, new Vector2(260, 10), new Vector2((i - 2) * 200f, 0));
                 var cv = slot.gameObject.AddComponent<CustomerView>();
                 cv.rect = slot;
                 cv.group = slot.gameObject.AddComponent<CanvasGroup>();
@@ -380,10 +393,11 @@ namespace GrillSort.EditorTools
                 cv.check = ImgW("Check", cv.bubble, check, 62, new Vector2(80, 46));
                 cv.check.gameObject.SetActive(false);
                 ui.customers[i] = cv;
+                layout.customerSlots[i] = slot;
             }
 
-            // grills (10 authored: 9 for levels + 1 for the Extra skewer booster)
-            int grillCount = LevelGenerator.MaxSkewers + 1;
+            // grills: customer trays + 2 helper trays + 1 for the Extra tray booster
+            int grillCount = LevelGenerator.MaxGrills;
             ui.grills = new GrillView[grillCount];
             layout.grillSlots = new RectTransform[grillCount];
             var softRect = S("Generated/soft_rect.png"); var glowSp = S("Generated/glow.png");
@@ -404,12 +418,15 @@ namespace GrillSort.EditorTools
                 gv.highlight = Img("Highlight", root, glowSp, new Vector2(330, 980), Vector2.zero);
                 gv.highlight.color = new Color(1f, .97f, .85f, 0f);
                 gv.grill = Img("Grill", root, _art.grillDark, new Vector2(GrillView.GrillW, GrillView.GrillH), Vector2.zero);
+                gv.coalGlow = Img("CoalGlow", root, _art.grillDarkGlow, new Vector2(GrillView.GrillW, GrillView.GrillH), Vector2.zero);
                 // fire sparks removed (Aaron 2026-11-18: too busy, add back later as particles)
                 gv.flames = new Image[0];
                 float skH = GrillView.GrillH - 20; float skW = skH * 97f / 1869f;
                 gv.skewer = Img("Skewer", root, _art.skewer, new Vector2(skW, skH), new Vector2(0, 6));
-                gv.slots = new RectTransform[4]; gv.foods = new Image[4]; gv.foodShadows = new Image[4];
-                for (int s = 0; s < 4; s++)
+                int slotCount = LevelGenerator.MaxCapacity;
+                gv.slots = new RectTransform[slotCount]; gv.foods = new Image[slotCount]; gv.foodShadows = new Image[slotCount];
+                GrillView.SetCapacity(slotCount);
+                for (int s = 0; s < slotCount; s++)
                 {
                     var slot = Rect($"Slot{s}", root, new Vector2(180, 160), new Vector2(0, GrillView.SlotY[s]));
                     var fa = _art.foods[(g + s) % _art.foods.Length];
@@ -427,9 +444,14 @@ namespace GrillSort.EditorTools
                 gv.sparkles = new Image[sp.Length];
                 for (int k = 0; k < sp.Length; k++) gv.sparkles[k] = ImgW($"Sparkle{k}", root, spark, sp[k].w, new Vector2(sp[k].x, sp[k].y));
                 gv.perfect = ImgW("Perfect", root, perfect, 300, new Vector2(30, -381));
-                gv.smoke = ImgH("Smoke", root, S("VFX/fx_smoke.png"), 170, Vector2.zero);
-                gv.smoke.color = new Color(1, 1, 1, 0);
-                gv.smoke.gameObject.SetActive(false);
+                // smoke wisps spread along the whole grill (Aaron 2026-11-18: lighter, along the length)
+                gv.smokes = new Image[GrillView.SmokeCount];
+                for (int k = 0; k < gv.smokes.Length; k++)
+                {
+                    gv.smokes[k] = ImgH($"Smoke{k}", root, S("VFX/fx_smoke.png"), 150, Vector2.zero);
+                    gv.smokes[k].color = new Color(1, 1, 1, 0);
+                    gv.smokes[k].gameObject.SetActive(false);
+                }
                 foreach (var st in gv.steam) st.gameObject.SetActive(false);
                 foreach (var st in gv.sparkles) st.gameObject.SetActive(false);
                 gv.perfect.gameObject.SetActive(false);
@@ -438,12 +460,13 @@ namespace GrillSort.EditorTools
                 layout.grillSlots[g] = root;
             }
 
-            // fly layer: 4 pieces that travel between skewers / to customers
+            // fly layer: pieces that travel between trays / to customers (a dragged stack can be a whole tray)
             var fly = Stretch("FlyLayer", grills);
             fly.anchorMin = fly.anchorMax = new Vector2(.5f, .5f); fly.sizeDelta = Vector2.zero;
             ui.flyLayer = fly;
-            ui.flyers = new RectTransform[4]; ui.flyerFoods = new Image[4]; ui.flyerShadows = new Image[4];
-            for (int f = 0; f < 4; f++)
+            int flyerCount = LevelGenerator.MaxCapacity;
+            ui.flyers = new RectTransform[flyerCount]; ui.flyerFoods = new Image[flyerCount]; ui.flyerShadows = new Image[flyerCount];
+            for (int f = 0; f < flyerCount; f++)
             {
                 var fr = Rect($"Flyer{f}", fly, new Vector2(180, 160), Vector2.zero);
                 var fa = _art.foods[f];
@@ -454,14 +477,6 @@ namespace GrillSort.EditorTools
                 fr.gameObject.SetActive(false);
             }
 
-            // tip banner on the counter front
-            var tipRt = Rect("Tip", counterOverlay, new Vector2(940, 120), new Vector2(0, -95));
-            ui.tip = tipRt.gameObject.AddComponent<CanvasGroup>();
-            ui.tip.blocksRaycasts = false;
-            ui.tip.alpha = 0f;
-            var tipBg = Sliced("Bg", tipRt, S("Generated/rounded.png"), new Vector2(940, 120), Vector2.zero);
-            tipBg.color = new Color(.16f, .07f, .02f, .82f);
-            ui.tipText = Text("Text", tipRt, "Tap any food to pick it up with the food above it,\nthen tap another skewer to drop it.", 36, Cream, new Vector2(900, 110), Vector2.zero, _matPlain);
 
             // ---------------- safe area: HUD + boosters + toast
             var safe = Stretch("SafeArea", croot);
@@ -513,14 +528,23 @@ namespace GrillSort.EditorTools
                 ui.boosters[i] = Button(t);
             }
 
-            // toast
-            var toastRt = Rect("Toast", safe, new Vector2(820, 120), new Vector2(0, 40));
+            // one message strip just above the boosters, shared by tips (levels 1-3) and short messages, so nothing
+            // ever covers the trays, the food or the customers (StageLayout keeps the grills above it)
+            var tipRt = Rect("Tip", safe, new Vector2(MsgW, MsgH), new Vector2(0, MsgY), bottom);
+            ui.tip = tipRt.gameObject.AddComponent<CanvasGroup>();
+            ui.tip.blocksRaycasts = false;
+            ui.tip.alpha = 0f;
+            var tipBg = Sliced("Bg", tipRt, S("Generated/rounded.png"), new Vector2(MsgW, MsgH), Vector2.zero);
+            tipBg.color = new Color(.16f, .07f, .02f, .78f);
+            ui.tipText = Text("Text", tipRt, "Tip", 30, Cream, new Vector2(MsgW - 40, MsgH - 8), Vector2.zero, _matPlain);
+
+            var toastRt = Rect("Toast", safe, new Vector2(MsgW, MsgH), new Vector2(0, MsgY), bottom);
             ui.toast = toastRt.gameObject.AddComponent<CanvasGroup>();
             ui.toast.blocksRaycasts = false;
             ui.toast.alpha = 0f;
-            var toastBg = Sliced("Bg", toastRt, S("Generated/rounded.png"), new Vector2(820, 120), Vector2.zero);
+            var toastBg = Sliced("Bg", toastRt, S("Generated/rounded.png"), new Vector2(MsgW, MsgH), Vector2.zero);
             toastBg.color = new Color(.16f, .07f, .02f, .88f);
-            ui.toastText = Text("Text", toastRt, "Toast", 40, Cream, new Vector2(780, 110), Vector2.zero, _matPlain);
+            ui.toastText = Text("Text", toastRt, "Toast", 32, Cream, new Vector2(MsgW - 40, MsgH - 8), Vector2.zero, _matPlain);
 
             // ---------------- popups
             var popups = Stretch("Popups", croot);

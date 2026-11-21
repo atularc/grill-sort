@@ -4,15 +4,15 @@ using System.Collections.Generic;
 namespace GrillSort
 {
     /// <summary>
-    /// Solves a <see cref="Board"/> with A* on a compact, order-independent state.
+    /// Solves a <see cref="Board"/> (one tray per order, Sort Streak style) with A* on a compact state.
     ///
-    /// Heuristic h = (runs of identical adjacent pieces over all skewers) − (food types still on the board).
-    /// It is admissible and consistent for every <see cref="MoveRule"/>: a move lifts a block off the source
-    /// (which can only keep or add one run: the block may split a run) and drops it on the target, where its bottom
-    /// run can merge with the target's top run (−1 at most). Clearing a completed skewer removes one run and one food
-    /// type together (Δh = 0). So h drops by at most 1 per move, h = 0 only on the empty board, and A* gives the
-    /// true minimum (par). When the exact search runs out of budget, a weighted search (g + 3h) still finds a
-    /// solution (not proven minimal).
+    /// A piece is "settled" when it sits in the bottom run of its own order's tray. Heuristic
+    /// h = number of runs (maximal blocks of the same food) among the unsettled pieces, +1 when no single move can lower
+    /// that count. Each unsettled run needs at least one move, and one move lowers the count by at most one: the
+    /// moved block's bottom run can either settle on its tray or merge onto a matching top, never both, and lifting
+    /// a block can only split a run (+1). Serving a full tray removes settled pieces only (no change). So h is
+    /// admissible and consistent, h = 0 only when every order is served, and A* gives the true minimum (par).
+    /// When the exact search runs out of budget a weighted search (g + 3h) still finds a solution (not proven minimal).
     /// </summary>
     public static class Solver
     {
@@ -28,14 +28,12 @@ namespace GrillSort
             public int Par => Moves.Count;
         }
 
-        /// <summary>Largest board the compact search supports (the scene has 10 grills).</summary>
-        public const int MaxSkewers = 12;
+        /// <summary>Largest board the compact search supports (5 order trays + 2 helper trays + 1 extra tray).</summary>
+        public const int MaxSkewers = 8;
+        /// <summary>Most slots per tray the compact search supports.</summary>
+        public const int MaxCapacity = 7;
         const int MaxFoods = 15; // 4-bit local food ids, 0 = empty slot
 
-        /// <summary>
-        /// Solves <paramref name="start"/>. <paramref name="exactBudget"/> = node limit for the exact A* (minimal par);
-        /// <paramref name="fallbackBudget"/> = node limit for the weighted fallback that runs when A* gives up.
-        /// </summary>
         public static Result Solve(Board start, MoveRule rule, int exactBudget = 3000000, int fallbackBudget = 400000)
         {
             var r = new Result();
@@ -60,15 +58,11 @@ namespace GrillSort
             }
             finally
             {
-                // don't keep hundreds of MB alive after a big (bake-time) search
-                if (s.Capacity > 1 << 20) _ctx = null;
+                if (s.Capacity > 1 << 20) _ctx = null; // don't keep hundreds of MB alive after a big (bake-time) search
             }
         }
 
-        /// <summary>
-        /// Next move toward a solution (Hint booster, idle hint, autoplay), or null when none is found. Cheap: a small
-        /// exact search first (best hint), then a greedy-weighted one.
-        /// </summary>
+        /// <summary>Next move toward a solution (Hint booster, idle hint, autoplay), or null when none is found.</summary>
         public static Move? NextMove(Board b, MoveRule rule)
         {
             if (b.IsSolved()) return null;
@@ -88,8 +82,8 @@ namespace GrillSort
 
         struct Key
         {
-            public ulong A, B, C;
-            public bool Same(in Key o) => A == o.A && B == o.B && C == o.C;
+            public ulong A, B, C, D;
+            public bool Same(in Key o) => A == o.A && B == o.B && C == o.C && D == o.D;
             public int Hash()
             {
                 unchecked
@@ -97,6 +91,7 @@ namespace GrillSort
                     ulong h = A * 0x9E3779B97F4A7C15UL;
                     h ^= (B + 0x632BE59BD9B4E019UL) * 0xC2B2AE3D27D4EB4FUL;
                     h ^= (C + 0x165667B19E3779F9UL) * 0x94D049BB133111EBUL;
+                    h ^= (D + 0x27D4EB2F165667C5UL) * 0xFF51AFD7ED558CCDUL;
                     h ^= h >> 31;
                     return (int)h ^ (int)(h >> 32);
                 }
@@ -106,42 +101,42 @@ namespace GrillSort
         sealed class Search
         {
             // problem
-            int _n, _cap;
+            int _n, _cap, _pieces;
             MoveRule _rule;
             readonly int[] _foodMap = new int[64];
+            readonly int[] _foodBack = new int[16];
             int _foodCount;
+            readonly int[] _goal = new int[MaxSkewers];   // local target food per tray (0 = none)
             Key _startKey;
             int _startH;
 
             // nodes
             Key[] _keys = new Key[1 << 14];
             int[] _parent = new int[1 << 14];
+            int[] _move = new int[1 << 14];                // packed move that reached the node
             short[] _g = new short[1 << 14];
             byte[] _h = new byte[1 << 14];
             bool[] _closed = new bool[1 << 14];
             public int NodeCount;
             public int Capacity => _keys.Length;
 
-            // open-addressing hash: slot -> node index + 1
             int[] _table = new int[1 << 15];
             int _mask = (1 << 15) - 1;
 
-            // bucket queue by priority, LIFO inside a bucket (prefers the deepest, most recent node)
             int[][] _buckets = new int[64][];
             int[] _bucketCount = new int[64];
             int _minF;
-            /// <summary>Priority = f·HS + h: lowest f first, then the node closest to the goal.</summary>
             const int HS = 64;
 
-            // scratch board (local food ids, 0 = empty)
-            readonly int[] _cells = new int[MaxSkewers * 4];
+            // scratch board (local food ids, 0 = empty); _tgt[s] = local target or 0 when served / free
+            readonly int[] _cells = new int[MaxSkewers * MaxCapacity];
             readonly int[] _cnt = new int[MaxSkewers];
-            readonly int[] _codes = new int[MaxSkewers];
+            readonly int[] _tgt = new int[MaxSkewers];
 
             public bool Init(Board b, MoveRule rule)
             {
-                _n = b.SkewerCount; _cap = b.Capacity; _rule = rule;
-                if (_n > MaxSkewers || _cap != 4) return false;
+                _n = b.SkewerCount; _cap = b.Capacity; _pieces = b.Pieces; _rule = rule;
+                if (_n > MaxSkewers || _cap > MaxCapacity || _pieces > _cap) return false;
                 for (int i = 0; i < _foodMap.Length; i++) _foodMap[i] = 0;
                 _foodCount = 0;
                 for (int s = 0; s < _n; s++)
@@ -149,30 +144,42 @@ namespace GrillSort
                     _cnt[s] = b.Count(s);
                     for (int i = 0; i < _cnt[s]; i++)
                     {
-                        int f = b.Get(s, i);
-                        if (f < 0 || f >= _foodMap.Length) return false;
-                        if (_foodMap[f] == 0) { if (_foodCount == MaxFoods) return false; _foodMap[f] = ++_foodCount; }
-                        _cells[s * 4 + i] = _foodMap[f];
+                        int f = Local(b.Get(s, i));
+                        if (f == 0) return false;
+                        _cells[s * MaxCapacity + i] = f;
                     }
-                    if (b.IsComplete(s)) _cnt[s] = 0; // already complete = served
+                    int t = b.Target(s);
+                    _goal[s] = t >= 0 ? Local(t) : 0;
+                    if (t >= 0 && _goal[s] == 0) return false;
+                    _tgt[s] = _goal[s];
                 }
                 _startKey = Encode();
                 _startH = H();
                 return true;
             }
 
-            /// <summary>Best-first search from the start with priority g + w·h. Returns the goal node or -1.</summary>
+            int Local(int f)
+            {
+                if (f < 0 || f >= _foodMap.Length) return 0;
+                if (_foodMap[f] == 0)
+                {
+                    if (_foodCount == MaxFoods) return 0;
+                    _foodMap[f] = ++_foodCount;
+                    _foodBack[_foodCount] = f;
+                }
+                return _foodMap[f];
+            }
+
             public int Run(int budget, int w, out bool exhausted)
             {
                 exhausted = false;
                 Reset();
-                int root = AddNode(_startKey, -1, 0, _startH);
-                if (_startH == 0) return root; // nothing left to sort
+                int root = AddNode(_startKey, -1, -1, 0, _startH);
+                if (_startH == 0) return root;
                 _minF = 0;
                 Push((w * _startH) * HS + _startH, root);
                 while (true)
                 {
-                    // lowest non-empty bucket
                     while (_minF < _buckets.Length && _bucketCount[_minF] == 0) _minF++;
                     if (_minF >= _buckets.Length) return -1; // open list empty: unsolvable
                     int f = _minF;
@@ -185,62 +192,41 @@ namespace GrillSort
                     {
                         int n = _cnt[from];
                         if (n == 0) continue;
-                        int fb = from * 4;
-                        int lo;
-                        if (_rule == MoveRule.AnyWithAbove) lo = 0;
-                        else if (_rule == MoveRule.SingleTop) lo = n - 1;
-                        else { lo = n - 1; while (lo > 0 && _cells[fb + lo - 1] == _cells[fb + n - 1]) lo--; }
+                        int fb = from * MaxCapacity;
+                        int lo = LowStart(from, n);
                         for (int start = n - 1; start >= lo; start--)
                         {
                             int food = _cells[fb + start];
                             int group = n - start;
-                            bool triedEmpty = false;
+                            bool triedFree = false;
                             for (int to = 0; to < _n; to++)
                             {
                                 if (to == from) continue;
-                                int ct = _cnt[to];
-                                int count;
-                                if (ct == 0)
-                                {
-                                    // all empty skewers are the same; moving a whole skewer into one changes nothing
-                                    if (triedEmpty || start == 0) continue;
-                                    triedEmpty = true;
-                                    count = _rule == MoveRule.SingleTop ? 1 : group;
-                                }
-                                else
-                                {
-                                    if (ct == 4 || _cells[to * 4 + ct - 1] != food) continue;
-                                    int room = 4 - ct;
-                                    if (_rule == MoveRule.AnyWithAbove) { if (group > room) continue; count = group; }
-                                    else if (_rule == MoveRule.TopGroup) count = Math.Min(group, room);
-                                    else count = 1;
-                                }
-                                // apply
-                                int tb = to * 4;
-                                int s0 = _cells[tb], s1 = _cells[tb + 1], s2 = _cells[tb + 2], s3 = _cells[tb + 3];
+                                int count = Count(from, start, n, food, group, to, ref triedFree);
+                                if (count <= 0) continue;
+                                int ct = _cnt[to], tb = to * MaxCapacity, tg = _tgt[to], fg = _tgt[from];
                                 for (int k = 0; k < count; k++) _cells[tb + ct + k] = _cells[fb + n - count + k];
-                                _cnt[from] = n - count;
-                                _cnt[to] = ct + count;
-                                if (ct + count == 4 && _cells[tb] == _cells[tb + 1] && _cells[tb] == _cells[tb + 2] && _cells[tb] == _cells[tb + 3])
-                                    _cnt[to] = 0; // complete: served and cleared
+                                _cnt[from] = n - count; _cnt[to] = ct + count;
+                                // served: the tray holds exactly its full order (either end of the move can complete)
+                                if (tg != 0 && ct + count == _pieces && Settled(to) == _pieces) { _cnt[to] = 0; _tgt[to] = 0; }
+                                if (fg != 0 && n - count == _pieces && Settled(from) == _pieces) { _cnt[from] = 0; _tgt[from] = 0; }
                                 var key = Encode();
                                 int h = H();
-                                // undo
-                                _cells[tb] = s0; _cells[tb + 1] = s1; _cells[tb + 2] = s2; _cells[tb + 3] = s3;
-                                _cnt[from] = n; _cnt[to] = ct;
+                                for (int k = 0; k < count; k++) _cells[tb + ct + k] = 0;
+                                _cnt[from] = n; _cnt[to] = ct; _tgt[to] = tg; _tgt[from] = fg;
 
+                                int mv = from | (to << 4) | ((n - count) << 8) | (count << 12);
                                 int idx = Find(key);
                                 if (idx >= 0)
                                 {
                                     if (_closed[idx] || _g[idx] <= g1) continue;
-                                    _g[idx] = (short)g1; _parent[idx] = cur;
+                                    _g[idx] = (short)g1; _parent[idx] = cur; _move[idx] = mv;
                                 }
                                 else
                                 {
                                     if (NodeCount >= budget) { exhausted = true; return -1; }
-                                    idx = AddNode(key, cur, g1, h);
-                                    // h == 0 only on the empty board; with a consistent h the first goal reached is optimal
-                                    if (h == 0) return idx;
+                                    idx = AddNode(key, cur, mv, g1, h);
+                                    if (h == 0) return idx; // consistent h: the first goal reached is optimal
                                 }
                                 Push((g1 + w * h) * HS + h, idx);
                             }
@@ -249,29 +235,57 @@ namespace GrillSort
                 }
             }
 
-            /// <summary>Moves (in the caller's skewer indexes) from the root to node <paramref name="goal"/>.</summary>
+            int LowStart(int from, int n)
+            {
+                if (_rule == MoveRule.AnyWithAbove) return 0;
+                if (_rule == MoveRule.SingleTop) return n - 1;
+                int fb = from * MaxCapacity, lo = n - 1;
+                while (lo > 0 && _cells[fb + lo - 1] == _cells[fb + n - 1]) lo--;
+                return lo;
+            }
+
+            /// <summary>Pieces that move from <paramref name="from"/> (block starting at <paramref name="start"/>) to <paramref name="to"/>, or 0 if illegal / pruned.</summary>
+            int Count(int from, int start, int n, int food, int group, int to, ref bool triedFree)
+            {
+                int ct = _cnt[to];
+                if (ct == 0)
+                {
+                    if (_tgt[to] == 0)
+                    {
+                        if (triedFree) return 0;                      // all empty free trays are the same
+                        if (start == 0 && _tgt[from] == 0) return 0;  // free tray to free tray changes nothing
+                        triedFree = true;
+                    }
+                    if (_rule == MoveRule.SingleTop) return 1;
+                    if (_rule == MoveRule.TopGroup) return Math.Min(group, _cap);
+                    return group <= _cap ? group : 0;
+                }
+                if (ct >= _cap || _cells[to * MaxCapacity + ct - 1] != food) return 0;
+                int room = _cap - ct;
+                if (_rule == MoveRule.AnyWithAbove) return group <= room ? group : 0;
+                if (_rule == MoveRule.TopGroup) return Math.Min(group, room);
+                return 1;
+            }
+
+            int Settled(int s)
+            {
+                int t = _tgt[s];
+                if (t == 0) return 0;
+                int b = s * MaxCapacity, k = 0;
+                while (k < _cnt[s] && _cells[b + k] == t) k++;
+                return k;
+            }
+
             public List<Move> Path(int goal, Board start, int maxMoves = int.MaxValue)
             {
-                var chain = new List<Key>();
-                for (int i = goal; _parent[i] >= 0; i = _parent[i]) chain.Add(_keys[i]);
+                var chain = new List<int>();
+                for (int i = goal; _parent[i] >= 0; i = _parent[i]) chain.Add(_move[i]);
                 chain.Reverse();
                 var moves = new List<Move>();
-                var b = start.Clone();
-                var legal = new List<Move>();
-                foreach (var target in chain)
+                foreach (var mv in chain)
                 {
                     if (moves.Count >= maxMoves) break;
-                    b.LegalMoves(_rule, legal, false);
-                    bool ok = false;
-                    foreach (var m in legal)
-                    {
-                        var nb = b.Clone();
-                        nb.Apply(m);
-                        if (!EncodeBoard(nb).Same(target)) continue;
-                        moves.Add(m); b = nb; ok = true;
-                        break;
-                    }
-                    if (!ok) break; // should not happen
+                    moves.Add(new Move(mv & 15, (mv >> 4) & 15, (mv >> 8) & 15, (mv >> 12) & 15));
                 }
                 return moves;
             }
@@ -287,103 +301,52 @@ namespace GrillSort
 
             int H()
             {
-                int runs = 0, mask = 0;
+                int runs = 0;
                 for (int s = 0; s < _n; s++)
                 {
                     int c = _cnt[s];
-                    if (c == 0) continue;
-                    int b = s * 4;
+                    int i = Settled(s);
+                    if (i >= c) continue;
+                    int b = s * MaxCapacity;
                     runs++;
-                    mask |= 1 << _cells[b];
-                    for (int i = 1; i < c; i++)
-                        if (_cells[b + i] != _cells[b + i - 1]) { runs++; mask |= 1 << _cells[b + i]; }
+                    for (i = i + 1; i < c; i++) if (_cells[b + i] != _cells[b + i - 1]) runs++;
                 }
-                int types = 0;
-                while (mask != 0) { mask &= mask - 1; types++; }
-                int h = runs - types;
-                // no move can merge a block onto a matching top right now: the next move cannot lower h (still consistent)
-                // and if no single move even sets one up, the next two moves cannot (still consistent)
-                if (h > 0 && !HasMergeMove()) h += AnyChildHasMerge() ? 1 : 2;
-                return h;
+                if (runs > 0 && !HasReducingMove()) runs++;
+                return runs;
             }
 
-            /// <summary>True when some move drops a block onto a matching top without splitting a run (the only kind that lowers h).</summary>
-            bool HasMergeMove()
-            {
-                for (int to = 0; to < _n; to++)
-                {
-                    int ct = _cnt[to];
-                    if (ct == 0 || ct == 4) continue;
-                    int top = _cells[to * 4 + ct - 1], room = 4 - ct;
-                    for (int from = 0; from < _n; from++)
-                    {
-                        if (from == to) continue;
-                        int n = _cnt[from], fb = from * 4;
-                        if (n == 0) continue;
-                        if (_rule == MoveRule.AnyWithAbove)
-                        {
-                            for (int start = n - 1; start >= 0 && n - start <= room; start--)
-                                if (_cells[fb + start] == top && (start == 0 || _cells[fb + start - 1] != top)) return true;
-                        }
-                        else
-                        {
-                            if (_cells[fb + n - 1] != top) continue;
-                            int lo = n - 1;
-                            while (lo > 0 && _cells[fb + lo - 1] == top) lo--;
-                            int group = n - lo;
-                            if (_rule == MoveRule.SingleTop ? group == 1 : group <= room) return true;
-                        }
-                    }
-                }
-                return false;
-            }
-
-            /// <summary>True when some legal move leads to a board that has a merge move. Leaves the board unchanged.</summary>
-            bool AnyChildHasMerge()
+            /// <summary>
+            /// True when some legal move lowers the unsettled-run count: its block's bottom run settles on its own tray
+            /// or lands on a matching top, and lifting it does not split an unsettled run.
+            /// </summary>
+            bool HasReducingMove()
             {
                 for (int from = 0; from < _n; from++)
                 {
                     int n = _cnt[from];
                     if (n == 0) continue;
-                    int fb = from * 4;
-                    int lo;
-                    if (_rule == MoveRule.AnyWithAbove) lo = 0;
-                    else if (_rule == MoveRule.SingleTop) lo = n - 1;
-                    else { lo = n - 1; while (lo > 0 && _cells[fb + lo - 1] == _cells[fb + n - 1]) lo--; }
+                    int fb = from * MaxCapacity;
+                    int settled = Settled(from);
+                    int lo = LowStart(from, n);
                     for (int start = n - 1; start >= lo; start--)
                     {
                         int food = _cells[fb + start];
+                        // lifting from inside a run splits it (unless that part was settled: then it costs a run too)
+                        if (start > 0 && _cells[fb + start - 1] == food) continue;
+                        if (start < settled) continue; // moving settled pieces never helps the count
                         int group = n - start;
-                        bool triedEmpty = false;
                         for (int to = 0; to < _n; to++)
                         {
                             if (to == from) continue;
-                            int ct = _cnt[to], count;
-                            if (ct == 0)
-                            {
-                                if (triedEmpty || start == 0) continue;
-                                triedEmpty = true;
-                                count = _rule == MoveRule.SingleTop ? 1 : group;
-                            }
-                            else
-                            {
-                                if (ct == 4 || _cells[to * 4 + ct - 1] != food) continue;
-                                int room = 4 - ct;
-                                if (_rule == MoveRule.AnyWithAbove) { if (group > room) continue; count = group; }
-                                else if (_rule == MoveRule.TopGroup) count = Math.Min(group, room);
-                                else count = 1;
-                            }
-                            int tb = to * 4;
-                            int s0 = _cells[tb], s1 = _cells[tb + 1], s2 = _cells[tb + 2], s3 = _cells[tb + 3];
-                            for (int k = 0; k < count; k++) _cells[tb + ct + k] = _cells[fb + n - count + k];
-                            _cnt[from] = n - count; _cnt[to] = ct + count;
-                            if (ct + count == 4 && _cells[tb] == _cells[tb + 1] && _cells[tb] == _cells[tb + 2] && _cells[tb] == _cells[tb + 3])
-                                _cnt[to] = 0;
-                            bool ok = HasMergeMove();
-                            // the caller may keep pieces in slots above a count (its own pending undo): restore them all
-                            _cells[tb] = s0; _cells[tb + 1] = s1; _cells[tb + 2] = s2; _cells[tb + 3] = s3;
-                            _cnt[from] = n; _cnt[to] = ct;
-                            if (ok) return true;
+                            int ct = _cnt[to];
+                            int room = _cap - ct;
+                            int count = _rule == MoveRule.SingleTop ? 1 : _rule == MoveRule.TopGroup ? Math.Min(group, room) : group;
+                            if (count > room || count <= 0) continue;
+                            if (_rule == MoveRule.TopGroup && count < group) continue; // partial move splits the run
+                            if (_rule == MoveRule.SingleTop && group > 1 && _cells[fb + n - 2] == food) continue;
+                            if (ct == 0) { if (_tgt[to] == food) return true; continue; }
+                            if (_cells[to * MaxCapacity + ct - 1] != food) continue;
+                            return true; // merges onto a matching top (settled or not: either lowers the count)
                         }
                     }
                 }
@@ -392,39 +355,15 @@ namespace GrillSort
 
             Key Encode()
             {
-                for (int s = 0; s < _n; s++)
-                {
-                    int c = _cnt[s], b = s * 4, code = 0;
-                    for (int i = 0; i < c; i++) code |= _cells[b + i] << (i * 4);
-                    // insertion sort, descending (skewer order does not matter)
-                    int j = s;
-                    while (j > 0 && _codes[j - 1] < code) { _codes[j] = _codes[j - 1]; j--; }
-                    _codes[j] = code;
-                }
-                return Pack();
-            }
-
-            Key EncodeBoard(Board bd)
-            {
-                for (int s = 0; s < _n; s++)
-                {
-                    int code = 0;
-                    if (!bd.IsComplete(s))
-                        for (int i = 0; i < bd.Count(s); i++) code |= _foodMap[bd.Get(s, i)] << (i * 4);
-                    int j = s;
-                    while (j > 0 && _codes[j - 1] < code) { _codes[j] = _codes[j - 1]; j--; }
-                    _codes[j] = code;
-                }
-                return Pack();
-            }
-
-            Key Pack()
-            {
                 Key k = default;
                 for (int s = 0; s < _n; s++)
                 {
-                    ulong v = (ulong)_codes[s] << ((s & 3) * 16);
-                    if (s < 4) k.A |= v; else if (s < 8) k.B |= v; else k.C |= v;
+                    ulong code = 0;
+                    int b = s * MaxCapacity;
+                    for (int i = 0; i < _cnt[s]; i++) code |= (ulong)_cells[b + i] << (i * 4);
+                    if (_tgt[s] == 0 && _goal[s] != 0) code |= 1UL << 28; // served
+                    ulong v = code << ((s & 1) * 32);
+                    if (s < 2) k.A |= v; else if (s < 4) k.B |= v; else if (s < 6) k.C |= v; else k.D |= v;
                 }
                 return k;
             }
@@ -433,11 +372,13 @@ namespace GrillSort
             {
                 for (int s = 0; s < _n; s++)
                 {
-                    ulong word = s < 4 ? k.A : s < 8 ? k.B : k.C;
-                    int code = (int)((word >> ((s & 3) * 16)) & 0xFFFF);
-                    int b = s * 4, c = 0;
-                    while (c < 4 && ((code >> (c * 4)) & 0xF) != 0) { _cells[b + c] = (code >> (c * 4)) & 0xF; c++; }
+                    ulong word = s < 2 ? k.A : s < 4 ? k.B : s < 6 ? k.C : k.D;
+                    uint code = (uint)(word >> ((s & 1) * 32));
+                    int b = s * MaxCapacity, c = 0;
+                    while (c < _cap && ((code >> (c * 4)) & 0xF) != 0) { _cells[b + c] = (int)((code >> (c * 4)) & 0xF); c++; }
+                    for (int i = c; i < _cap; i++) _cells[b + i] = 0;
                     _cnt[s] = c;
+                    _tgt[s] = (code & (1u << 28)) != 0 ? 0 : _goal[s];
                 }
             }
 
@@ -453,16 +394,16 @@ namespace GrillSort
                 }
             }
 
-            int AddNode(in Key k, int parent, int g, int h)
+            int AddNode(in Key k, int parent, int move, int g, int h)
             {
                 if (NodeCount == _keys.Length)
                 {
                     int sz = _keys.Length * 2;
-                    Array.Resize(ref _keys, sz); Array.Resize(ref _parent, sz);
+                    Array.Resize(ref _keys, sz); Array.Resize(ref _parent, sz); Array.Resize(ref _move, sz);
                     Array.Resize(ref _g, sz); Array.Resize(ref _h, sz); Array.Resize(ref _closed, sz);
                 }
                 int idx = NodeCount++;
-                _keys[idx] = k; _parent[idx] = parent; _g[idx] = (short)g; _h[idx] = (byte)h; _closed[idx] = false;
+                _keys[idx] = k; _parent[idx] = parent; _move[idx] = move; _g[idx] = (short)g; _h[idx] = (byte)h; _closed[idx] = false;
                 if (NodeCount * 2 > _table.Length) Rehash();
                 else Insert(idx);
                 return idx;

@@ -2,19 +2,21 @@ using System;
 
 namespace GrillSort
 {
-    /// <summary>One verified level: the skewer stacks, the orders queue and the par (shortest solution).</summary>
+    /// <summary>One verified level: the tray stacks, each tray's order (target food) and the par (shortest solution).</summary>
     [Serializable]
     public sealed class LevelData
     {
         public int number;
-        public int capacity = 4;
+        /// <summary>Slots per tray.</summary>
+        public int capacity = 5;
+        /// <summary>Pieces of each food (= pieces that serve one order).</summary>
+        public int pieces = 4;
         public int skewers;
-        /// <summary>skewers * capacity food ids, bottom to top per skewer, -1 = empty slot.</summary>
+        /// <summary>skewers * capacity food ids, bottom to top per tray, -1 = empty slot.</summary>
         public int[] cells;
-        /// <summary>Food ids in the order customers arrive.</summary>
+        /// <summary>Order of each tray: the food its customer wants (-1 = free tray). One customer stands above each tray.</summary>
         public int[] orders;
         public int foodTypes;
-        public int empties;
         public int par;
         public bool parOptimal;
         public int lookAlikePairs;
@@ -23,7 +25,7 @@ namespace GrillSort
 
         public Board ToBoard()
         {
-            var b = new Board(capacity);
+            var b = new Board(capacity, pieces);
             for (int s = 0; s < skewers; s++)
             {
                 var stack = new System.Collections.Generic.List<int>();
@@ -32,7 +34,7 @@ namespace GrillSort
                     int f = cells[s * capacity + i];
                     if (f >= 0) stack.Add(f);
                 }
-                b.AddSkewer(stack);
+                b.AddSkewer(stack, orders != null && s < orders.Length ? orders[s] : -1);
             }
             return b;
         }

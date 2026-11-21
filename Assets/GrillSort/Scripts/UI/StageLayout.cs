@@ -18,16 +18,24 @@ namespace GrillSort
         public RectTransform counterOverlay; // counter-line anchor in front of everything (tips)
         public RectTransform grills;       // grill container
         public RectTransform[] grillSlots; // all authored grills
+        public RectTransform[] customerSlots; // customer i stands above grill customerTrays[i]
+        /// <summary>Tray under each customer (helper trays have no customer).</summary>
+        public int[] customerTrays = { 0, 1, 2, 3, 4 };
+        /// <summary>Customers in play (the first N grills are order trays; an extra tray has no customer).</summary>
+        public int activeCustomers = 4;
         public RectTransform safeArea;
 
         [Tooltip("Counter top in px of the 1024x1536 source")] public float counterTop = 528f;
         public int activeGrills = 5;
 
         public const float GrillSpacing = 200f, GrillHeight = 770f, RowGap = 90f;
-        const float BoosterReserve = 230f;   // design px above the safe bottom kept for the booster bar
+        /// <summary>Width a customer + order bubble needs at scale 1 (design px).</summary>
+        const float CustomerWidth = 250f;
+        const float BoosterReserve = 330f;   // design px above the safe bottom kept for the booster bar + message strip
         const float BoardGap = 202f;         // design px between counter top and grill top (mockup)
 
-        Vector2 _lastSize; int _lastActive = -1; float _lastCounter; Rect _lastSafe;
+        Vector2 _lastSize; int _lastActive = -1, _lastCustomers = -1; float _lastCounter; Rect _lastSafe; bool _dirty;
+        public void MarkDirty() => _dirty = true;
 
         public float StageScale { get; private set; } = 1.25f;
 
@@ -35,7 +43,7 @@ namespace GrillSort
         {
             if (world == null) return;
             var size = world.rect.size;
-            if (size == _lastSize && _lastActive == activeGrills && Mathf.Approximately(_lastCounter, counterTop) && _lastSafe == Screen.safeArea) return;
+            if (!_dirty && size == _lastSize && _lastActive == activeGrills && _lastCustomers == activeCustomers && Mathf.Approximately(_lastCounter, counterTop) && _lastSafe == Screen.safeArea) return;
             Apply();
         }
 
@@ -43,7 +51,8 @@ namespace GrillSort
         {
             if (world == null) return;
             var size = world.rect.size;
-            _lastSize = size; _lastActive = activeGrills; _lastCounter = counterTop; _lastSafe = Screen.safeArea;
+            _dirty = false;
+            _lastSize = size; _lastActive = activeGrills; _lastCustomers = activeCustomers; _lastCounter = counterTop; _lastSafe = Screen.safeArea;
             float W = size.x, H = size.y;
             if (W <= 0 || H <= 0) return;
 
@@ -80,13 +89,9 @@ namespace GrillSort
             float availW = W - 40f;
 
             int n = Mathf.Max(1, activeGrills);
-            // one row vs two rows: take whichever shows bigger grills
-            float s1 = Mathf.Min(1f, availW / (n * GrillSpacing), availH / GrillHeight);
-            int perRow2 = Mathf.CeilToInt(n / 2f);
-            float s2 = n < 4 ? 0f : Mathf.Min(1f, availW / (perRow2 * GrillSpacing), availH / (GrillHeight * 2f + RowGap));
-            bool twoRows = s2 > s1 + .02f;
-            float gs = twoRows ? s2 : s1;
-            int rows = twoRows ? 2 : 1;
+            // always one row: every customer stands right above their own tray (Sort Streak style)
+            float gs = Mathf.Min(1f, availW / (n * GrillSpacing), availH / GrillHeight);
+            int rows = 1, perRow2 = n;
 
             grills.anchorMin = grills.anchorMax = new Vector2(.5f, 1f);
             grills.pivot = new Vector2(.5f, .5f);
@@ -106,6 +111,21 @@ namespace GrillSort
                     float x = (c - (inRow - 1) * .5f) * GrillSpacing;
                     grillSlots[idx].anchoredPosition = new Vector2(x, y);
                 }
+            }
+
+            // customers: centred over their trays, shrunk when the trays are close together
+            if (customerSlots == null) return;
+            float trayGap = GrillSpacing * gs;            // screen-design px between tray centres
+            float fit = Mathf.Min(1f, trayGap * 1.22f / (CustomerWidth * cs));
+            for (int i = 0; i < customerSlots.Length; i++)
+            {
+                var c = customerSlots[i];
+                if (c == null) continue;
+                int tray = customerTrays != null && i < customerTrays.Length ? customerTrays[i] : i;
+                if (i >= activeCustomers || tray < 0 || tray >= grillSlots.Length) continue;
+                float x = grillSlots[tray].anchoredPosition.x * gs / cs;
+                c.anchoredPosition = new Vector2(x, 0f);
+                c.localScale = new Vector3(fit, fit, 1f);
             }
         }
     }

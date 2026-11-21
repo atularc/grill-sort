@@ -3,7 +3,7 @@ using UnityEngine.UI;
 
 namespace GrillSort
 {
-    /// <summary>One customer slot behind the counter (authored in the scene).</summary>
+    /// <summary>One customer behind the counter, standing above their own tray (authored in the scene).</summary>
     public sealed class CustomerView : MonoBehaviour
     {
         public RectTransform rect;
@@ -14,10 +14,11 @@ namespace GrillSort
         public Image check;
         public CanvasGroup group;
 
-        public static readonly float[] SlotX = { -390f, -130f, 130f, 390f };
         public const float BodyY = 80f, BubbleY = 290f;
 
         [System.NonSerialized] public int food = -1;
         [System.NonSerialized] public bool busy;
+        /// <summary>Tray this customer's order is sorted into.</summary>
+        [System.NonSerialized] public int tray = -1;
     }
 }

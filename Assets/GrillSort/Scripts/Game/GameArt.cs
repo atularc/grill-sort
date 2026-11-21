@@ -36,6 +36,11 @@ namespace GrillSort
         [Header("Board")]
         public Sprite grill;
         public Sprite grillDark;
+        /// <summary>The red coal glow, split out of <see cref="grill"/> / <see cref="grillDark"/> so it can flicker on top.</summary>
+        public Sprite grillGlow;
+        public Sprite grillDarkGlow;
+        /// <summary>Helper tray (no customer): steel frame instead of red enamel, uses <see cref="grillDarkGlow"/>.</summary>
+        public Sprite grillHelper;
         public Sprite skewer;
 
         [Header("UI swaps")]

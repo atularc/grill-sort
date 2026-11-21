@@ -13,7 +13,7 @@ namespace GrillSort.EditorTools
     /// </summary>
     public static class GrillSortLevels
     {
-        public const int LevelCount = 30;
+        public const int LevelCount = 50; // Aaron's timeline: 50-level build handover 14/12
         /// <summary>Rule the levels are baked for. Client decision 2026-11-18: grab any piece, everything above comes along.</summary>
         public const MoveRule BakeRule = MoveRule.AnyWithAbove;
 
@@ -29,13 +29,12 @@ namespace GrillSort.EditorTools
             var report = new StringBuilder();
             report.AppendLine("# Grill Sort level report");
             report.AppendLine();
-            report.AppendLine($"Move rule: **{rule}**. Capacity 4. Every level was solved by the A* solver (admissible heuristic, so par is the true minimum unless marked `~`), and the solution was replayed on a fresh board to confirm it ends with every order served.");
+            report.AppendLine($"Move rule: **{rule}** (Sort Streak style: food hangs from the top of each tray, drag any piece and the pieces below it come along, drop only where the bottom piece matches). One tray per customer holding exactly that order (4 or 5 pieces) + {LevelGenerator.Helpers} helper trays without customers. Every level was solved by the A* solver (admissible heuristic, so par is the true minimum unless marked `~`), and the solution was replayed on a fresh board to confirm it ends with every order served.");
             report.AppendLine();
-            report.AppendLine("| Level | Foods | Empty | Skewers | Look-alike pairs | Target par | Par (min moves) | Also solvable with other rule | Bar |");
-            report.AppendLine("|---|---|---|---|---|---|---|---|---|");
+            report.AppendLine("| Level | Customers | Pieces per order | Look-alike pairs | Target par | Par (min moves) | Bar |");
+            report.AppendLine("|---|---|---|---|---|---|---|");
             var sw = Stopwatch.StartNew();
             int prevPar = 0, failures = 0;
-            var other = rule == MoveRule.TopGroup ? MoveRule.AnyWithAbove : MoveRule.TopGroup;
             try
             {
                 for (int n = 1; n <= count; n++)
@@ -47,10 +46,9 @@ namespace GrillSort.EditorTools
                     var r = Solver.Solve(lv.ToBoard(), rule);
                     bool ok = r.Solvable && Replay(lv, r, rule) && (!lv.parOptimal || (r.Optimal && r.Par == lv.par));
                     if (!ok) { failures++; Debug.LogError($"[Grill Sort] Level {n} failed verification"); continue; }
-                    var r2 = Solver.Solve(lv.ToBoard(), other, 100000, 200000);
                     bank.levels.Add(lv);
                     prevPar = lv.par;
-                    report.AppendLine($"| {n} | {lv.foodTypes} | {lv.empties} | {lv.skewers} | {lv.lookAlikePairs} | {LevelGenerator.TierFor(n).TargetPar} | {lv.par}{(lv.parOptimal ? "" : "~")} | {(r2.Solvable ? "yes" : "no")} | {new string('#', lv.par)} |");
+                    report.AppendLine($"| {n} | {lv.foodTypes} | {lv.pieces} | {lv.lookAlikePairs} | {LevelGenerator.TierFor(n).TargetPar} | {lv.par}{(lv.parOptimal ? "" : "~")} | {new string('#', lv.par)} |");
                 }
             }
             finally { EditorUtility.ClearProgressBar(); }
@@ -70,13 +68,17 @@ namespace GrillSort.EditorTools
         static bool Replay(LevelData lv, Solver.Result r, MoveRule rule)
         {
             var b = lv.ToBoard();
+            int served = 0;
             foreach (var m in r.Moves)
             {
                 if (!b.TryMakeMove(rule, m.From, rule == MoveRule.AnyWithAbove ? m.Index : -1, m.To, out var mm)) return false;
                 if (mm.Index != m.Index || mm.Count != m.Count) return false;
-                b.Apply(mm);
+                if (b.Apply(mm, out int fromServed) >= 0) served++;
+                if (fromServed >= 0) served++;
             }
-            return b.IsSolved();
+            int orders = 0;
+            foreach (var o in lv.orders) if (o >= 0) orders++;
+            return b.IsSolved() && served == orders;
         }
     }
 }
