@@ -1,0 +1,3006 @@
+fileFormatVersion: 2
+guid: 4d20a4f6b69463944af30528c047ae92
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 3186929809462066410
+    second: grill_cartoon_dim_hot_a_0
+  - first:
+      213: 2692956571801429037
+    second: grill_cartoon_dim_hot_a_1
+  - first:
+      213: -7533307623206500441
+    second: grill_cartoon_dim_hot_a_2
+  - first:
+      213: 8894767273310548855
+    second: grill_cartoon_dim_hot_a_3
+  - first:
+      213: 5289894107832180001
+    second: grill_cartoon_dim_hot_a_4
+  - first:
+      213: -7270976890910827789
+    second: grill_cartoon_dim_hot_a_5
+  - first:
+      213: -1378722990480142050
+    second: grill_cartoon_dim_hot_a_6
+  - first:
+      213: 5910821479975690794
+    second: grill_cartoon_dim_hot_a_7
+  - first:
+      213: 1088740797505007574
+    second: grill_cartoon_dim_hot_a_8
+  - first:
+      213: 8788509586917430835
+    second: grill_cartoon_dim_hot_a_9
+  - first:
+      213: -579678025713924595
+    second: grill_cartoon_dim_hot_a_10
+  - first:
+      213: -1347232088678770847
+    second: grill_cartoon_dim_hot_a_11
+  - first:
+      213: -3350166390995411829
+    second: grill_cartoon_dim_hot_a_12
+  - first:
+      213: -1206116179807315182
+    second: grill_cartoon_dim_hot_a_13
+  - first:
+      213: 8722373973860108391
+    second: grill_cartoon_dim_hot_a_14
+  - first:
+      213: 8602033125663017064
+    second: grill_cartoon_dim_hot_a_15
+  - first:
+      213: 2011997937761539637
+    second: grill_cartoon_dim_hot_a_16
+  - first:
+      213: -1385198740887130770
+    second: grill_cartoon_dim_hot_a_17
+  - first:
+      213: 8761918697937619577
+    second: grill_cartoon_dim_hot_a_18
+  - first:
+      213: 6829608612981307089
+    second: grill_cartoon_dim_hot_a_19
+  - first:
+      213: 2671722780072035297
+    second: grill_cartoon_dim_hot_a_20
+  - first:
+      213: -1970548251713005805
+    second: grill_cartoon_dim_hot_a_21
+  - first:
+      213: -3836080019951862720
+    second: grill_cartoon_dim_hot_a_22
+  - first:
+      213: 2749860619579659809
+    second: grill_cartoon_dim_hot_a_23
+  - first:
+      213: 2644138326759231419
+    second: grill_cartoon_dim_hot_a_24
+  - first:
+      213: -3586061527181342858
+    second: grill_cartoon_dim_hot_a_25
+  - first:
+      213: -4295544529562982955
+    second: grill_cartoon_dim_hot_a_26
+  - first:
+      213: 8774816941599757313
+    second: grill_cartoon_dim_hot_a_27
+  - first:
+      213: 8534829509802581865
+    second: grill_cartoon_dim_hot_a_28
+  - first:
+      213: 7756391601439018729
+    second: grill_cartoon_dim_hot_a_29
+  - first:
+      213: -3249501159663238174
+    second: grill_cartoon_dim_hot_a_30
+  - first:
+      213: 8071819718905655797
+    second: grill_cartoon_dim_hot_a_31
+  - first:
+      213: 1302019286118055190
+    second: grill_cartoon_dim_hot_a_32
+  - first:
+      213: -1422016028019393908
+    second: grill_cartoon_dim_hot_a_33
+  - first:
+      213: 2454863933478446208
+    second: grill_cartoon_dim_hot_a_34
+  - first:
+      213: 7907790027704390006
+    second: grill_cartoon_dim_hot_a_35
+  - first:
+      213: 3237117160152481215
+    second: grill_cartoon_dim_hot_a_36
+  - first:
+      213: -7212055621780140553
+    second: grill_cartoon_dim_hot_a_37
+  - first:
+      213: -2370178634268713479
+    second: grill_cartoon_dim_hot_a_38
+  - first:
+      213: 1526782072806041311
+    second: grill_cartoon_dim_hot_a_39
+  - first:
+      213: -332958224913946776
+    second: grill_cartoon_dim_hot_a_40
+  - first:
+      213: -9155057552562761315
+    second: grill_cartoon_dim_hot_a_41
+  - first:
+      213: -3374234073390282893
+    second: grill_cartoon_dim_hot_a_42
+  - first:
+      213: -2883542756473339767
+    second: grill_cartoon_dim_hot_a_43
+  - first:
+      213: 6833382485540410703
+    second: grill_cartoon_dim_hot_a_44
+  - first:
+      213: -3398446249625196472
+    second: grill_cartoon_dim_hot_a_45
+  - first:
+      213: 2860869109733175470
+    second: grill_cartoon_dim_hot_a_46
+  - first:
+      213: 3702657512299265318
+    second: grill_cartoon_dim_hot_a_47
+  - first:
+      213: -5006686983085755702
+    second: grill_cartoon_dim_hot_a_48
+  - first:
+      213: -457870563582912836
+    second: grill_cartoon_dim_hot_a_49
+  - first:
+      213: 5215583624042592326
+    second: grill_cartoon_dim_hot_a_50
+  - first:
+      213: -687999350925597404
+    second: grill_cartoon_dim_hot_a_51
+  - first:
+      213: -7634163517075718465
+    second: grill_cartoon_dim_hot_a_52
+  - first:
+      213: 3174015087076229294
+    second: grill_cartoon_dim_hot_a_53
+  - first:
+      213: 80357271141145931
+    second: grill_cartoon_dim_hot_a_54
+  - first:
+      213: 5792538171021794841
+    second: grill_cartoon_dim_hot_a_55
+  - first:
+      213: 8715160593163911266
+    second: grill_cartoon_dim_hot_a_56
+  - first:
+      213: -5861207831799448800
+    second: grill_cartoon_dim_hot_a_57
+  - first:
+      213: 4851579778831626949
+    second: grill_cartoon_dim_hot_a_58
+  - first:
+      213: -8614007295157255482
+    second: grill_cartoon_dim_hot_a_59
+  - first:
+      213: -6229870362436471679
+    second: grill_cartoon_dim_hot_a_60
+  - first:
+      213: -4569572090115483003
+    second: grill_cartoon_dim_hot_a_61
+  - first:
+      213: 4083358333059708792
+    second: grill_cartoon_dim_hot_a_62
+  - first:
+      213: 4059325431849445033
+    second: grill_cartoon_dim_hot_a_63
+  - first:
+      213: -7044699788063323025
+    second: grill_cartoon_dim_hot_a_64
+  - first:
+      213: 4213840405046096199
+    second: grill_cartoon_dim_hot_a_65
+  - first:
+      213: 1096756278003020227
+    second: grill_cartoon_dim_hot_a_66
+  - first:
+      213: 7259985169858993380
+    second: grill_cartoon_dim_hot_a_67
+  - first:
+      213: -2016949177573948380
+    second: grill_cartoon_dim_hot_a_68
+  - first:
+      213: 5488314322118349519
+    second: grill_cartoon_dim_hot_a_69
+  - first:
+      213: -6278499947836285991
+    second: grill_cartoon_dim_hot_a_70
+  - first:
+      213: -2248338506927961079
+    second: grill_cartoon_dim_hot_a_71
+  - first:
+      213: -6828709894913603966
+    second: grill_cartoon_dim_hot_a_72
+  - first:
+      213: 1921542572386401682
+    second: grill_cartoon_dim_hot_a_73
+  - first:
+      213: 4056075168323327976
+    second: grill_cartoon_dim_hot_a_74
+  - first:
+      213: 107348137234887724
+    second: grill_cartoon_dim_hot_a_75
+  - first:
+      213: -2895413225335726351
+    second: grill_cartoon_dim_hot_a_76
+  - first:
+      213: 4158782159049903510
+    second: grill_cartoon_dim_hot_a_77
+  - first:
+      213: 2305653254279171976
+    second: grill_cartoon_dim_hot_a_78
+  - first:
+      213: 5471799093200316563
+    second: grill_cartoon_dim_hot_a_79
+  - first:
+      213: -5636593434988431329
+    second: grill_cartoon_dim_hot_a_80
+  - first:
+      213: -7179461721981747213
+    second: grill_cartoon_dim_hot_a_81
+  - first:
+      213: 7671602456017188932
+    second: grill_cartoon_dim_hot_a_82
+  - first:
+      213: 5591115476824127343
+    second: grill_cartoon_dim_hot_a_83
+  - first:
+      213: -8585290616433500555
+    second: grill_cartoon_dim_hot_a_84
+  - first:
+      213: -6678658506619952626
+    second: grill_cartoon_dim_hot_a_85
+  - first:
+      213: -2508256824171352593
+    second: grill_cartoon_dim_hot_a_86
+  - first:
+      213: 2774963539346476473
+    second: grill_cartoon_dim_hot_a_87
+  - first:
+      213: -2657952433390125471
+    second: grill_cartoon_dim_hot_a_88
+  - first:
+      213: -8411283393038658530
+    second: grill_cartoon_dim_hot_a_89
+  - first:
+      213: 7166821371152262611
+    second: grill_cartoon_dim_hot_a_90
+  - first:
+      213: 7927710495763639183
+    second: grill_cartoon_dim_hot_a_91
+  - first:
+      213: -717984382495678474
+    second: grill_cartoon_dim_hot_a_92
+  - first:
+      213: 8519894817809509283
+    second: grill_cartoon_dim_hot_a_93
+  - first:
+      213: 1611457371017125864
+    second: grill_cartoon_dim_hot_a_94
+  - first:
+      213: -5785772655925072752
+    second: grill_cartoon_dim_hot_a_95
+  - first:
+      213: 1137591303746067056
+    second: grill_cartoon_dim_hot_a_96
+  - first:
+      213: -4817380508438953892
+    second: grill_cartoon_dim_hot_a_97
+  - first:
+      213: -2689891016298901649
+    second: grill_cartoon_dim_hot_a_98
+  - first:
+      213: 739187254719172390
+    second: grill_cartoon_dim_hot_a_99
+  - first:
+      213: 6807689676820865417
+    second: grill_cartoon_dim_hot_a_100
+  - first:
+      213: -7818140640549671623
+    second: grill_cartoon_dim_hot_a_101
+  - first:
+      213: 3002818738489730571
+    second: grill_cartoon_dim_hot_a_102
+  - first:
+      213: 1912429721463775403
+    second: grill_cartoon_dim_hot_a_103
+  - first:
+      213: -7773265493073017738
+    second: grill_cartoon_dim_hot_a_104
+  - first:
+      213: 1622804769318576256
+    second: grill_cartoon_dim_hot_a_105
+  - first:
+      213: 5384117247430929998
+    second: grill_cartoon_dim_hot_a_106
+  - first:
+      213: 6146304619303317473
+    second: grill_cartoon_dim_hot_a_107
+  - first:
+      213: 4004822808281067184
+    second: grill_cartoon_dim_hot_a_108
+  - first:
+      213: 4281151341268123459
+    second: grill_cartoon_dim_hot_a_109
+  - first:
+      213: -6308671796443035169
+    second: grill_cartoon_dim_hot_a_110
+  - first:
+      213: -280815437881750783
+    second: grill_cartoon_dim_hot_a_111
+  - first:
+      213: -646239861181431436
+    second: grill_cartoon_dim_hot_a_112
+  - first:
+      213: 5998334372560546709
+    second: grill_cartoon_dim_hot_a_113
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 1024
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 1024
+    resizeAlgorithm: 0
+    textureFormat: 50
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 1
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: iOS
+    maxTextureSize: 1024
+    resizeAlgorithm: 0
+    textureFormat: 50
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 1
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_0
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 1711
+        width: 158
+        height: 52
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aecf611d6cf3a3c20800000000000000
+      internalID: 3186929809462066410
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_1
+      rect:
+        serializedVersion: 2
+        x: 73
+        y: 1708
+        width: 16
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d2427c1fbbd4f5520800000000000000
+      internalID: 2692956571801429037
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_2
+      rect:
+        serializedVersion: 2
+        x: 168
+        y: 1708
+        width: 102
+        height: 30
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7a7c80f31a0547790800000000000000
+      internalID: -7533307623206500441
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_3
+      rect:
+        serializedVersion: 2
+        x: 223
+        y: 1709
+        width: 97
+        height: 54
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 773f17565bf807b70800000000000000
+      internalID: 8894767273310548855
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_4
+      rect:
+        serializedVersion: 2
+        x: 261
+        y: 1732
+        width: 20
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 12dd4ccf9aa796940800000000000000
+      internalID: 5289894107832180001
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_5
+      rect:
+        serializedVersion: 2
+        x: 299
+        y: 1725
+        width: 9
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3fa9f2f7a0d481b90800000000000000
+      internalID: -7270976890910827789
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_6
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 1606
+        width: 131
+        height: 82
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e1154c4bebacddce0800000000000000
+      internalID: -1378722990480142050
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_7
+      rect:
+        serializedVersion: 2
+        x: 222
+        y: 1631
+        width: 61
+        height: 53
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a2223b4b1d4770250800000000000000
+      internalID: 5910821479975690794
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_8
+      rect:
+        serializedVersion: 2
+        x: 224
+        y: 1657
+        width: 96
+        height: 32
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6dfe2c7acfbfb1f00800000000000000
+      internalID: 1088740797505007574
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_9
+      rect:
+        serializedVersion: 2
+        x: 140
+        y: 1631
+        width: 27
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3361451e7ee07f970800000000000000
+      internalID: 8788509586917430835
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_10
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 1554
+        width: 17
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d06c83928e194f7f0800000000000000
+      internalID: -579678025713924595
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_11
+      rect:
+        serializedVersion: 2
+        x: 94
+        y: 1554
+        width: 23
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1675b44ad8bad4de0800000000000000
+      internalID: -1347232088678770847
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_12
+      rect:
+        serializedVersion: 2
+        x: 117
+        y: 1598
+        width: 10
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b8c1446da61d181d0800000000000000
+      internalID: -3350166390995411829
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_13
+      rect:
+        serializedVersion: 2
+        x: 151
+        y: 1554
+        width: 126
+        height: 58
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 21bdbb889b3034fe0800000000000000
+      internalID: -1206116179807315182
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_14
+      rect:
+        serializedVersion: 2
+        x: 304
+        y: 1555
+        width: 16
+        height: 57
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7684b068ae81c0970800000000000000
+      internalID: 8722373973860108391
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_15
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 1477
+        width: 154
+        height: 58
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 86889416d8f806770800000000000000
+      internalID: 8602033125663017064
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_16
+      rect:
+        serializedVersion: 2
+        x: 246
+        y: 1477
+        width: 48
+        height: 32
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5365811e67d0ceb10800000000000000
+      internalID: 2011997937761539637
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_17
+      rect:
+        serializedVersion: 2
+        x: 304
+        y: 1507
+        width: 16
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e6daa129519c6cce0800000000000000
+      internalID: -1385198740887130770
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_18
+      rect:
+        serializedVersion: 2
+        x: 308
+        y: 1478
+        width: 12
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 97acc6512a6989970800000000000000
+      internalID: 8761918697937619577
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_19
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 1400
+        width: 79
+        height: 57
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1d6f2b349d4a7ce50800000000000000
+      internalID: 6829608612981307089
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_20
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 1424
+        width: 6
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1e3438c86bdd31520800000000000000
+      internalID: 2671722780072035297
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_21
+      rect:
+        serializedVersion: 2
+        x: 158
+        y: 1400
+        width: 120
+        height: 57
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 31711e33ec437a4e0800000000000000
+      internalID: -1970548251713005805
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_22
+      rect:
+        serializedVersion: 2
+        x: 216
+        y: 1444
+        width: 66
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 04cbbc8db8183cac0800000000000000
+      internalID: -3836080019951862720
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_23
+      rect:
+        serializedVersion: 2
+        x: 301
+        y: 1401
+        width: 19
+        height: 57
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 12691e30aa7792620800000000000000
+      internalID: 2749860619579659809
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_24
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 1353
+        width: 17
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bbfca778ccdd1b420800000000000000
+      internalID: 2644138326759231419
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_25
+      rect:
+        serializedVersion: 2
+        x: 110
+        y: 1320
+        width: 115
+        height: 61
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 67749a17a00cb3ec0800000000000000
+      internalID: -3586061527181342858
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_26
+      rect:
+        serializedVersion: 2
+        x: 305
+        y: 1375
+        width: 15
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5d5a68652092364c0800000000000000
+      internalID: -4295544529562982955
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_27
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 1295
+        width: 36
+        height: 35
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1041225748966c970800000000000000
+      internalID: 8774816941599757313
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_28
+      rect:
+        serializedVersion: 2
+        x: 243
+        y: 1321
+        width: 39
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 96fdd4e383ec17670800000000000000
+      internalID: 8534829509802581865
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_29
+      rect:
+        serializedVersion: 2
+        x: 298
+        y: 1321
+        width: 22
+        height: 51
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9ee889ef01d34ab60800000000000000
+      internalID: 7756391601439018729
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_30
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 1265
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2e38d0179e377e2d0800000000000000
+      internalID: -3249501159663238174
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_31
+      rect:
+        serializedVersion: 2
+        x: 67
+        y: 1252
+        width: 69
+        height: 45
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5f17d5c944dd40070800000000000000
+      internalID: 8071819718905655797
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_32
+      rect:
+        serializedVersion: 2
+        x: 195
+        y: 1241
+        width: 125
+        height: 60
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 61d36cf64a3b11210800000000000000
+      internalID: 1302019286118055190
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_33
+      rect:
+        serializedVersion: 2
+        x: 156
+        y: 1241
+        width: 33
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c8afdf8e4fbf34ce0800000000000000
+      internalID: -1422016028019393908
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_34
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 1137
+        width: 167
+        height: 85
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 084a6e6bdbd611220800000000000000
+      internalID: 2454863933478446208
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_35
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 1216
+        width: 19
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 67152b7022d1ebd60800000000000000
+      internalID: 7907790027704390006
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_36
+      rect:
+        serializedVersion: 2
+        x: 253
+        y: 1162
+        width: 52
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fbdb53bf7ec8cec20800000000000000
+      internalID: 3237117160152481215
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_37
+      rect:
+        serializedVersion: 2
+        x: 117
+        y: 1130
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7fd8f638f91a9eb90800000000000000
+      internalID: -7212055621780140553
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_38
+      rect:
+        serializedVersion: 2
+        x: 164
+        y: 1085
+        width: 156
+        height: 52
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9fd5132071f6b1fd0800000000000000
+      internalID: -2370178634268713479
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_39
+      rect:
+        serializedVersion: 2
+        x: 175
+        y: 1137
+        width: 85
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fd6e90bb438303510800000000000000
+      internalID: 1526782072806041311
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_40
+      rect:
+        serializedVersion: 2
+        x: 305
+        y: 1137
+        width: 15
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 867a5fe2248116bf0800000000000000
+      internalID: -332958224913946776
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_41
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 1046
+        width: 17
+        height: 56
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d915d3959a3b2f080800000000000000
+      internalID: -9155057552562761315
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_42
+      rect:
+        serializedVersion: 2
+        x: 97
+        y: 1085
+        width: 29
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3778d8adcff4c21d0800000000000000
+      internalID: -3374234073390282893
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_43
+      rect:
+        serializedVersion: 2
+        x: 80
+        y: 1035
+        width: 27
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 98081c104299bf7d0800000000000000
+      internalID: -2883542756473339767
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_44
+      rect:
+        serializedVersion: 2
+        x: 117
+        y: 1009
+        width: 164
+        height: 56
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f4513017a2d05de50800000000000000
+      internalID: 6833382485540410703
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_45
+      rect:
+        serializedVersion: 2
+        x: 305
+        y: 1060
+        width: 15
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 848e4d6442b46d0d0800000000000000
+      internalID: -3398446249625196472
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_46
+      rect:
+        serializedVersion: 2
+        x: 307
+        y: 1010
+        width: 13
+        height: 51
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ea0b88a3c49d3b720800000000000000
+      internalID: 2860869109733175470
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_47
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 984
+        width: 19
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 62d7781d36b726330800000000000000
+      internalID: 3702657512299265318
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_48
+      rect:
+        serializedVersion: 2
+        x: 96
+        y: 929
+        width: 110
+        height: 60
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ac2f99727bca48ab0800000000000000
+      internalID: -5006686983085755702
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_49
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 871
+        width: 66
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cb65888f52155a9f0800000000000000
+      internalID: -457870563582912836
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_50
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 882
+        width: 8
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 64837673ca9716840800000000000000
+      internalID: 5215583624042592326
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_51
+      rect:
+        serializedVersion: 2
+        x: 160
+        y: 850
+        width: 108
+        height: 60
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 425616a4c3cb376f0800000000000000
+      internalID: -687999350925597404
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_52
+      rect:
+        serializedVersion: 2
+        x: 241
+        y: 929
+        width: 45
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fbe747f8ab00e0690800000000000000
+      internalID: -7634163517075718465
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_53
+      rect:
+        serializedVersion: 2
+        x: 286
+        y: 861
+        width: 34
+        height: 108
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ea0c8e0b7ed5c0c20800000000000000
+      internalID: 3174015087076229294
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_54
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 785
+        width: 17
+        height: 46
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b4ddc79238c7d1100800000000000000
+      internalID: 80357271141145931
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_55
+      rect:
+        serializedVersion: 2
+        x: 98
+        y: 772
+        width: 103
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 91e15afb6ca336050800000000000000
+      internalID: 5792538171021794841
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_56
+      rect:
+        serializedVersion: 2
+        x: 236
+        y: 772
+        width: 53
+        height: 55
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2608404726872f870800000000000000
+      internalID: 8715160593163911266
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_57
+      rect:
+        serializedVersion: 2
+        x: 299
+        y: 804
+        width: 17
+        height: 26
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 02b3bdee78ec8aea0800000000000000
+      internalID: -5861207831799448800
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_58
+      rect:
+        serializedVersion: 2
+        x: 314
+        y: 774
+        width: 6
+        height: 48
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5c23ab4aa16445340800000000000000
+      internalID: 4851579778831626949
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_59
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 747
+        width: 17
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6c247870106e47880800000000000000
+      internalID: -8614007295157255482
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_60
+      rect:
+        serializedVersion: 2
+        x: 116
+        y: 738
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1847d32a9ed0b89a0800000000000000
+      internalID: -6229870362436471679
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_61
+      rect:
+        serializedVersion: 2
+        x: 163
+        y: 658
+        width: 157
+        height: 94
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 58a9029056e9590c0800000000000000
+      internalID: -4569572090115483003
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_62
+      rect:
+        serializedVersion: 2
+        x: 305
+        y: 747
+        width: 15
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 877b7a4f4c00ba830800000000000000
+      internalID: 4083358333059708792
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_63
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 693
+        width: 7
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9a6681919fe955830800000000000000
+      internalID: 4059325431849445033
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_64
+      rect:
+        serializedVersion: 2
+        x: 87
+        y: 614
+        width: 119
+        height: 84
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f6c473ffdd23c3e90800000000000000
+      internalID: -7044699788063323025
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_65
+      rect:
+        serializedVersion: 2
+        x: 306
+        y: 668
+        width: 14
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 741f5f2c5819a7a30800000000000000
+      internalID: 4213840405046096199
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_66
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 645
+        width: 6
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3c1bc832606783f00800000000000000
+      internalID: 1096756278003020227
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_67
+      rect:
+        serializedVersion: 2
+        x: 56
+        y: 653
+        width: 15
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4ec9c040c06a0c460800000000000000
+      internalID: 7259985169858993380
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_68
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 589
+        width: 16
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 42440b4c86b5204e0800000000000000
+      internalID: -2016949177573948380
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_69
+      rect:
+        serializedVersion: 2
+        x: 94
+        y: 580
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fc29d813cc86a2c40800000000000000
+      internalID: 5488314322118349519
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_70
+      rect:
+        serializedVersion: 2
+        x: 174
+        y: 581
+        width: 23
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9dbd8e6ff894ed8a0800000000000000
+      internalID: -6278499947836285991
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_71
+      rect:
+        serializedVersion: 2
+        x: 232
+        y: 569
+        width: 45
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 90c0ab74a0c4cc0e0800000000000000
+      internalID: -2248338506927961079
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_72
+      rect:
+        serializedVersion: 2
+        x: 250
+        y: 614
+        width: 28
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 286ca77d78c8b31a0800000000000000
+      internalID: -6828709894913603966
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_73
+      rect:
+        serializedVersion: 2
+        x: 299
+        y: 590
+        width: 21
+        height: 58
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 29db1efe9c0baaa10800000000000000
+      internalID: 1921542572386401682
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_74
+      rect:
+        serializedVersion: 2
+        x: 88
+        y: 535
+        width: 56
+        height: 33
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8e7d13620e21a4830800000000000000
+      internalID: 4056075168323327976
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_75
+      rect:
+        serializedVersion: 2
+        x: 148
+        y: 535
+        width: 86
+        height: 43
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c247f23ef806d7100800000000000000
+      internalID: 107348137234887724
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_76
+      rect:
+        serializedVersion: 2
+        x: 314
+        y: 536
+        width: 6
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1fe55e9130d61d7d0800000000000000
+      internalID: -2895413225335726351
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_77
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 484
+        width: 22
+        height: 31
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 69dc668e656f6b930800000000000000
+      internalID: 4158782159049903510
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_78
+      rect:
+        serializedVersion: 2
+        x: 87
+        y: 456
+        width: 94
+        height: 60
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 88f888c3b635fff10800000000000000
+      internalID: 2305653254279171976
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_79
+      rect:
+        serializedVersion: 2
+        x: 185
+        y: 456
+        width: 98
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3986280d84cbfeb40800000000000000
+      internalID: 5471799093200316563
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_80
+      rect:
+        serializedVersion: 2
+        x: 294
+        y: 500
+        width: 15
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f183734822cc6c1b0800000000000000
+      internalID: -5636593434988431329
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_81
+      rect:
+        serializedVersion: 2
+        x: 307
+        y: 510
+        width: 13
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3ff73ce2a9d6d5c90800000000000000
+      internalID: -7179461721981747213
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_82
+      rect:
+        serializedVersion: 2
+        x: 306
+        y: 480
+        width: 14
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4483be0b9c1077a60800000000000000
+      internalID: 7671602456017188932
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_83
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 431
+        width: 19
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f677a4637e1a79d40800000000000000
+      internalID: 5591115476824127343
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_84
+      rect:
+        serializedVersion: 2
+        x: 128
+        y: 379
+        width: 123
+        height: 57
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 57e9cf1dbabead880800000000000000
+      internalID: -8585290616433500555
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_85
+      rect:
+        serializedVersion: 2
+        x: 303
+        y: 431
+        width: 17
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e02e6c82973a053a0800000000000000
+      internalID: -6678658506619952626
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_86
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 379
+        width: 45
+        height: 30
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fed21dd25b1e03dd0800000000000000
+      internalID: -2508256824171352593
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_87
+      rect:
+        serializedVersion: 2
+        x: 266
+        y: 394
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9bd486bf2a6a28620800000000000000
+      internalID: 2774963539346476473
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_88
+      rect:
+        serializedVersion: 2
+        x: 306
+        y: 385
+        width: 6
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 16e75e1285e0d1bd0800000000000000
+      internalID: -2657952433390125471
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_89
+      rect:
+        serializedVersion: 2
+        x: 312
+        y: 379
+        width: 8
+        height: 46
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e14d9c4a15e154b80800000000000000
+      internalID: -8411283393038658530
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_90
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 334
+        width: 102
+        height: 25
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3d5653cc01aa57360800000000000000
+      internalID: 7166821371152262611
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_91
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 326
+        width: 9
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f8ba02e61b2e40e60800000000000000
+      internalID: 7927710495763639183
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_92
+      rect:
+        serializedVersion: 2
+        x: 67
+        y: 333
+        width: 10
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6ff111712053906f0800000000000000
+      internalID: -717984382495678474
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_93
+      rect:
+        serializedVersion: 2
+        x: 209
+        y: 301
+        width: 88
+        height: 58
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3ab2a3b423fbc3670800000000000000
+      internalID: 8519894817809509283
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_94
+      rect:
+        serializedVersion: 2
+        x: 301
+        y: 328
+        width: 19
+        height: 31
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8ef192ae0fb0d5610800000000000000
+      internalID: 1611457371017125864
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_95
+      rect:
+        serializedVersion: 2
+        x: 76
+        y: 316
+        width: 13
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 09cea6c7c6ec4bfa0800000000000000
+      internalID: -5785772655925072752
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_96
+      rect:
+        serializedVersion: 2
+        x: 117
+        y: 222
+        width: 122
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 07a9b57734989cf00800000000000000
+      internalID: 1137591303746067056
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_97
+      rect:
+        serializedVersion: 2
+        x: 302
+        y: 276
+        width: 18
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c500b9e73f9352db0800000000000000
+      internalID: -4817380508438953892
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_98
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 222
+        width: 22
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f6f4df05f569baad0800000000000000
+      internalID: -2689891016298901649
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_99
+      rect:
+        serializedVersion: 2
+        x: 276
+        y: 222
+        width: 44
+        height: 31
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 62f480c44ee124a00800000000000000
+      internalID: 739187254719172390
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_100
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 197
+        width: 28
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 981600041b5c97e50800000000000000
+      internalID: 6807689676820865417
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_101
+      rect:
+        serializedVersion: 2
+        x: 60
+        y: 192
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 93dedfb7282608390800000000000000
+      internalID: -7818140640549671623
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_102
+      rect:
+        serializedVersion: 2
+        x: 71
+        y: 143
+        width: 200
+        height: 54
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b062198abb72ca920800000000000000
+      internalID: 3002818738489730571
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_103
+      rect:
+        serializedVersion: 2
+        x: 160
+        y: 188
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ba06fbdf2b05a8a10800000000000000
+      internalID: 1912429721463775403
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_104
+      rect:
+        serializedVersion: 2
+        x: 224
+        y: 176
+        width: 34
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 674c494f730df1490800000000000000
+      internalID: -7773265493073017738
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_105
+      rect:
+        serializedVersion: 2
+        x: 275
+        y: 144
+        width: 45
+        height: 54
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0802b07f65c558610800000000000000
+      internalID: 1622804769318576256
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_106
+      rect:
+        serializedVersion: 2
+        x: 300
+        y: 197
+        width: 20
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e4eac2a3c1a38ba40800000000000000
+      internalID: 5384117247430929998
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_107
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 158
+        width: 6
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1efaaea9c7f0c4550800000000000000
+      internalID: 6146304619303317473
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_108
+      rect:
+        serializedVersion: 2
+        x: 58
+        y: 157
+        width: 22
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0bea9fb202df39730800000000000000
+      internalID: 4004822808281067184
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_109
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 92
+        width: 21
+        height: 32
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 34f39fd5674b96b30800000000000000
+      internalID: 4281151341268123459
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_110
+      rect:
+        serializedVersion: 2
+        x: 135
+        y: 74
+        width: 86
+        height: 50
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fd9cc780d681378a0800000000000000
+      internalID: -6308671796443035169
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_111
+      rect:
+        serializedVersion: 2
+        x: 251
+        y: 74
+        width: 69
+        height: 50
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 10bcc99d8d75a1cf0800000000000000
+      internalID: -280815437881750783
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_112
+      rect:
+        serializedVersion: 2
+        x: 307
+        y: 74
+        width: 13
+        height: 45
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 471459a25481807f0800000000000000
+      internalID: -646239861181431436
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_cartoon_dim_hot_a_113
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 74
+        width: 14
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 59bac70d45d5e3350800000000000000
+      internalID: 5998334372560546709
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable: {}
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

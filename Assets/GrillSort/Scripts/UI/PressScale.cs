@@ -10,8 +10,17 @@ namespace GrillSort
         Vector3 _base = Vector3.one;
         float _target = 1f, _cur = 1f;
 
-        void Awake() => _base = transform.localScale;
-        public void OnPointerDown(PointerEventData e) => _target = pressed;
+        // The base size is taken when a press STARTS, not in Awake: popup buttons wake up while their pop-in animation
+        // has them at scale 0, and a base of 0 made "Next" vanish on press, so the click never landed (2026-11-21).
+        public void OnPointerDown(PointerEventData e)
+        {
+            if (Mathf.Approximately(_cur, 1f))
+            {
+                var s = transform.localScale;
+                _base = s.x < .5f ? Vector3.one : s;   // still popping in: squish around full size
+            }
+            _target = pressed;
+        }
         public void OnPointerUp(PointerEventData e) => _target = 1f;
         public void OnPointerExit(PointerEventData e) => _target = 1f;
 

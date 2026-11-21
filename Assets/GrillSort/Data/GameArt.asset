@@ -157,6 +157,7 @@ MonoBehaviour:
     counterTop: 500
     counterBottom: 619
     unlockLevel: 1
+    loadingArt: {fileID: 0}
   - name: FoodTruck
     displayName: Food Truck
     background: {fileID: 21300000, guid: 50305e4381f57394eb4c580d2753a204, type: 3}
@@ -165,6 +166,7 @@ MonoBehaviour:
     counterTop: 527
     counterBottom: 606
     unlockLevel: 51
+    loadingArt: {fileID: 0}
   - name: Winter
     displayName: Winter Market
     background: {fileID: 21300000, guid: f60e9586d0480ee42a4b9166166c4c20, type: 3}
@@ -173,6 +175,7 @@ MonoBehaviour:
     counterTop: 538
     counterBottom: 612
     unlockLevel: 61
+    loadingArt: {fileID: 0}
   - name: Wood
     displayName: Wood Stall
     background: {fileID: 21300000, guid: 21e8aae38c721914281f3b87accc7a82, type: 3}
@@ -181,6 +184,7 @@ MonoBehaviour:
     counterTop: 528
     counterBottom: 612
     unlockLevel: 71
+    loadingArt: {fileID: 0}
   - name: NightMarket
     displayName: Night Market
     background: {fileID: 21300000, guid: 668eda97026700541a8ffa280466dda9, type: 3}
@@ -189,19 +193,41 @@ MonoBehaviour:
     counterTop: 520
     counterBottom: 598
     unlockLevel: 81
+    loadingArt: {fileID: 0}
   grill: {fileID: 21300000, guid: 4968f663ffda1864eb397f40819cb616, type: 3}
   grillDark: {fileID: 21300000, guid: a053208f6db4e09499806762ed766699, type: 3}
   grillGlow: {fileID: 21300000, guid: cb32bc5ba6a57654db8025e9e1024624, type: 3}
   grillDarkGlow: {fileID: 21300000, guid: bdd76df3227f7764bb79e96fd11b6354, type: 3}
+  grillHotA: {fileID: 21300000, guid: bf9e5c48b9548ed43a4857bbf757a42f, type: 3}
+  grillHotB: {fileID: 21300000, guid: 37e4f7f0630a73148a2e9744705c2088, type: 3}
+  grillDarkHotA: {fileID: 21300000, guid: 4d20a4f6b69463944af30528c047ae92, type: 3}
+  grillDarkHotB: {fileID: 21300000, guid: 75ca32d7d5e41394ea7897f86c06559d, type: 3}
+  loadingKeyArt: {fileID: 21300000, guid: 475cdafac7a5cf14cb3c41d3d3dd7de8, type: 3}
+  logo: {fileID: 21300000, guid: 2804f961462d6434f95b2b5dab14c8dc, type: 3}
+  mascot: {fileID: 21300000, guid: d1e8af3b11357b340bf848fc7a3bee2b, type: 3}
   grillHelper: {fileID: 21300000, guid: a913ec76eeee42a468299ed2ab56cd01, type: 3}
   skewer: {fileID: 21300000, guid: 386396d79e9ff8447bee1db49444df71, type: 3}
   starOn: {fileID: 21300000, guid: 6c59c781042428f47bc8705239bfff84, type: 3}
   starOff: {fileID: 21300000, guid: 6c59c781042428f47bc8705239bfff84, type: 3}
-  pick: {fileID: 8300000, guid: 0612910583769f7429444b75869fc52b, type: 3}
-  drop: {fileID: 8300000, guid: a4f6e4687352dd541b0169ab727a31cb, type: 3}
-  invalid: {fileID: 8300000, guid: 5fd6ddae5338b0c4a8f5812ba9b8f42c, type: 3}
-  sizzle: {fileID: 8300000, guid: c6ce47d61f0766e499842687320a9511, type: 3}
-  serve: {fileID: 8300000, guid: 7293f8501f8dd7d4c99769e35f8644e8, type: 3}
-  coin: {fileID: 8300000, guid: cad7ad3c680f78845b7f6a7f0d069c3d, type: 3}
-  win: {fileID: 8300000, guid: b3bd454f20649014086d7c1652a9e8eb, type: 3}
-  click: {fileID: 8300000, guid: 154a951cb070bc94abbad8986cf93cc5, type: 3}
+  pick: {fileID: 8300000, guid: 4e172d4fb5ca63e44b20943e086ae9ef, type: 3}
+  drop: {fileID: 8300000, guid: 12d812ad63d3f5949a87f7eb5adac00b, type: 3}
+  invalid: {fileID: 8300000, guid: 40c4bbfb27f8456409c403113d9ae380, type: 3}
+  sizzle: {fileID: 8300000, guid: 6764a1c9fc587df4abe46ad0b04ba634, type: 3}
+  serve: {fileID: 8300000, guid: 211d040cfb8fd2546868b8c79936157a, type: 3}
+  coin: {fileID: 8300000, guid: e88633ec58224be45acd14d0acae0b63, type: 3}
+  win: {fileID: 8300000, guid: 1658cfe5acb6c5e4ca7853060c2b8aee, type: 3}
+  click: {fileID: 8300000, guid: 12f3aedf4f89c14469bb77ede7e629fb, type: 3}
+  drops:
+  - {fileID: 8300000, guid: 12d812ad63d3f5949a87f7eb5adac00b, type: 3}
+  - {fileID: 8300000, guid: bb4a426b1bdb89a4289c42c4609aac65, type: 3}
+  - {fileID: 8300000, guid: 41c1a0ac12b4bbe40a76d1536bbeb2b1, type: 3}
+  star: {fileID: 8300000, guid: da75a40f4f8ceec45a890ed1424dfce6, type: 3}
+  whoosh: {fileID: 8300000, guid: d2e9d00887bc48c428be35f30e62aa61, type: 3}
+  pop: {fileID: 8300000, guid: 2c25811fc09613c41bb2afbe77e0994b, type: 3}
+  fail: {fileID: 8300000, guid: 5d85e7d73f8ea41459033d919942b3e7, type: 3}
+  sizzleLoop: {fileID: 8300000, guid: 9b56022160e7bfe4992ae9c7d20b52a8, type: 3}
+  music: {fileID: 8300000, guid: a1c541614819b504490ba7b92548ea9d, type: 3}
+  musicTracks:
+  - {fileID: 8300000, guid: a1c541614819b504490ba7b92548ea9d, type: 3}
+  musicNames:
+  - On

@@ -44,11 +44,24 @@ namespace GrillSort
 
         Board _board;
         LevelData _level;
+        [Header("Loading screen")]
+        [Tooltip("Show the loading screen between levels too (like the client's FishUp!), after Next on the win popup")]
+        public bool loadingBetweenLevels = true;
+        [Tooltip("Seconds the loading bar takes at game start")] public float loadingStartSeconds = 1.9f;
+        [Tooltip("Seconds the loading bar takes between levels (shorter: our levels load instantly; set ~1.9 to match FishUp!)")]
+        public float loadingBetweenSeconds = .7f;
+        [Tooltip("Between levels the logo/mascot animations play this much faster (1 = same as the start screen)")]
+        public float loadingBetweenSpeed = 2f;
+
         int _levelNumber, _moves, _served, _totalOrders, _skewers;
         int _nextAnimal;
         int _selected = -1, _selStart;
         bool _busy, _extraUsed, _won, _autoPlay;
         float _idle;
+        /// <summary>True while the loading screen covers the game: the level intro, customers and tips wait for it.</summary>
+        bool _loadingScreen;
+        [Tooltip("Levels with the tutorial hand: it shows every move until the player makes it")]
+        public int tutorialLevels = 2;
         Coroutine _hintCo, _tipCo, _toastCo;
         readonly Stack<(Board board, int moves)> _history = new Stack<(Board, int)>();
         int _shownCoins;
@@ -64,7 +77,12 @@ namespace GrillSort
             Application.targetFrameRate = 60;
             Services.Ads.Init();
             Haptics.Enabled = SaveData.Haptic;
-            if (audioManager != null) audioManager.Enabled = SaveData.Sound;
+            if (audioManager != null)
+            {
+                audioManager.Enabled = SaveData.Sound;
+                audioManager.MusicEnabled = SaveData.Music;
+                audioManager.StartMusic(CurrentTrack());   // starts with the loading screen, fades in
+            }
 
             for (int i = 0; i < ui.grills.Length; i++)
             {
@@ -74,8 +92,15 @@ namespace GrillSort
             }
             ui.pauseButton.onClick.AddListener(() => { Click(); OpenPopup(ui.pausePopup, ui.pausePanel); RefreshPauseTexts(); });
             ui.pauseResume.onClick.AddListener(() => { Click(); ClosePopup(ui.pausePopup); });
+            ui.pauseClose.onClick.AddListener(() => { Click(); ClosePopup(ui.pausePopup); });
+            ui.pauseRestore.onClick.AddListener(() =>
+            {
+                Click();
+                Services.Iap.Restore(ok => ShowMessage("Restore Purchases", ok ? "Your purchases are back!" : "There was nothing to restore."));
+            });
             ui.pauseRestart.onClick.AddListener(() => { Click(); ClosePopup(ui.pausePopup); LoadLevel(_levelNumber); });
             ui.pauseSound.onClick.AddListener(() => { SaveData.Sound = !SaveData.Sound; audioManager.Enabled = SaveData.Sound; Click(); RefreshPauseTexts(); });
+            ui.pauseMusic.onClick.AddListener(() => { SaveData.Music = !SaveData.Music; audioManager.MusicEnabled = SaveData.Music; if (SaveData.Music) audioManager.StartMusic(CurrentTrack()); Click(); RefreshPauseTexts(); });
             ui.pauseHaptics.onClick.AddListener(() => { SaveData.Haptic = !SaveData.Haptic; Haptics.Enabled = SaveData.Haptic; Haptics.Medium(); Click(); RefreshPauseTexts(); });
             for (int i = 0; i < ui.boosters.Length; i++) { int k = i; ui.boosters[i].onClick.AddListener(() => UseBooster(k)); }
             ui.stuckUndo.onClick.AddListener(() => { ClosePopup(ui.stuckPopup); UseBooster(0); });
@@ -86,8 +111,15 @@ namespace GrillSort
                 Services.Ads.ShowRewarded("stuck_extra", ok => { if (ok) { if (!AddExtraSkewer()) Toast("No room for another tray"); } });
             });
             ui.stuckRetry.onClick.AddListener(() => { Click(); ClosePopup(ui.stuckPopup); LoadLevel(_levelNumber); });
-            ui.winNext.onClick.AddListener(() => CollectWin(1));
-            ui.winDouble.onClick.AddListener(() => Services.Ads.ShowRewarded("win_double", ok => CollectWin(ok ? 2 : 1)));
+            ui.winNext.onClick.AddListener(() => CollectWin(1, ui.winNext.transform));
+            // "Claim xN": the pointer stops on press, the multiplier under it is what the ad pays
+            ui.winDouble.onClick.AddListener(() =>
+            {
+                if (_claiming || !_won) return;
+                _pointerRun = false;
+                int m = _winMult;
+                Services.Ads.ShowRewarded("win_double", ok => CollectWin(ok ? m : 1, ui.winDouble.transform));
+            });
             ui.messageOk.onClick.AddListener(() => { Click(); ClosePopup(ui.messagePopup); });
 
             foreach (var p in new[] { ui.winPopup, ui.pausePopup, ui.stuckPopup, ui.messagePopup }) HidePopupNow(p);
@@ -99,7 +131,179 @@ namespace GrillSort
             if (useTestLevel) start = Mathf.Max(1, testLevel);
             else if (limitToTenLevels && start > 10) start = 1;
             _loadedTestLevel = useTestLevel ? start : -1;
-            LoadLevel(start);
+            ui.hand.gameObject.SetActive(false);
+            _loadingScreen = ui.loading != null;
+            LoadLevel(start);   // set up behind the loading screen; the intro plays when it lifts
+            if (_loadingScreen) StartCoroutine(LoadingScreen());
+            else audioManager.SetAmbience(art.sizzleLoop, true);
+        }
+
+        // ------------------------------------------------------------------ loading screen
+        // Like the client's other game (2026-11-21): themed background, the logo drops in letter by letter, food hops onto
+        // a skewer while the bar fills, then the skewer flies off, the letters pop away and the game shows.
+        IEnumerator LoadingScreen() => LoadingScreen(loadingStartSeconds);
+
+        /// <summary>
+        /// Between levels (user 2026-11-21, like FishUp!): the loading screen fades in over the finished level, the next
+        /// level is set up behind it, then the usual loading sequence plays and lifts. Runs on <see cref="GameUi"/>
+        /// because LoadLevel stops every coroutine on this component.
+        /// </summary>
+        IEnumerator AfterLoading(float delay, System.Action then)
+        {
+            while (_loadingScreen) yield return null;
+            yield return new WaitForSeconds(delay);
+            then();
+        }
+
+        IEnumerator LoadingBetween(int next)
+        {
+            var L = ui.loading;
+            L.gameObject.SetActive(true); L.alpha = 0f; L.blocksRaycasts = true;
+            audioManager.SetAmbience(art.sizzleLoop, false);
+            ui.loadingLogo.localScale = Vector3.zero; ui.loadingMascot.localScale = Vector3.zero;
+            ui.loadingBarFill.gameObject.SetActive(false);
+            ui.loadingText.text = "Loading";
+            yield return Tween.Fade(L, 1f, .3f);
+            _loadingScreen = true;
+            LoadLevel(next);   // behind the screen; the intro waits for _loadingScreen
+            StartCoroutine(LoadingScreen(loadingBetweenSeconds, loadingBetweenSpeed));
+        }
+
+        IEnumerator LoadingScreen(float barSeconds, float speed = 1f)
+        {
+            var L = ui.loading;
+            L.gameObject.SetActive(true); L.alpha = 1f; L.blocksRaycasts = true;
+            var theme = art.ThemeForLevel(_levelNumber);
+            ui.loadingBg.sprite = theme.loadingArt != null ? theme.loadingArt : art.loadingKeyArt;   // per theme / season, or the default scene
+            var logo = ui.loadingLogo; var mascot = ui.loadingMascot;
+            var mascotHome = mascot.anchoredPosition;
+            logo.localScale = Vector3.zero;
+            mascot.localScale = Vector3.zero;
+            GrillView.SetAlpha(ui.loadingRays, 0f);
+            ui.loadingBarFill.sizeDelta = new Vector2(0f, ui.loadingBarFill.sizeDelta.y);
+            ui.loadingBarFill.gameObject.SetActive(false);
+            var ambient = StartCoroutine(LoadingAmbient());
+
+            // in: the logo drops in with a squash, the mascot pops up next to it
+            yield return new WaitForSeconds(.15f / speed);
+            audioManager.Play(art.pop, .8f, .85f);
+            StartCoroutine(Tween.Run(.5f / speed, k => GrillView.SetAlpha(ui.loadingRays, k * .22f)));
+            StartCoroutine(Tween.Run(.55f / speed, k =>
+            {
+                float s = Ease.OutBack(k, 2.2f);
+                float sq = Mathf.Sin(k * Mathf.PI * 2f) * .08f * (1f - k);   // squash and stretch as it lands
+                logo.localScale = new Vector3(s * (1f + sq), s * (1f - sq), 1f);
+            }));
+            yield return new WaitForSeconds(.45f / speed);
+            audioManager.Play(art.pop, .7f, 1.25f);
+            StartCoroutine(Tween.Run(.4f / speed, k => { float s = Ease.OutBack(k, 2.5f); mascot.localScale = new Vector3(s, s, 1f); }));
+            yield return new WaitForSeconds(.4f / speed);
+            var idle = StartCoroutine(LoadingIdle(logo, mascot, mascotHome));
+
+            // the bar fills
+            float dur = Mathf.Max(.3f, barSeconds);
+            float t = 0f, minW = ui.loadingBarFill.sizeDelta.y;   // the fill's rounded ends need at least its height
+            while (t < dur)
+            {
+                t += Time.deltaTime;
+                float p = Ease.InOutCubic(Mathf.Clamp01(t / dur));
+                ui.loadingBarFill.gameObject.SetActive(p > .02f);
+                ui.loadingBarFill.sizeDelta = new Vector2(Mathf.Lerp(minW, ui.loadingBarMax, p), ui.loadingBarFill.sizeDelta.y);
+                ui.loadingText.text = "Loading" + new string('.', 1 + (int)(t * 3f) % 3);
+                yield return null;
+            }
+            ui.loadingText.text = "Let's grill!";
+            yield return new WaitForSeconds(.35f / speed);
+            StopCoroutine(idle);
+
+            // out: the mascot hops off screen, the logo pops away, then fade into the game
+            audioManager.Play(art.whoosh, .8f, .9f);
+            StartCoroutine(MascotOff(mascot, mascotHome));
+            StartCoroutine(Tween.Delay(.2f / speed, () => StartCoroutine(Tween.Run(.3f / speed, k =>
+            {
+                float s = k < .3f ? 1f + k * .4f : Mathf.Lerp(1.12f, 0f, (k - .3f) / .7f);
+                logo.localScale = new Vector3(s, s, 1f);
+            }))));
+            yield return new WaitForSeconds(.55f / speed);
+            _loadingScreen = false;   // the level intro starts under the fade
+            audioManager.SetAmbience(art.sizzleLoop, true);   // soft grill sizzle under the music while playing
+            yield return Tween.Fade(L, 0f, .35f / speed);
+            StopCoroutine(ambient);
+            L.blocksRaycasts = false;
+            L.gameObject.SetActive(false);
+            mascot.anchoredPosition = mascotHome; mascot.localRotation = Quaternion.identity;
+            logo.localScale = Vector3.one; logo.localRotation = Quaternion.identity;
+        }
+
+        /// <summary>While loading: the logo breathes and sways a little, the mascot bounces and waves.</summary>
+        IEnumerator LoadingIdle(RectTransform logo, RectTransform mascot, Vector2 mascotHome)
+        {
+            float t = 0f;
+            while (true)
+            {
+                t += Time.deltaTime;
+                float b = 1f + Mathf.Sin(t * 2.6f) * .025f;
+                logo.localScale = new Vector3(b, b, 1f);
+                logo.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(t * 1.4f) * 1.5f);
+                float hop = Mathf.Abs(Mathf.Sin(t * 4.2f));
+                mascot.anchoredPosition = mascotHome + new Vector2(0f, hop * 34f);
+                float sq = (1f - hop) * .08f;   // squash on landing
+                mascot.localScale = new Vector3(1f + sq, 1f - sq, 1f);
+                mascot.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(t * 4.2f) * 5f);
+                yield return null;
+            }
+        }
+
+        /// <summary>The mascot crouches, then hops off to the right in two bounces.</summary>
+        IEnumerator MascotOff(RectTransform m, Vector2 home)
+        {
+            yield return Tween.Run(.12f, k => m.localScale = new Vector3(1f + k * .12f, 1f - k * .14f, 1f));
+            yield return Tween.Run(.55f, k =>
+            {
+                float x = k * 900f;
+                float y = Mathf.Abs(Mathf.Sin(k * Mathf.PI * 2f)) * 160f * (1f - k * .3f);
+                m.anchoredPosition = home + new Vector2(x, y);
+                m.localScale = Vector3.one;
+                m.localRotation = Quaternion.Euler(0f, 0f, -k * 25f);
+            }, Ease.InCubic);
+        }
+
+        /// <summary>Loading screen life: turning rays, steam and embers off the painted grill, twinkling sparkles.</summary>
+        IEnumerator LoadingAmbient()
+        {
+            var st = ui.loadingSteam; var em = ui.loadingEmbers; var sp = ui.loadingSparkles;
+            var stHome = new Vector2[st.Length]; var emHome = new Vector2[em.Length];
+            for (int i = 0; i < st.Length; i++) stHome[i] = st[i].rectTransform.anchoredPosition;
+            for (int i = 0; i < em.Length; i++) emHome[i] = em[i].rectTransform.anchoredPosition;
+            var rays = ui.loadingRays.rectTransform;
+            float t = 0f;
+            while (true)
+            {
+                t += Time.deltaTime;
+                rays.localRotation = Quaternion.Euler(0f, 0f, -t * 10f);
+                for (int i = 0; i < st.Length; i++)
+                {
+                    float ph = (t * .45f + i * .27f) % 1f;
+                    st[i].rectTransform.anchoredPosition = stHome[i] + new Vector2(Mathf.Sin((t + i) * 2.2f) * 16f, ph * 220f);
+                    GrillView.SetAlpha(st[i], Mathf.Sin(ph * Mathf.PI) * .5f);
+                }
+                for (int i = 0; i < em.Length; i++)
+                {
+                    float ph = (t * (.35f + (i % 3) * .08f) + i * .137f) % 1f;
+                    em[i].rectTransform.anchoredPosition = emHome[i] + new Vector2(Mathf.Sin((t * 1.7f + i) * 1.3f) * 30f, ph * 480f);
+                    GrillView.SetAlpha(em[i], Mathf.Sin(ph * Mathf.PI) * .95f);
+                }
+                for (int i = 0; i < sp.Length; i++)
+                {
+                    float ph = (t * .7f + i * .19f) % 1f;
+                    var rt = sp[i].rectTransform;
+                    float a = ph < .5f ? Mathf.Sin(ph * 2f * Mathf.PI) : 0f;
+                    rt.localScale = Vector3.one * (.5f + a * .6f);
+                    rt.localRotation = Quaternion.Euler(0f, 0f, t * 60f + i * 40f);
+                    GrillView.SetAlpha(sp[i], Mathf.Max(0f, a));
+                }
+                yield return null;
+            }
         }
 
         public void LoadLevel(int number)
@@ -107,6 +311,14 @@ namespace GrillSort
             StopAllCoroutines();
             _hintCo = _tipCo = null;
             _selectCo = _selectGlowCo = null;
+            _handCo = null; HideHand();
+            if (!_loadingScreen && audioManager != null) audioManager.SetAmbience(art.sizzleLoop, true);   // e.g. Restart / no loading screen
+            // a level load can come while the win / stuck popup is still animating in (StopAllCoroutines above cuts the
+            // pop-ins short): close them now and put every popped element back to full size, so nothing stays stuck
+            // half-open with a hidden "Next" button (2026-11-21)
+            foreach (var pp in new[] { ui.winPopup, ui.stuckPopup }) HidePopupNow(pp);
+            foreach (var t in new Transform[] { ui.winWord, ui.winBubble, ui.winMultBar, ui.winDouble.transform, ui.winNext.transform }) t.localScale = Vector3.one;
+            _pointerRun = false; _claiming = false;
             _levelNumber = Mathf.Max(1, number);
             _level = bank.Get(_levelNumber, moveRule);
             bank.Prefetch(_levelNumber + 1, moveRule); // past the baked levels: generate the next one in the background
@@ -158,7 +370,7 @@ namespace GrillSort
             if (idx != SaveData.LastTheme)
             {
                 if (idx > SaveData.LastTheme && _levelNumber > 1)
-                    StartCoroutine(Tween.Delay(.6f, () => Toast($"New stall unlocked: {theme.displayName}!")));
+                    StartCoroutine(AfterLoading(.6f, () => Toast($"New stall unlocked: {theme.displayName}!")));
                 SaveData.LastTheme = idx;
             }
         }
@@ -171,6 +383,7 @@ namespace GrillSort
                 var g = ui.grills[i];
                 for (int s = 0; s < g.slots.Length; s++) g.slots[s].localScale = Vector3.zero;
             }
+            while (_loadingScreen) yield return null;
             for (int i = 0; i < _skewers; i++)
             {
                 var g = ui.grills[i];
@@ -243,6 +456,7 @@ namespace GrillSort
             c.body.anchoredPosition = new Vector2(0f, CustomerView.BodyY - 330f);
             c.bubble.localScale = Vector3.zero;
             c.group.alpha = 1f;
+            while (_loadingScreen) yield return null;
             yield return new WaitForSeconds(delay);
             yield return Tween.Move(c.body, new Vector2(0f, CustomerView.BodyY), .35f, t => Ease.OutBack(t, 1.2f));
             yield return Tween.Scale(c.bubble, Vector3.one, .3f, t => Ease.OutBack(t));
@@ -288,11 +502,13 @@ namespace GrillSort
         {
             if (_busy || _won || _dragging || AnyPopupOpen() || _autoPlay) { _idle = 0f; return; }
             _idle += Time.deltaTime;
-            if (_levelNumber <= 10 && _idle >= idleHintSeconds && _hintCo == null && _selected < 0)
+            bool tutorial = _levelNumber <= tutorialLevels;
+            float wait = tutorial ? .9f : idleHintSeconds;
+            if (_levelNumber <= 10 && _idle >= wait && _hintCo == null && _selected < 0)
             {
                 _idle = -4f; // don't spam
                 var mv = Solver.NextMove(_board, moveRule);
-                if (mv.HasValue) _hintCo = StartCoroutine(HintAnim(mv.Value));
+                if (mv.HasValue) _hintCo = StartCoroutine(HintAnim(mv.Value, tutorial ? 9999f : 3.6f));
             }
         }
 
@@ -311,9 +527,15 @@ namespace GrillSort
                 float heat = Mathf.Clamp01(slow * .8f + soft * .2f);
                 if (gv.coalGlow != null)
                 {
-                    // the bed stays opaque (the sand would show through the coal gaps): flicker its brightness instead
-                    float k = .74f + heat * .26f;
+                    // the bed stays opaque (the sand would show through the coal gaps): it breathes in brightness, and
+                    // two shimmer layers (different patches of the bed) pulse out of step on top, so the embers come
+                    // alive patch by patch (user 2026-11-21: the first version only dimmed the whole bed)
+                    float k = .56f + heat * .3f;
                     gv.coalGlow.color = new Color(k, k * (.9f + heat * .1f), k * (.84f + heat * .16f), 1f);
+                    float a = Mathf.Clamp01(Mathf.PerlinNoise(t * 1.3f, i * 2.1f + 40f) * 1.6f - .35f);
+                    float b = Mathf.Clamp01(Mathf.PerlinNoise(t * 1.1f + 9f, i * 1.7f + 70f) * 1.6f - .35f);
+                    if (gv.coalHotA != null) GrillView.SetAlpha(gv.coalHotA, a);
+                    if (gv.coalHotB != null) GrillView.SetAlpha(gv.coalHotB, b);
                 }
                 if (gv.ember != null) GrillView.SetAlpha(gv.ember, .16f + heat * .26f);
                 if (gv.smokes == null || gv.smokes.Length == 0) continue;
@@ -636,7 +858,7 @@ namespace GrillSort
         IEnumerator DoMove(Move m, bool fromDrag = false)
         {
             _busy = true;
-            HideTip(); // the player got it
+            if (_levelNumber > tutorialLevels) HideTip(); // the player got it (tutorial levels keep their banner)
             var src = ui.grills[m.From]; var dst = ui.grills[m.To];
             if (!fromDrag) { StopSelectFx(); UnheatGrill(src); }
             _selected = -1;
@@ -693,8 +915,10 @@ namespace GrillSort
 
             if (_served >= _totalOrders) { yield return Win(); yield break; }
             _busy = false;
-            if (!_board.HasAnyMove(moveRule)) StartCoroutine(Tween.Delay(.5f, () => { if (!_busy && !_won) OpenPopup(ui.stuckPopup, ui.stuckPanel); }));
+            if (!_board.HasAnyMove(moveRule)) StartCoroutine(Tween.Delay(.5f, () => { if (!_busy && !_won) { audioManager.Play(art.fail, .8f); OpenPopup(ui.stuckPopup, ui.stuckPanel); } }));
         }
+
+        float _lastDropSound = -1f;
 
         IEnumerator FlyPiece(int flyer, GrillView src, int si, GrillView dst, int ti, int food, float delay, System.Action done)
         {
@@ -730,7 +954,10 @@ namespace GrillSort
             dst.SetFood(ti, fa, cookOnComplete);
             dst.ResetSlot(ti);
             StartCoroutine(Tween.Bounce(dst.slots[ti], .16f, .26f));
-            audioManager.Play(art.drop, .8f, 1f + ti * .06f);
+            // one pop per move (a dragged stack lands piece by piece: 4 full pops at once sounded messy); the rest of the
+            // stack adds only a faint, slightly higher tick so the landing still feels like a little cascade
+            if (Time.time - _lastDropSound > .09f) { audioManager.PlayVariant(art.drops, .85f, 1f + ti * .04f); _lastDropSound = Time.time; }
+            else audioManager.PlayVariant(art.drops, .25f, 1.15f + ti * .04f);
             Haptics.Light();
             done();
         }
@@ -754,6 +981,10 @@ namespace GrillSort
             int pieces = _board.Pieces;
             audioManager.Play(art.sizzle, .9f);
             Haptics.Medium();
+            // bring the finished tray to the front so its glow, sparkles, steam and "Perfect!" are not hidden behind the
+            // trays to its right (user 2026-11-21); the fly layer stays on top of everything
+            v.transform.SetAsLastSibling();
+            ui.flyLayer.SetAsLastSibling();
             v.SetLit(true, art);
             StartCoroutine(Tween.Fade(v.glow, .9f, .25f));
             StartCoroutine(SteamLoop(v, 1.6f));
@@ -827,7 +1058,7 @@ namespace GrillSort
             sk.rect.SetAsLastSibling();
             sk.gameObject.SetActive(true);
             for (int i = 0; i < pieces; i++) v.HideSlot(i);
-            audioManager.Play(art.drop, .8f);
+            audioManager.Play(art.pop, .8f, 1.1f);
             Haptics.Light();
             yield return Tween.Run(.16f, k =>
             {
@@ -840,6 +1071,7 @@ namespace GrillSort
             Vector2 p2 = fly.InverseTransformPoint(target.position);
             float s2 = target.lossyScale.x / fly.lossyScale.x;
             var p1 = new Vector2((p0.x + p2.x) * .5f + (p2.x >= p0.x ? -90f : 90f), Mathf.Max(p0.y, p2.y) + 170f);
+            audioManager.Play(art.whoosh, .7f, 1.05f);
             yield return Tween.Run(.55f, k =>
             {
                 float u = 1f - k;
@@ -849,6 +1081,7 @@ namespace GrillSort
                 sk.SetTilt(Mathf.Lerp(0f, CustomerView.OrderTilt, k));
             }, Ease.InOutCubic);
             sk.gameObject.SetActive(false);
+            audioManager.Play(art.star, .7f, 1.2f);
             StartCoroutine(Tween.Bounce(c.bubble, .14f, .22f));
         }
 
@@ -948,83 +1181,161 @@ namespace GrillSort
             yield return Tween.Run(.2f, k => slot.localScale = Vector3.one * (1f + Mathf.Sin(k * Mathf.PI) * .12f));
         }
 
-        // ------------------------------------------------------------------ win
+        // ------------------------------------------------------------------ win (FishUp!-style "Well Done!")
+        /// <summary>Multipliers on the bar under the reward, left to right (the mascot pointer slides across them).</summary>
+        public static readonly int[] WinMults = { 2, 3, 5, 3, 2 };
+        int _winMult = 2;
+        bool _pointerRun, _claiming;
+
         IEnumerator Win()
         {
             _won = true;
             _busy = true;
-            // save progress the moment the level is beaten (not only when "Next" is pressed), so closing the app on
-            // the win popup doesn't replay a finished level
+            _claiming = false;
+            audioManager.SetAmbience(art.sizzleLoop, false);
+            // save progress the moment the level is beaten (not only when "Claim" is pressed), so closing the app on
+            // the win screen doesn't replay a finished level
             if (!useTestLevel && !(limitToTenLevels && _levelNumber + 1 > 10) && SaveData.Level <= _levelNumber)
                 SaveData.Level = _levelNumber + 1;
             yield return new WaitForSeconds(1.1f);
-            audioManager.Play(art.win, .9f);
-            Haptics.Heavy();
             int par = Mathf.Max(1, _level.par);
             if (moveRule == MoveRule.SingleTop && _level.rule != MoveRule.SingleTop) par = par * 3 / 2; // single moves take longer
             int stars = _moves <= par + 2 ? 3 : _moves <= par * 3 / 2 + 2 ? 2 : 1;
             _winReward = 10 + stars * 5;
-            ui.winTitle.text = $"Level {_levelNumber}";
-            ui.winCoins.text = "+0";
-            // everything pops in one after the other: headline, stars (into their sockets), coins, buttons
-            var pops = new Transform[] { ui.winWord, ui.winReward, ui.winDouble.transform, ui.winNext.transform };
+            ui.winCoins.text = _winReward.ToString();
+            ui.winCoinPillText.text = _shownCoins.ToString("N0");
+            UpdateWinMult(0);
+
+            var pops = new Transform[] { ui.winWord, ui.winBubble, ui.winMultBar, ui.winNext.transform, ui.winDouble.transform };
             foreach (var t in pops) t.localScale = Vector3.zero;
-            for (int i = 0; i < ui.winStars.Length; i++)
+            foreach (var sp in ui.winSparkles) GrillView.SetAlpha(sp, 0f);
+            foreach (var c in ui.winFlyCoins) c.gameObject.SetActive(false);
+            GrillView.SetAlpha(ui.winRays, 0f);
+
+            var P = ui.winPopup;
+            P.gameObject.SetActive(true); P.alpha = 1f; P.blocksRaycasts = true; P.interactable = false;
+            GrillView.SetAlpha(ui.winDim, 0f);
+            StartCoroutine(Tween.Run(.3f, k => GrillView.SetAlpha(ui.winDim, k * .95f)));
+
+            // 2) "Well Done!" drops in, the coin bubble swells up with sparkles and rays
+            audioManager.Play(art.win, .9f);
+            Haptics.Heavy();
+            var wHome = ui.winWord.anchoredPosition;
+            StartCoroutine(Tween.Run(.45f, k =>
             {
-                ui.winStars[i].sprite = art.starOn;
-                ui.winStars[i].color = Color.white;
-                ui.winStars[i].gameObject.SetActive(i < stars);   // an unearned star leaves its socket empty
-                ui.winStars[i].rectTransform.localScale = Vector3.zero;
-            }
-            foreach (var sp in ui.winSparkles) sp.gameObject.SetActive(false);
-            OpenPopup(ui.winPopup, ui.winPanel);
-            StartCoroutine(WinRays());
-            yield return new WaitForSeconds(.22f);
-            StartCoroutine(Tween.Scale(ui.winWord, Vector3.one, .4f, t => Ease.OutBack(t, 2f)));
+                ui.winWord.anchoredPosition = Vector2.LerpUnclamped(wHome + new Vector2(0f, 160f), wHome, Ease.OutBack(k, 1.6f));
+                float s = Mathf.Min(1f, k * 2f); ui.winWord.localScale = new Vector3(s, s, 1f);
+            }));
+            yield return new WaitForSeconds(.2f);
+            StartCoroutine(Tween.Scale(ui.winBubble, Vector3.one, .45f, t => Ease.OutBack(t, 1.8f)));
+            StartCoroutine(Tween.Run(.5f, k => GrillView.SetAlpha(ui.winRays, k * .22f)));
+            StartCoroutine(WinAmbient());
+            audioManager.Play(art.coin, .6f);
             yield return new WaitForSeconds(.3f);
-            for (int i = 0; i < stars; i++)
-            {
-                StartCoroutine(Tween.Scale(ui.winStars[i].rectTransform, Vector3.one, .5f, Ease.OutElastic));
-                audioManager.Play(art.coin, .5f, 1f + i * .15f); Haptics.Light();
-                StartCoroutine(OneSparkle(ui.winSparkles[(i * 2) % ui.winSparkles.Length], .05f));
-                StartCoroutine(OneSparkle(ui.winSparkles[(i * 2 + 1) % ui.winSparkles.Length], .15f));
-                yield return new WaitForSeconds(.22f);
-            }
-            yield return new WaitForSeconds(.1f);
-            StartCoroutine(Tween.Scale(ui.winReward, Vector3.one, .3f, t => Ease.OutBack(t)));
-            int reward = _winReward;
-            StartCoroutine(Tween.Run(.5f, k => ui.winCoins.text = $"+{Mathf.RoundToInt(reward * k)}"));
-            yield return new WaitForSeconds(.25f);
-            StartCoroutine(Tween.Scale(ui.winDouble.transform, Vector3.one, .3f, t => Ease.OutBack(t)));
+
+            // 3) the multiplier bar and the two claim buttons pop up; the pointer starts sliding
+            StartCoroutine(Tween.Scale(ui.winMultBar, Vector3.one, .35f, t => Ease.OutBack(t)));
+            yield return new WaitForSeconds(.12f);
+            StartCoroutine(Tween.Scale(ui.winNext.transform, Vector3.one, .35f, t => Ease.OutBack(t)));
             yield return new WaitForSeconds(.08f);
-            StartCoroutine(Tween.Scale(ui.winNext.transform, Vector3.one, .3f, t => Ease.OutBack(t)));
-            if (_autoPlay) { yield return new WaitForSeconds(.4f); CollectWin(1); }
+            StartCoroutine(Tween.Scale(ui.winDouble.transform, Vector3.one, .35f, t => Ease.OutBack(t)));
+            _pointerRun = true;
+            StartCoroutine(WinPointer());
+            yield return new WaitForSeconds(.3f);
+            P.interactable = true;
+            if (_autoPlay) { yield return new WaitForSeconds(.3f); CollectWin(1, ui.winNext.transform); }
         }
 
-        /// <summary>Sun rays turn slowly and the glow breathes while the win popup is open.</summary>
-        IEnumerator WinRays()
+        /// <summary>The sausage slides back and forth along the bar; the "Claim xN" button follows the segment under it.</summary>
+        IEnumerator WinPointer()
+        {
+            var bar = ui.winMultBar; var ptr = ui.winPointer;
+            float w = 800f, seg = w / WinMults.Length, t = 0f;
+            while (_pointerRun && ui.winPopup.gameObject.activeSelf)
+            {
+                t += Time.deltaTime;
+                float x = Mathf.PingPong(t * 520f, w - 40f) - (w - 40f) * .5f;
+                ptr.anchoredPosition = new Vector2(x, ptr.anchoredPosition.y);
+                ptr.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(t * 14f) * 6f);
+                int i = Mathf.Clamp(Mathf.FloorToInt((x + w * .5f) / seg), 0, WinMults.Length - 1);
+                UpdateWinMult(i);
+                yield return null;
+            }
+            ptr.localRotation = Quaternion.identity;
+        }
+
+        void UpdateWinMult(int segment)
+        {
+            int m = WinMults[segment];
+            if (m == _winMult && ui.winDoubleLabel.text.EndsWith(m.ToString())) return;
+            _winMult = m;
+            ui.winDoubleLabel.text = $"Claim x{m}";
+            ui.winDoubleAmount.text = (_winReward * m).ToString();
+            if (_pointerRun) audioManager.Play(art.click, .25f, 1f + segment * .08f);
+        }
+
+        /// <summary>Rays turn, the glow breathes, sparkles twinkle round the coin bubble while the screen is open.</summary>
+        IEnumerator WinAmbient()
         {
             var rays = ui.winRays.rectTransform; var glow = ui.winGlow.rectTransform;
             float t = 0f;
             while (ui.winPopup.gameObject.activeSelf)
             {
                 t += Time.deltaTime;
-                rays.localRotation = Quaternion.Euler(0f, 0f, -t * 12f);
-                float b = 1f + Mathf.Sin(t * 2.2f) * .04f;
+                rays.localRotation = Quaternion.Euler(0f, 0f, -t * 14f);
+                float b = 1f + Mathf.Sin(t * 2.4f) * .05f;
                 glow.localScale = new Vector3(b, b, 1f);
+                ui.winBubble.localScale = Vector3.one * (1f + Mathf.Sin(t * 2f) * .015f);
+                for (int i = 0; i < ui.winSparkles.Length; i++)
+                {
+                    float ph = (t * .8f + i * .17f) % 1f;
+                    float a = ph < .5f ? Mathf.Sin(ph * 2f * Mathf.PI) : 0f;
+                    var rt = ui.winSparkles[i].rectTransform;
+                    rt.localScale = Vector3.one * (.5f + a * .6f);
+                    rt.localRotation = Quaternion.Euler(0f, 0f, t * 70f + i * 40f);
+                    GrillView.SetAlpha(ui.winSparkles[i], a);
+                }
                 yield return null;
             }
         }
 
         int _winReward;
 
-        void CollectWin(int mult)
+        void CollectWin(int mult, Transform from)
         {
-            if (!_won) return;
+            if (!_won || _claiming) return;
+            _claiming = true;
+            _pointerRun = false;
+            ui.winPopup.interactable = false;
             Click();
             int reward = _winReward * mult;
+            int before = _shownCoins;
             SaveData.Coins += reward;
-            ui.StartCoroutine(CountCoins());
+            _shownCoins = SaveData.Coins;
+            ui.StartCoroutine(ClaimAndGo(from, before, SaveData.Coins));
+        }
+
+        /// <summary>Coins burst out of the pressed button and fly into the coin pill, which counts up; then the next level.</summary>
+        IEnumerator ClaimAndGo(Transform from, int coinsFrom, int coinsTo)
+        {
+            if (!_autoPlay)
+            {
+                var coins = ui.winFlyCoins;
+                var target = ui.winCoinPillIcon;
+                int landed = 0;
+                StartCoroutine(Tween.Bounce(from, .12f, .2f));
+                for (int i = 0; i < coins.Length; i++) ui.StartCoroutine(FlyCoin(coins[i], from.position, target, i * .045f, () =>
+                {
+                    landed++;
+                    ui.winCoinPillText.text = Mathf.RoundToInt(Mathf.Lerp(coinsFrom, coinsTo, landed / (float)coins.Length)).ToString("N0");
+                    audioManager.Play(art.star, .45f, 1.1f + landed * .03f);
+                    ui.StartCoroutine(Tween.Bounce(target, .18f, .15f));
+                }));
+                audioManager.Play(art.coin, .8f);
+                while (landed < coins.Length) yield return null;
+                yield return new WaitForSeconds(.35f);
+            }
+            ui.coinText.text = coinsTo.ToString("N0");
             ClosePopup(ui.winPopup);
             int next = _levelNumber + 1;
             if (limitToTenLevels && !useTestLevel && next > 10)
@@ -1035,10 +1346,31 @@ namespace GrillSort
                     LoadLevel(1);
                     ShowMessage("Demo complete!", "Thanks for playing the first 10 levels.\nThe full game has many more.");
                 }));
-                return;
+                yield break;
             }
             if (!useTestLevel) SaveData.Level = next;
-            StartCoroutine(Tween.Delay(.3f, () => LoadLevel(next)));
+            if (loadingBetweenLevels && ui.loading != null && !_autoPlay) ui.StartCoroutine(LoadingBetween(next));
+            else StartCoroutine(Tween.Delay(.3f, () => LoadLevel(next)));
+        }
+
+        IEnumerator FlyCoin(RectTransform c, Vector3 from, RectTransform target, float delay, System.Action landed)
+        {
+            yield return new WaitForSeconds(delay);
+            c.gameObject.SetActive(true);
+            var rnd = (Vector3)(Random.insideUnitCircle * 120f) * c.lossyScale.x;
+            var burst = from + rnd + new Vector3(0f, 60f, 0f) * c.lossyScale.x;
+            c.position = from; c.localScale = Vector3.one * .6f;
+            yield return Tween.Run(.18f, k => { c.position = Vector3.Lerp(from, burst, Ease.OutCubic(k)); c.localScale = Vector3.one * Mathf.Lerp(.6f, 1.05f, k); });
+            var p0 = c.position; var p2 = target.position;
+            var p1 = (p0 + p2) * .5f + new Vector3(-160f, 0f, 0f) * c.lossyScale.x;
+            yield return Tween.Run(.5f, k =>
+            {
+                float u = 1f - k;
+                c.position = u * u * p0 + 2f * u * k * p1 + k * k * p2;
+                c.localScale = Vector3.one * Mathf.Lerp(1.05f, .7f, k);
+            }, Ease.InOutCubic);
+            c.gameObject.SetActive(false);
+            landed();
         }
 
         IEnumerator CountCoins()
@@ -1158,7 +1490,7 @@ namespace GrillSort
             ui.layout.Apply();
             v.rect.localScale = Vector3.zero;
             StartCoroutine(Tween.Scale(v.rect, Vector3.one, .4f, t => Ease.OutBack(t)));
-            audioManager.Play(art.drop, .8f, .8f);
+            audioManager.Play(art.pop, .8f, .9f);
             return true;
         }
 
@@ -1179,11 +1511,13 @@ namespace GrillSort
         }
 
         // ------------------------------------------------------------------ hints & tips
-        IEnumerator HintAnim(Move m)
+        IEnumerator HintAnim(Move m, float duration = 3.6f)
         {
             var a = ui.grills[m.From]; var b = ui.grills[m.To];
+            if (_handCo != null) StopCoroutine(_handCo);
+            _handCo = StartCoroutine(HandLoop(m));
             float t = 0f;
-            while (t < 3f)
+            while (t < duration)
             {
                 t += Time.deltaTime;
                 float p = (Mathf.Sin(t * 6f) + 1f) * .5f;
@@ -1193,8 +1527,113 @@ namespace GrillSort
                     a.slots[i].anchoredPosition = new Vector2(0f, GrillView.SlotY[i] - p * 22f);
                 yield return null;
             }
+            StopAllHandFx();
             ClearHintVisuals(m);
             _hintCo = null;
+        }
+
+        // ------------------------------------------------------------------ tutorial hand
+        // The glove shows the move: it presses on the piece to grab, drags to the tray, releases, and repeats.
+        Vector2 HandPoint(RectTransform target) => ui.handLayer.InverseTransformPoint(target.position);
+
+        // Like the client's FishUp! tutorial: the soft 3D glove rests on the piece and presses it (two little bobs),
+        // then, because our move is a drag, it carries a see-through copy of the piece to the tray and lets go.
+        /// <summary>Tutorial glove size in canvas units (about one food piece wide plus the cuff, like the reference).</summary>
+        public const float HandSize = 250f;   // about as big as the piece it taps, like the reference
+        /// <summary>
+        /// Glove facing: +1 = finger up-left (body to the lower right of the fingertip, like the reference), -1 = mirrored.
+        /// Re-checked every frame from where the hand IS: it turns around (smoothly) only while its body would leave the
+        /// right edge of the canvas, and turns back when there is room again, so it is never cut off on either side.
+        /// </summary>
+        float _handSx = 1f;
+        void HandScale(float k)
+        {
+            float halfW2 = ui.handLayer.rect.width * .5f;
+            float bodyRight = HandSize * (1f - ui.hand.pivot.x) - 6f;   // how far the glove reaches right of its fingertip
+            float target = ui.hand.anchoredPosition.x + bodyRight > halfW2 - 6f ? -1f : 1f;
+            _handSx = Mathf.MoveTowards(_handSx, target, Time.deltaTime * 14f);   // a quick turn, not a slow squash
+            float sx = Mathf.Abs(_handSx) < .15f ? .15f * Mathf.Sign(target) : _handSx;   // never collapse to a line
+            ui.hand.localScale = new Vector3(sx * k, k, 1f);
+        }
+
+        IEnumerator HandLoop(Move m)
+        {
+            var hand = ui.hand; var g = ui.handGroup; var ghost = ui.handGhost; var grt = ghost.rectTransform;
+            hand.gameObject.SetActive(true);
+            g.alpha = 0f;
+            float halfW = ui.handLayer.rect.width * .5f;
+            while (true)
+            {
+                var from = ui.grills[m.From]; var to = ui.grills[m.To];
+                Vector2 p0 = HandPoint(from.slots[m.Index]);
+                int land = Mathf.Min(_board.Count(m.To), GrillView.Capacity - 1);
+                Vector2 p1 = HandPoint(to.slots[land]);
+                var fa = art.foods[_board.Get(m.From, m.Index)];
+                ghost.sprite = fa.grilled;
+                float gs = from.slots[m.Index].lossyScale.x / ui.handLayer.lossyScale.x;
+                float gw = fa.width * GrillView.FoodScale;
+                grt.sizeDelta = new Vector2(gw, gw);
+                // come in from the side the glove's body is on (it faces away from the nearest edge)
+                float dir = p0.x + HandSize * (1f - ui.hand.pivot.x) > halfW - 12f ? -1f : 1f;
+                _handSx = dir;
+                var rest = p0 + new Vector2(dir * 80f, -80f);
+
+                // come in onto the piece
+                hand.anchoredPosition = rest; HandScale(1f);
+                yield return Tween.Run(.3f, k => { g.alpha = k; hand.anchoredPosition = Vector2.Lerp(rest, p0, Ease.OutCubic(k)); });
+                // press, press (like a tap)
+                for (int i = 0; i < 2; i++)
+                {
+                    yield return Tween.Run(.14f, k => HandScale(Mathf.Lerp(1f, .86f, k)));
+                    if (i == 1) StartCoroutine(HandRing(p0));
+                    yield return Tween.Run(.14f, k => HandScale(Mathf.Lerp(.86f, i == 1 ? .9f : 1f, k)));
+                }
+                // pick up: the ghost lifts out of the slot
+                grt.anchoredPosition = p0; grt.localScale = Vector3.one * gs;
+                yield return Tween.Run(.15f, k => { GrillView.SetAlpha(ghost, k * .8f); grt.localScale = Vector3.one * gs * Mathf.Lerp(1f, 1.12f, k); });
+                // drag to the tray
+                yield return Tween.Run(.8f, k =>
+                {
+                    float e = Ease.InOutCubic(k);
+                    var p = Vector2.Lerp(p0, p1, e) + new Vector2(0f, Mathf.Sin(e * Mathf.PI) * 70f);
+                    hand.anchoredPosition = p; grt.anchoredPosition = p;
+                    HandScale(.9f);   // keeps checking the edge while it moves (turns around near the right edge)
+                });
+                // let go
+                StartCoroutine(HandRing(p1));
+                yield return Tween.Run(.15f, k => { HandScale(Mathf.Lerp(.9f, 1f, k)); grt.localScale = Vector3.one * gs * Mathf.Lerp(1.12f, 1f, k); });
+                yield return new WaitForSeconds(.3f);
+                yield return Tween.Run(.25f, k => { g.alpha = 1f - k; GrillView.SetAlpha(ghost, (1f - k) * .8f); });
+                yield return new WaitForSeconds(.35f);
+            }
+        }
+
+        IEnumerator HandRing(Vector2 at)
+        {
+            var r = ui.handRing; var rt = r.rectTransform;
+            rt.anchoredPosition = at;
+            yield return Tween.Run(.4f, k =>
+            {
+                rt.localScale = Vector3.one * Mathf.Lerp(.3f, 1.3f, k);
+                GrillView.SetAlpha(r, (1f - k) * .8f);
+            });
+            GrillView.SetAlpha(r, 0f);
+        }
+
+        Coroutine _handCo;
+
+        /// <summary>Stops the hand loop (it runs as its own coroutine next to the hint) and hides the hand.</summary>
+        void StopAllHandFx()
+        {
+            if (_handCo != null) { StopCoroutine(_handCo); _handCo = null; }
+            HideHand();
+        }
+
+        void HideHand()
+        {
+            ui.hand.gameObject.SetActive(false);
+            GrillView.SetAlpha(ui.handRing, 0f);
+            GrillView.SetAlpha(ui.handGhost, 0f);
         }
 
         void StopHint()
@@ -1202,6 +1641,7 @@ namespace GrillSort
             if (_hintCo == null) return;
             StopCoroutine(_hintCo);
             _hintCo = null;
+            StopAllHandFx();
             for (int g = 0; g < _board.SkewerCount; g++)
             {
                 if (g == _selected) continue;
@@ -1221,9 +1661,9 @@ namespace GrillSort
 
         static readonly string[] Tips =
         {
-            "Drag any food to another tray.\nThe food below it comes along!",
-            "Match the bottom food to drop it.\nFill a customer's tray to serve them!",
-            "The steel trays have no customer.\nUse them to make room!",
+            "Drag food to fill each tray!",
+            "Drop food onto the same food!",
+            "Steel trays are spare space!",
         };
 
         // tips (levels 1-3): shown once per level ever, in the message strip above the boosters, and gone after the
@@ -1242,8 +1682,19 @@ namespace GrillSort
 
         IEnumerator TipAnim()
         {
+            while (_loadingScreen) yield return null;
             yield return new WaitForSeconds(.6f);
+            var rt = (RectTransform)ui.tip.transform;
+            rt.localScale = Vector3.one * .7f;
+            StartCoroutine(Tween.Scale(rt, Vector3.one, .35f, t => Ease.OutBack(t)));
             yield return Tween.Fade(ui.tip, 1f, .3f);
+            if (_levelNumber <= tutorialLevels)
+            {
+                while (!_won) yield return null;   // tutorial levels: stays up the whole level
+                yield return Tween.Fade(ui.tip, 0f, .3f);
+                _tipCo = null;
+                yield break;
+            }
             yield return new WaitForSeconds(6f);
             yield return Tween.Fade(ui.tip, 0f, .4f);
             _tipCo = null;
@@ -1257,10 +1708,20 @@ namespace GrillSort
 
         public void Toast(string msg)
         {
-            HideTip(); // one message at a time in the strip
+            // one message at a time in the strip: a tutorial banner steps aside for the toast and comes back after it
+            if (_levelNumber <= tutorialLevels && _tipCo != null) StartCoroutine(TipAside());
+            else HideTip();
             if (_toastCo != null) ui.StopCoroutine(_toastCo);
             ui.toastText.text = msg;
             _toastCo = ui.StartCoroutine(ToastAnim());
+        }
+
+        IEnumerator TipAside()
+        {
+            ui.tip.alpha = 0f;
+            yield return new WaitForSeconds(1.75f);
+            while (_toastCo != null) yield return null;
+            if (!_won && _tipCo != null) yield return Tween.Fade(ui.tip, 1f, .25f);
         }
 
         IEnumerator ToastAnim()
@@ -1311,8 +1772,21 @@ namespace GrillSort
 
         void RefreshPauseTexts()
         {
-            ui.pauseSoundText.text = SaveData.Sound ? "Sound: On" : "Sound: Off";
-            ui.pauseHapticsText.text = SaveData.Haptic ? "Vibration: On" : "Vibration: Off";
+            void Set(Image tile, Image off, bool on)
+            {
+                off.gameObject.SetActive(!on);
+                tile.color = on ? Color.white : new Color(.62f, .62f, .62f, 1f);   // off: greyed tile + red slash
+            }
+            Set(ui.pauseSoundTile, ui.pauseSoundOff, SaveData.Sound);
+            Set(ui.pauseMusicTile, ui.pauseMusicOff, SaveData.Music);
+            Set(ui.pauseHapticsTile, ui.pauseHapticsOff, SaveData.Haptic);
+        }
+
+        AudioClip CurrentTrack()
+        {
+            if (art.musicTracks == null || art.musicTracks.Length == 0) return art.music;
+            var c = art.musicTracks[0];   // one track now (the per-track pick was only for choosing)
+            return c != null ? c : art.music;
         }
 
         void Click() => audioManager.Play(art.click, .6f);

@@ -28,6 +28,7 @@ namespace GrillSort.EditorTools
 
         static readonly Color Brown = new Color32(92, 46, 18, 255);
         static readonly Color Cream = new Color32(255, 246, 225, 255);
+        static readonly Color Navy = new Color32(28, 46, 104, 255);   // tutorial banner text (like the reference)
 
         static Material _matPlain, _matBrownOutline, _matGreenOutline;
         static GameArt _art;
@@ -37,11 +38,14 @@ namespace GrillSort.EditorTools
         {
             if (!EnsureTmpEssentials()) return;
             ConfigureTextures();
+            ConfigureAudio();
             MakeFonts();
             _art = MakeGameArt();
             var bank = MakeLevelBank();
             MakeAtlases();
+            LayoutKeeper.BeforeBuild();   // remember hand-made layout tweaks in the current Game scene
             BuildScene(bank);
+            LayoutKeeper.AfterBuild();    // ... and put them back on top of the rebuilt scene
             ConfigureProject();
             AssetDatabase.SaveAssets();
             Debug.Log("[Grill Sort] Full setup done. Scene: " + ScenePath + (bank.levels.Count == 0 ? "  (No levels yet: run Grill Sort > Bake And Verify Levels)" : $"  ({bank.levels.Count} levels)"));
@@ -80,13 +84,13 @@ namespace GrillSort.EditorTools
                 // 9-sliced / stretched sprites are packed untrimmed (Full Rect): the atlas trims transparent margins, but a
                 // sliced Image still draws the whole rect, so the cut-off margin sampled the atlas padding, which holds the
                 // neighbours' edge colours (purple/navy lines above the HUD pills, 2026-11-21)
-                if (borders.ContainsKey(path) || path.EndsWith("/bar_track.png"))
+                if (borders.ContainsKey(path) || path.EndsWith("/bar_track.png") || path.EndsWith("/bar_track_clean.png"))
                 {
                     var st = new TextureImporterSettings();
                     ti.ReadTextureSettings(st);
                     if (st.spriteMeshType != SpriteMeshType.FullRect) { st.spriteMeshType = SpriteMeshType.FullRect; ti.SetTextureSettings(st); dirty = true; }
                 }
-                bool isBg = path.Contains("/Backgrounds/");
+                bool isBg = path.Contains("/Backgrounds/") || path.Contains("/Loading/keyart");   // full-screen art: up to 2048
                 int max = isBg ? 2048 : path.Contains("/Shadows") ? 256 : 1024;
                 if (path.Contains("/Board/")) max = 2048;
                 if (ti.maxTextureSize != max) { ti.maxTextureSize = max; dirty = true; }
@@ -112,10 +116,32 @@ namespace GrillSort.EditorTools
             }
         }
 
+        // ------------------------------------------------------------------ audio import (small build)
+        static void ConfigureAudio()
+        {
+            foreach (var guid in AssetDatabase.FindAssets("t:AudioClip", new[] { Root + "Audio/SFX", Root + "Audio/Music" }))
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                var ai = AssetImporter.GetAtPath(path) as AudioImporter;
+                if (ai == null) continue;
+                bool isMusic = path.Contains("/Music/");
+                var st = ai.defaultSampleSettings;
+                // effects: mono, decompressed in memory (instant, no CPU while playing); music: streamed from disk
+                st.loadType = isMusic ? AudioClipLoadType.Streaming : AudioClipLoadType.DecompressOnLoad;
+                st.compressionFormat = AudioCompressionFormat.Vorbis;
+                st.quality = isMusic ? .45f : .7f;
+                st.sampleRateSetting = AudioSampleRateSetting.OptimizeSampleRate;
+                ai.defaultSampleSettings = st;
+                ai.forceToMono = !isMusic;
+                ai.loadInBackground = isMusic;
+                ai.SaveAndReimport();
+            }
+        }
+
         // Cartoon art set (client direction 2026-11-18). The old realistic Food/Grilled, Customers (animals) and
         // grill/skewer art stays in the project, unused.
         /// <summary>Message strip (tips + toasts) just above the booster tiles (tile centre 130, half height ~85).</summary>
-        const float MsgW = 860f, MsgH = 92f, MsgY = 276f;
+        const float MsgW = 860f, MsgH = 108f, MsgY = 282f;
         // Final food (2026-11-18): Aaron chose style B and asked for less shine. FoodFinal_v2 = half the shine (STYLE=FINAL2);
         // FoodFinal (v1, shine removed: user found it too matte) is the backup.
         // FoodCartoon (A), FoodCartoonB, FoodCartoonC stay on disk as unused alternatives.
@@ -134,7 +160,7 @@ namespace GrillSort.EditorTools
         const string UiDir = "UI_Soft/", BarFill = "bar_fill_soft.png";
 
         static readonly string[] AtlasFolders = { Art + UiDir, Art + CustomerDir, Art + "VFX/", Art + FoodDir, Art + ShadowDir, Art + FoodOverrideDir, Art + FoodOverrideShadowDir };
-        static readonly string[] AtlasFiles = { "badge.png", "disc.png", "rounded.png", BarFill, "bar_track.png", "glow.png", "soft_rect.png", "rays.png" };
+        static readonly string[] AtlasFiles = { "badge.png", "disc.png", "rounded.png", BarFill, "bar_track.png", "glow.png", "soft_rect.png", "rays.png", "bar_track_clean.png" };
 
         static bool IsAtlased(string path)
         {
@@ -239,14 +265,33 @@ namespace GrillSort.EditorTools
             a.grillDark = Load<Sprite>(Art + "Generated/grill_cartoon_dim_front.png"); // brighter than the v3 grill_cartoon_dark (Aaron: bottom too dark)
             a.grillDarkGlow = Load<Sprite>(Art + "Generated/grill_cartoon_dim_bed.png");
             a.grillHelper = Load<Sprite>(Art + "Generated/grill_helper_front.png"); // helper trays: steel frame
+            // ember shimmer (user 2026-11-21: the glow "still feels like before"): two patch layers over the bed
+            a.grillHotA = Load<Sprite>(Art + "Generated/grill_cartoon_hot_a.png");
+            a.grillHotB = Load<Sprite>(Art + "Generated/grill_cartoon_hot_b.png");
+            a.grillDarkHotA = Load<Sprite>(Art + "Generated/grill_cartoon_dim_hot_a.png");
+            a.grillDarkHotB = Load<Sprite>(Art + "Generated/grill_cartoon_dim_hot_b.png");
+            // loading screen v2 (Tools/ArtPipeline/make_loading_art.py): painted scene, logo image, mascot.
+            // Loading/hero_grill.png + logo_plate.png (v1, the "collage" look the user rejected) stay unused.
+            a.loadingKeyArt = Load<Sprite>(Art + "Loading/keyart_default.png");
+            a.logo = Load<Sprite>(Art + "Loading/logo.png");
+            a.mascot = Load<Sprite>(Art + "Loading/mascot.png");
             a.skewer = Load<Sprite>(Art + "Board/skewer_cartoon.png");
             a.starOn = S("UI/Icons/icon_star.png");
             a.starOff = a.starOn;
-            string au = Root + "Audio/";
-            a.pick = Load<AudioClip>(au + "pick.wav"); a.drop = Load<AudioClip>(au + "drop.wav");
-            a.invalid = Load<AudioClip>(au + "invalid.wav"); a.sizzle = Load<AudioClip>(au + "sizzle.wav");
-            a.serve = Load<AudioClip>(au + "serve.wav"); a.coin = Load<AudioClip>(au + "coin.wav");
-            a.win = Load<AudioClip>(au + "win.wav"); a.click = Load<AudioClip>(au + "click.wav");
+            // CC0 sound set + music (Tools/ArtPipeline/make_audio.py; licences: ArtSource/Audio/LICENSES.md). The old
+            // synthesized placeholders (Audio/*.wav) stay on disk, unused.
+            string au = Root + "Audio/SFX/";
+            a.pick = Load<AudioClip>(au + "pick.ogg"); a.drop = Load<AudioClip>(au + "drop_0.ogg");
+            a.drops = new[] { a.drop, Load<AudioClip>(au + "drop_1.ogg"), Load<AudioClip>(au + "drop_2.ogg") };
+            a.invalid = Load<AudioClip>(au + "invalid.ogg"); a.sizzle = Load<AudioClip>(au + "sizzle.ogg");
+            a.serve = Load<AudioClip>(au + "serve.ogg"); a.coin = Load<AudioClip>(au + "coin.ogg");
+            a.win = Load<AudioClip>(au + "win.ogg"); a.click = Load<AudioClip>(au + "click.ogg");
+            a.star = Load<AudioClip>(au + "star.ogg"); a.whoosh = Load<AudioClip>(au + "whoosh.ogg");
+            a.pop = Load<AudioClip>(au + "pop.ogg"); a.fail = Load<AudioClip>(au + "fail.ogg");
+            a.sizzleLoop = Load<AudioClip>(au + "sizzle_loop.ogg");
+            a.music = Load<AudioClip>(Root + "Audio/Music/bgm_main.ogg");
+            // one track (user pick: "Which Brand of Mustard Shall I Buy?", looped seamlessly by make_audio.py)
+            a.musicTracks = new[] { a.music }; a.musicNames = new[] { "On" };
             EditorUtility.SetDirty(a);
             return a;
         }
@@ -297,7 +342,7 @@ namespace GrillSort.EditorTools
         static void MakeAtlases()
         {
             Directory.CreateDirectory(Root + "Atlases");
-            Atlas("UI", new[] { Art + UiDir.TrimEnd('/'), Art + CustomerDir.TrimEnd('/'), Art + "VFX" }, 2048, new[] { Art + "Generated/badge.png", Art + "Generated/disc.png", Art + "Generated/rounded.png", Art + "Generated/" + BarFill, Art + "Generated/bar_track.png", Art + "Generated/glow.png", Art + "Generated/soft_rect.png", Art + "Generated/rays.png" });
+            Atlas("UI", new[] { Art + UiDir.TrimEnd('/'), Art + CustomerDir.TrimEnd('/'), Art + "VFX" }, 2048, new[] { Art + "Generated/badge.png", Art + "Generated/disc.png", Art + "Generated/rounded.png", Art + "Generated/" + BarFill, Art + "Generated/bar_track.png", Art + "Generated/glow.png", Art + "Generated/soft_rect.png", Art + "Generated/rays.png", Art + "Generated/bar_track_clean.png" });
             Atlas("Food", new[] { Art + FoodDir.TrimEnd('/'), Art + ShadowDir.TrimEnd('/'), Art + FoodOverrideDir.TrimEnd('/'), Art + FoodOverrideShadowDir.TrimEnd('/') }, 2048, null);
         }
 
@@ -342,6 +387,50 @@ namespace GrillSort.EditorTools
             PlayerSettings.SetManagedStrippingLevel(UnityEditor.Build.NamedBuildTarget.iOS, ManagedStrippingLevel.High);
             EditorUserBuildSettings.androidBuildSubtarget = MobileTextureSubtarget.ASTC;
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
+            SetAppIcon();
+        }
+
+        // App icon (user pick 2026-11-21): the "Grill Sort" text logo on the loading-screen sky (icon_game_v4_text_logo;
+        // the earlier "three trays" icon is ArtSource/Icon/icon_game_v1_three_trays.png), composed by
+        // Tools/ArtPipeline/compose_icon.py (ArtSource/Icon/icon_game_v1_three_trays.png). Lives outside Art/ so it is
+        // imported as a plain texture, not a sprite.
+        const string IconDir = Root + "Icon/";
+
+        static void SetAppIcon()
+        {
+            Texture2D Tex(string file)
+            {
+                string path = IconDir + file;
+                var ti = AssetImporter.GetAtPath(path) as TextureImporter;
+                if (ti == null) return null;
+                if (ti.textureType != TextureImporterType.Default || ti.mipmapEnabled || ti.textureCompression != TextureImporterCompression.Uncompressed || ti.maxTextureSize != 1024)
+                {
+                    ti.textureType = TextureImporterType.Default; ti.mipmapEnabled = false;
+                    ti.textureCompression = TextureImporterCompression.Uncompressed; ti.maxTextureSize = 1024;
+                    ti.alphaIsTransparency = true; ti.SaveAndReimport();
+                }
+                return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            }
+            var icon = Tex("app_icon.png");
+            if (icon == null) { Debug.LogWarning("[Grill Sort] No app icon at " + IconDir); return; }
+            // default icon: iOS and every size Unity derives from it
+            PlayerSettings.SetIcons(UnityEditor.Build.NamedBuildTarget.Unknown, new[] { icon }, IconKind.Any);
+            // Android: legacy + round use the full icon; adaptive (Android 8+) uses the padded background layer
+            var android = UnityEditor.Build.NamedBuildTarget.Android;
+            foreach (var kind in new[] { UnityEditor.Android.AndroidPlatformIconKind.Legacy, UnityEditor.Android.AndroidPlatformIconKind.Round })
+            {
+                var icons = PlayerSettings.GetPlatformIcons(android, kind);
+                foreach (var ic in icons) ic.SetTexture(icon);
+                PlayerSettings.SetPlatformIcons(android, kind, icons);
+            }
+            var bg = Tex("app_icon_adaptive_bg.png"); var fg = Tex("app_icon_adaptive_fg.png");
+            if (bg != null && fg != null)
+            {
+                var kind = UnityEditor.Android.AndroidPlatformIconKind.Adaptive;
+                var icons = PlayerSettings.GetPlatformIcons(android, kind);
+                foreach (var ic in icons) ic.SetTextures(bg, fg);
+                PlayerSettings.SetPlatformIcons(android, kind, icons);
+            }
         }
 
         // ------------------------------------------------------------------ scene
@@ -367,8 +456,11 @@ namespace GrillSort.EditorTools
 
             var audioGo = new GameObject("Audio");
             var am = audioGo.AddComponent<AudioManager>();
-            am.sfx = audioGo.AddComponent<AudioSource>(); am.sfx.playOnAwake = false;
-            am.loop = audioGo.AddComponent<AudioSource>(); am.loop.playOnAwake = false; am.loop.loop = true;
+            // 8 effect voices (each sound gets its own pitch), music and the sizzle ambience
+            am.voices = new AudioSource[8];
+            for (int i = 0; i < am.voices.Length; i++) { am.voices[i] = audioGo.AddComponent<AudioSource>(); am.voices[i].playOnAwake = false; }
+            am.music = audioGo.AddComponent<AudioSource>(); am.music.playOnAwake = false; am.music.loop = true; am.music.priority = 0;
+            am.ambience = audioGo.AddComponent<AudioSource>(); am.ambience.playOnAwake = false; am.ambience.loop = true;
 
             // canvas
             var canvasGo = new GameObject("Canvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
@@ -453,6 +545,8 @@ namespace GrillSort.EditorTools
                 gv.highlight.color = new Color(1f, .97f, .85f, 0f);
                 // glow bed first, the grill (frame, coals, bars) on top: the glow shows through the gaps between the coals
                 gv.coalGlow = Img("CoalGlow", root, _art.grillDarkGlow, new Vector2(GrillView.GrillW, GrillView.GrillH), Vector2.zero);
+                gv.coalHotA = Img("CoalHotA", root, _art.grillDarkHotA, new Vector2(GrillView.GrillW, GrillView.GrillH), Vector2.zero);
+                gv.coalHotB = Img("CoalHotB", root, _art.grillDarkHotB, new Vector2(GrillView.GrillW, GrillView.GrillH), Vector2.zero);
                 gv.grill = Img("Grill", root, _art.grillDark, new Vector2(GrillView.GrillW, GrillView.GrillH), Vector2.zero);
                 // fire sparks removed (Aaron 2026-11-18: too busy, add back later as particles)
                 gv.flames = new Image[0];
@@ -537,7 +631,7 @@ namespace GrillSort.EditorTools
             ui.coinIcon = coinIcon.rectTransform;
 
             float barW = 330f, barScale = barW / 842f;
-            var bar = Img("OrdersBar", safe, S("Generated/bar_track.png"), new Vector2(barW, 185 * barScale), new Vector2(0, -186), top);
+            var bar = Img("OrdersBar", safe, S("Generated/bar_track_clean.png"), new Vector2(barW, 185 * barScale), new Vector2(0, -186), top);
             var fill = Sliced("Fill", bar.transform, S("Generated/" + BarFill), new Vector2(200, 106 * barScale), Vector2.zero);
             var frt = fill.rectTransform;
             frt.anchorMin = frt.anchorMax = new Vector2(0, .5f); frt.pivot = new Vector2(0, .5f);
@@ -572,17 +666,25 @@ namespace GrillSort.EditorTools
             ui.tip = tipRt.gameObject.AddComponent<CanvasGroup>();
             ui.tip.blocksRaycasts = false;
             ui.tip.alpha = 0f;
+            // tutorial banner like the client's FishUp! ("Tap fish to fill the bowl!"): a white pill with bold navy text
+            var tipSh = Sliced("Shadow", tipRt, S("Generated/rounded.png"), new Vector2(MsgW, MsgH), new Vector2(0, -8));
+            tipSh.color = new Color(.05f, .1f, .25f, .22f);
             var tipBg = Sliced("Bg", tipRt, S("Generated/rounded.png"), new Vector2(MsgW, MsgH), Vector2.zero);
-            tipBg.color = new Color(.16f, .07f, .02f, .78f);
-            ui.tipText = Text("Text", tipRt, "Tip", 30, Cream, new Vector2(MsgW - 40, MsgH - 8), Vector2.zero, _matPlain);
+            tipBg.color = Color.white;
+            ui.tipText = Text("Text", tipRt, "Tip", 40, Navy, new Vector2(MsgW - 50, MsgH - 8), new Vector2(0, 2), _matPlain);
 
             var toastRt = Rect("Toast", safe, new Vector2(MsgW, MsgH), new Vector2(0, MsgY), bottom);
             ui.toast = toastRt.gameObject.AddComponent<CanvasGroup>();
             ui.toast.blocksRaycasts = false;
             ui.toast.alpha = 0f;
+            var toastSh = Sliced("Shadow", toastRt, S("Generated/rounded.png"), new Vector2(MsgW, MsgH), new Vector2(0, -8));
+            toastSh.color = new Color(.05f, .1f, .25f, .22f);
             var toastBg = Sliced("Bg", toastRt, S("Generated/rounded.png"), new Vector2(MsgW, MsgH), Vector2.zero);
-            toastBg.color = new Color(.16f, .07f, .02f, .88f);
-            ui.toastText = Text("Text", toastRt, "Toast", 32, Cream, new Vector2(MsgW - 40, MsgH - 8), Vector2.zero, _matPlain);
+            toastBg.color = Color.white;
+            ui.toastText = Text("Text", toastRt, "Toast", 36, Navy, new Vector2(MsgW - 50, MsgH - 8), new Vector2(0, 2), _matPlain);
+
+            // ---------------- tutorial hand (above the board and HUD, under the popups)
+            BuildHand(ui, croot);
 
             // ---------------- popups
             var popups = Stretch("Popups", croot);
@@ -590,6 +692,9 @@ namespace GrillSort.EditorTools
             BuildPausePopup(ui, popups);
             BuildStuckPopup(ui, popups);
             BuildMessagePopup(ui, popups);
+
+            // ---------------- loading screen (on top of everything, visible from the first frame)
+            BuildLoading(ui, croot);
 
             // ---------------- game
             var gameGo = new GameObject("Game");
@@ -600,6 +705,97 @@ namespace GrillSort.EditorTools
             layout.Apply();
             EditorSceneManager.SaveScene(scene, ScenePath);
             AssetDatabase.Refresh();
+        }
+
+        // Loading screen (2026-11-21, user: like the client's other game, FishUp!). v1 (theme background + grill/sign
+        // stickers + text letters) was rejected as a collage, so v2 is built like theirs: ONE painted full-screen scene
+        // (Loading/keyart_default.png; a theme can override it with ThemeDef.loadingArt), a real logo image (placeholder
+        // until the name is final) and a mascot (sausage chef) that pops in and hops off. Steam and embers rise from the
+        // painted grill; they are children of the cover-fit background, placed in its normalised coordinates, so they stay
+        // on the grill on any aspect. Logo / mascot / bar sit inside the safe area.
+        static void BuildLoading(GameUi ui, Transform croot)
+        {
+            var root = Stretch("Loading", croot);
+            ui.loading = root.gameObject.AddComponent<CanvasGroup>();
+            var bgBack = Img("Back", root, null, Vector2.zero, Vector2.zero, null, true);   // blocks input while loading
+            var brt = bgBack.rectTransform; brt.anchorMin = Vector2.zero; brt.anchorMax = Vector2.one; brt.offsetMin = brt.offsetMax = Vector2.zero;
+            bgBack.color = new Color32(38, 20, 10, 255);
+            ui.loadingBg = Img("Background", root, _art.loadingKeyArt, new Vector2(1024, 1536), Vector2.zero);
+            var fit = ui.loadingBg.gameObject.AddComponent<AspectRatioFitter>();
+            fit.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
+            fit.aspectRatio = 1024f / 1536f;
+            var bg = ui.loadingBg.rectTransform;
+            // steam + embers over the painted grill (normalised art coords, from the bottom-left)
+            var steam = S("VFX/fx_steam.png");
+            ui.loadingSteam = new Image[4];
+            for (int i = 0; i < ui.loadingSteam.Length; i++)
+            {
+                ui.loadingSteam[i] = ImgH($"Steam{i}", bg, steam, 230, Vector2.zero, new Vector2(.34f + i * .1f, .6f));
+                ui.loadingSteam[i].color = new Color(1, 1, 1, 0);
+            }
+            var ember = S("Generated/glow.png");
+            ui.loadingEmbers = new Image[12];
+            for (int i = 0; i < ui.loadingEmbers.Length; i++)
+            {
+                ui.loadingEmbers[i] = Img($"Ember{i}", bg, ember, Vector2.one * (20 + (i * 7) % 18), Vector2.zero, new Vector2(.3f + (i * .037f) % .4f, .56f));
+                ui.loadingEmbers[i].color = new Color(1f, .62f, .18f, 0f);
+            }
+
+            var content = Stretch("Content", root);
+            content.gameObject.AddComponent<SafeArea>();
+            var top = new Vector2(.5f, 1f); var bottom = new Vector2(.5f, 0f);
+
+            ui.loadingRays = Img("Rays", content, S("Generated/rays.png"), new Vector2(1500, 1500), new Vector2(0, -400), top);
+            ui.loadingRays.color = new Color(1f, .92f, .6f, .22f);   // subtle: the user found the screen too busy
+            ui.loadingLogo = Img("Logo", content, _art.logo, new Vector2(566, 560), new Vector2(-24, -390), top).rectTransform;   // logo.png is 1008x998 (grill-lid topper); clear of the grill
+            ui.loadingMascot = Img("Mascot", content, _art.mascot, new Vector2(210, 346), new Vector2(330, -640), top).rectTransform;
+            ui.loadingMascot.pivot = new Vector2(.5f, 0f);   // bounces / squashes from the feet
+            var spark = S("VFX/fx_sparkle.png");
+            var sparkSpots = new Vector2[] { new(-420, -260), new(400, -230), new(-360, -760), new(260, -820), new(-120, -170), new(120, -880) };
+            ui.loadingSparkles = new Image[sparkSpots.Length];
+            for (int i = 0; i < sparkSpots.Length; i++)
+            {
+                ui.loadingSparkles[i] = ImgW($"Sparkle{i}", content, spark, i % 2 == 0 ? 70 : 52, sparkSpots[i], top);
+                ui.loadingSparkles[i].color = new Color(1, 1, 1, 0);
+            }
+
+            // loading bar on the table at the bottom (clean track: bar_track had a baked-in ghost fill)
+            float barW = 660f, k = barW / 842f;
+            var bar = Img("Bar", content, S("Generated/bar_track_clean.png"), new Vector2(barW, 185 * k), new Vector2(0, 230), bottom);
+            var fill = Sliced("Fill", bar.transform, S("Generated/" + BarFill), new Vector2(120, 106 * k), Vector2.zero);
+            var frt = fill.rectTransform;
+            frt.anchorMin = frt.anchorMax = new Vector2(0, .5f); frt.pivot = new Vector2(0, .5f);
+            frt.anchoredPosition = new Vector2(43 * k, (92.5f - 91.5f) * k);
+            ui.loadingBarFill = frt;
+            ui.loadingBarMax = (842 - 86) * k;
+            ui.loadingText = Text("Text", content, "Loading", 54, Color.white, new Vector2(600, 80), new Vector2(0, 350), _matBrownOutline, bottom);
+            ui.loadingText.textWrappingMode = TextWrappingModes.NoWrap;
+        }
+
+        // Tutorial hand (2026-11-21): a cartoon glove that shows the move (press on the piece, drag to the tray, release).
+        // Pivot = the fingertip (Tools/ArtPipeline/cut_hand.py), so it points exactly at the target.
+        // v4 glove (back of the hand, finger up-left at 45 degrees, like the client's FishUp! tap hand): fingertip pivot
+        // from Tools/ArtPipeline/cut_hand.py
+        static readonly Vector2 HandPivot = new Vector2(.078f, .9f);   // Pngtree glove (user pick), glow removed: Tools/ArtPipeline/cut_hand_pngtree.py
+
+        static void BuildHand(GameUi ui, Transform croot)
+        {
+            var layer = Stretch("HandLayer", croot);
+            ui.handLayer = layer;
+            ui.handRing = Img("Ring", layer, S("Generated/glow.png"), new Vector2(150, 150), Vector2.zero);
+            ui.handRing.color = new Color(1, 1, 1, 0);
+            ui.handGhost = Img("Ghost", layer, _art.foods[0].grilled, new Vector2(150, 150), Vector2.zero);
+            ui.handGhost.color = new Color(1, 1, 1, 0);
+            // the glove: a soft shadow under it (it is white, and sits on light food), both faded by one CanvasGroup
+            var hand = Rect("Hand", layer, new Vector2(GameController.HandSize, GameController.HandSize), Vector2.zero);
+            hand.pivot = HandPivot;
+            ui.handGroup = hand.gameObject.AddComponent<CanvasGroup>();
+            ui.handGroup.blocksRaycasts = false; ui.handGroup.interactable = false;
+            var sh = Img("Shadow", hand, S("UI/Icons/icon_hand.png"), new Vector2(GameController.HandSize, GameController.HandSize), new Vector2(8, -14));
+            sh.color = new Color(.1f, .12f, .25f, .28f);
+            ui.handImage = Img("Glove", hand, S("UI/Icons/icon_hand.png"), new Vector2(GameController.HandSize, GameController.HandSize), Vector2.zero);
+            ui.hand = hand;
+            ui.hand.gameObject.SetActive(false);
         }
 
         /// <summary>A small skewer (stick + one image per piece), see <see cref="SkewerStack"/>.</summary>
@@ -642,74 +838,176 @@ namespace GrillSort.EditorTools
             return Button(img);
         }
 
-        // Win popup redesign (2026-11-21, user: "not looking good"): warm glow + slowly turning sun rays behind the panel,
-        // the headline with room around it, three stars in an arc landing in recessed sockets (an unearned star leaves an
-        // empty socket, not a grey blob) with sparkles, the coins in a pill that counts up, bigger buttons, an AD tag on x2.
+        // Win screen, modelled on the client's FishUp! "Well Done!" (user 2026-11-21; their extras left out: no "Add Slot"
+        // bar, no locked-level row, no ad banner; our old wooden panel and stars removed too). Full screen over the dimmed
+        // level: our logo pops and bursts, "Well Done!" drops in, a glowing bubble of coins, a multiplier bar (x2 x3 x5 x3
+        // x2) with the sausage mascot sliding along it, "Claim" and "Claim xN" (ad). Coins fly into the coin pill.
+
         static void BuildWinPopup(GameUi ui, Transform parent)
         {
-            var (cg, panel) = Popup("WinPopup", parent, 860, "Level 1", out var title);
-            ui.winPopup = cg; ui.winPanel = panel; ui.winTitle = title;
-            var root = cg.transform;
-            // behind the panel (after the dim)
-            ui.winGlow = Img("Glow", root, S("Generated/glow.png"), new Vector2(1500, 1500), new Vector2(0, 140));
-            ui.winGlow.color = new Color(1f, .82f, .4f, .55f);
-            ui.winGlow.transform.SetSiblingIndex(1);
-            ui.winRays = Img("Rays", root, S("Generated/rays.png"), new Vector2(1500, 1500), new Vector2(0, 140));
-            ui.winRays.color = new Color(1f, .9f, .55f, .55f);
-            ui.winRays.transform.SetSiblingIndex(2);
+            var root = Stretch("WinPopup", parent);
+            ui.winPopup = root.gameObject.AddComponent<CanvasGroup>();
+            ui.winDim = Img("Dim", root, null, Vector2.zero, Vector2.zero, null, true);
+            var drt = ui.winDim.rectTransform; drt.anchorMin = Vector2.zero; drt.anchorMax = Vector2.one; drt.offsetMin = drt.offsetMax = Vector2.zero;
+            ui.winDim.color = new Color(.04f, .025f, .02f, .95f);   // linear colour space: needs ~.95 to read as a strong dim
 
-            // vertical rhythm inside the cream area (user: spacing; headline + stars nudged up so the coins clear the AD tag):
-            // headline 118..294 | stars -66..102 | coins -84..-172 | AD tag top -195 | buttons -210..-314
-            var word = ImgW("Word", panel, S("UI/Words/word_level_complete.png"), 380, new Vector2(0, 206));
-            ui.winWord = word.rectTransform;
+            var safe = Stretch("Safe", root);
+            safe.gameObject.AddComponent<SafeArea>();
+            var content = Rect("Content", safe, new Vector2(1080, 1920), Vector2.zero);
+            ui.winPanel = content;
 
-            // stars: recessed sockets always visible, the earned stars pop into them
-            var star = S("UI/Icons/icon_star.png");
-            var spots = new (float x, float y, float w, float rot)[] { (-172, -4, 136, 14), (0, 18, 170, 0), (172, -4, 136, -14) };
-            ui.winStars = new Image[3];
-            for (int i = 0; i < 3; i++)
+            // reward bubble: turning rays, warm glow, a pile of coins, sparkles
+            var bubble = Rect("Bubble", content, new Vector2(460, 460), new Vector2(0, 170));
+            ui.winBubble = bubble;
+            ui.winRays = Img("Rays", bubble, S("Generated/rays.png"), new Vector2(1000, 1000), Vector2.zero);
+            ui.winRays.color = new Color(1f, .88f, .5f, .45f);   // alpha set at runtime (kept faint so the screen stays dark)
+            ui.winGlow = Img("Glow", bubble, S("Generated/glow.png"), new Vector2(920, 920), Vector2.zero);
+            ui.winGlow.color = new Color(1f, .78f, .3f, .7f);
+            var orb = Img("Orb", bubble, S("Generated/disc.png"), new Vector2(500, 500), Vector2.zero);
+            orb.color = new Color(1f, .95f, .8f, .16f);
+            var coin = S("UI/Icons/icon_coin.png");
+            var pile = new (float x, float y, float w, float r)[] { (-70, -55, 170, -12), (75, -60, 165, 10), (0, -20, 185, 0), (-35, 60, 160, -6), (55, 45, 150, 14) };
+            foreach (var p in pile)
             {
-                var sp = spots[i];
-                var socket = ImgW($"Socket{i}", panel, star, sp.w * 1.02f, new Vector2(sp.x, sp.y - 4));
-                socket.color = new Color(.55f, .36f, .2f, .32f);
-                socket.rectTransform.localRotation = Quaternion.Euler(0, 0, sp.rot);
-                ui.winStars[i] = ImgW($"Star{i}", panel, star, sp.w, new Vector2(sp.x, sp.y));
-                ui.winStars[i].rectTransform.localRotation = Quaternion.Euler(0, 0, sp.rot);
+                var c = ImgW("Coin", bubble, coin, p.w * 1.2f, new Vector2(p.x, p.y) * 1.2f);
+                c.rectTransform.localRotation = Quaternion.Euler(0, 0, p.r);
             }
             var spark = S("VFX/fx_sparkle.png");
-            var sparkSpots = new Vector2[] { new(-262, 52), new(-110, 92), new(100, 100), new(258, 56), new(-226, -74), new(232, -76) };
-            ui.winSparkles = new Image[sparkSpots.Length];
-            for (int i = 0; i < sparkSpots.Length; i++)
+            var spots = new Vector2[] { new(-230, 180), new(215, 200), new(-250, -130), new(240, -155), new(-70, 275), new(110, -265) };
+            ui.winSparkles = new Image[spots.Length];
+            for (int i = 0; i < spots.Length; i++)
             {
-                ui.winSparkles[i] = ImgW($"Sparkle{i}", panel, spark, i % 2 == 0 ? 64 : 50, sparkSpots[i]);
-                ui.winSparkles[i].gameObject.SetActive(false);
+                ui.winSparkles[i] = ImgW($"Sparkle{i}", bubble, spark, i % 2 == 0 ? 80 : 56, spots[i]);
+                ui.winSparkles[i].color = new Color(1, 1, 1, 0);
             }
 
-            // coins in a pill
-            var row = Sliced("Reward", panel, S("Generated/rounded.png"), new Vector2(300, 88), new Vector2(0, -128));
-            row.color = new Color(.86f, .72f, .52f, .55f);
-            ui.winReward = row.rectTransform;
-            ImgW("Coin", row.transform, S("UI/Icons/icon_coin.png"), 78, new Vector2(-78, 2));
-            ui.winCoins = Text("Amount", row.transform, "+25", 58, Brown, new Vector2(180, 88), new Vector2(40, 2), _matPlain);
-            ui.winCoins.alignment = TextAlignmentOptions.Center;
+            // "Well Done!": big bubbly text in the logo colours (TMP, no new art)
+            var word = Text("WellDone", content, "Well Done!", 158, Color.white, new Vector2(1000, 220), new Vector2(0, 600), _matBrownOutline);
+            word.textWrappingMode = TextWrappingModes.NoWrap;
+            word.enableVertexGradient = true;
+            word.colorGradient = new VertexGradient(new Color32(255, 236, 110, 255), new Color32(255, 236, 110, 255), new Color32(255, 150, 30, 255), new Color32(255, 150, 30, 255));
+            ui.winWord = word.rectTransform;
 
-            ui.winDouble = WideButton("Double", panel, "btn_orange", "x2 Coins", new Vector2(290, 104), new Vector2(-154, -262), out _);
-            var tag = Sliced("AdTag", ui.winDouble.transform, S("Generated/rounded.png"), new Vector2(78, 42), new Vector2(114, 46));
-            tag.color = new Color32(214, 40, 40, 255);
-            Text("Text", tag.transform, "AD", 26, Color.white, new Vector2(78, 42), new Vector2(0, 1), _matPlain);
-            ui.winNext = WideButton("Next", panel, "btn_green", "Next", new Vector2(290, 104), new Vector2(154, -262), out _);
+            // (no logo on the win screen: user 2026-11-21 "it should just show the win screen")
+
+            // multiplier bar: white rounded frame, five coloured segments clipped to the rounded inner shape
+            // even layout (user: spacing): bar and buttons share the same 820 width, so left/right margins match; vertical gaps
+            // Well Done -> coins ~90, coins -> pointer ~40, bar -> buttons ~80
+            var bar = Rect("MultBar", content, new Vector2(820, 124), new Vector2(0, -285));
+            ui.winMultBar = bar;
+            var frame = Sliced("Frame", bar, S("Generated/rounded.png"), new Vector2(820, 124), Vector2.zero);
+            frame.color = Color.white;
+            var inner = Sliced("Inner", bar, S("Generated/rounded.png"), new Vector2(800, 104), Vector2.zero);
+            inner.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+            var cols = new Color32[] { new(46, 120, 232, 255), new(255, 196, 40, 255), new(226, 46, 46, 255), new(255, 196, 40, 255), new(46, 120, 232, 255) };
+            float segW = 800f / GameController.WinMults.Length;
+            for (int i = 0; i < GameController.WinMults.Length; i++)
+            {
+                float x = -400 + segW * (i + .5f);
+                var seg = Img($"Seg{i}", inner.transform, null, new Vector2(segW + 1, 104), new Vector2(x, 0));
+                seg.color = cols[i];
+                var lab = Text($"x{i}", bar, $"x{GameController.WinMults[i]}", 62, Color.white, new Vector2(segW, 104), new Vector2(x, 2), _matBrownOutline);
+                lab.textWrappingMode = TextWrappingModes.NoWrap;
+            }
+            // the sausage mascot slides along the bar and points at the current multiplier
+            var ptr = Img("Pointer", bar, _art.mascot, new Vector2(74, 122), new Vector2(0, 54));
+            ptr.rectTransform.pivot = new Vector2(.5f, 0f);
+            ui.winPointer = ptr.rectTransform;
+
+            // claim buttons: a title row and a coin + amount row, each laid out as ONE centred group (user: the coin and
+            // the number sat far apart and the AD tag crowded the title)
+            var bsz = new Vector2(400, 160);
+            ui.winNext = ClaimButton(content, "Claim", "btn_green", bsz, new Vector2(-210, -505), false, out _, out var claimAmt);
+            ui.winDouble = ClaimButton(content, "ClaimX", "btn_orange", bsz, new Vector2(210, -505), true, out var dblTitle, out var dblAmt);
+            ui.winCoins = claimAmt; ui.winDoubleLabel = dblTitle; ui.winDoubleAmount = dblAmt;
+
+            // coin pill (same place as the HUD one, above the dim) that the coins fly into and that counts up
+            var pill = Sliced("CoinPill", safe, S("UI/Panels/bar_hud.png"), new Vector2(250, 78), new Vector2(-180, -100), new Vector2(1, 1));
+            ui.winCoinPill = pill.rectTransform;
+            ui.winCoinPillText = Text("Text", pill.transform, "250", 44, Brown, new Vector2(170, 78), new Vector2(18, 2), _matPlain);
+            ui.winCoinPillText.textWrappingMode = TextWrappingModes.NoWrap;
+            ui.winCoinPillIcon = ImgW("Coin", pill.transform, coin, 86, new Vector2(-110, 2)).rectTransform;
+
+            // flying coins
+            ui.winFlyCoins = new RectTransform[14];
+            for (int i = 0; i < ui.winFlyCoins.Length; i++)
+            {
+                var fc = ImgW($"FlyCoin{i}", root, coin, 72, Vector2.zero);
+                ui.winFlyCoins[i] = fc.rectTransform;
+                fc.gameObject.SetActive(false);
+            }
+            root.gameObject.SetActive(false);
+        }
+
+        /// <summary>
+        /// A claim button: [AD] title on top, coin + amount below. Each row is a HorizontalLayoutGroup that MEASURES its
+        /// children (text preferred width, fixed icon width), so the coin never touches the number and every row stays
+        /// centred whatever the amount. The two rows are centred on the button face (the sprite's 3D lip is at the bottom).
+        /// </summary>
+        static UnityEngine.UI.Button ClaimButton(Transform parent, string name, string sprite, Vector2 size, Vector2 pos, bool ad,
+            out TextMeshProUGUI title, out TextMeshProUGUI amount)
+        {
+            var img = Sliced(name, parent, S("UI/Buttons/" + sprite + ".png"), size, pos, null, true);
+            // measured on a capture: the coloured face is the top 120 px of the 160 px button (a darker 3D lip below), so its
+            // centre is 10 px above the sprite centre. Content = title (cap ~26) + 8 gap + coin row (52) = ~86, giving
+            // ~17 px above and below (user: top and bottom spacing must be equal).
+            const float faceY = -3f;   // centred on the WHOLE pill as the eye sees it (incl. the 3D lip), checked visually
+            RectTransform Row(string n, float y, float h, float spacing)
+            {
+                var r = Rect(n, img.transform, new Vector2(size.x - 40, h), new Vector2(0, y));
+                var lg = r.gameObject.AddComponent<HorizontalLayoutGroup>();
+                lg.childAlignment = TextAnchor.MiddleCenter; lg.spacing = spacing;
+                lg.childControlWidth = true; lg.childControlHeight = false;
+                lg.childForceExpandWidth = lg.childForceExpandHeight = false;
+                return r;
+            }
+            void Fixed(Component c, float w) { var le = c.gameObject.AddComponent<LayoutElement>(); le.preferredWidth = w; le.minWidth = w; }
+            var top = Row("TitleRow", faceY + 30, 46, 10);
+            if (ad)
+            {
+                var tag = Sliced("AdTag", top, S("Generated/rounded.png"), new Vector2(60, 36), Vector2.zero);
+                tag.color = new Color32(214, 40, 40, 255);
+                Text("Text", tag.transform, "AD", 21, Color.white, new Vector2(60, 36), new Vector2(0, 1), _matPlain);
+                Fixed(tag, 60);
+            }
+            title = Text("Label", top, ad ? "Claim x2" : "Claim", 36, Color.white, new Vector2(10, 50), Vector2.zero, _matBrownOutline);
+            title.textWrappingMode = TextWrappingModes.NoWrap;
+            var bottom = Row("AmountRow", faceY - 17, 60, 12);
+            var coin = ImgW("Coin", bottom, S("UI/Icons/icon_coin.png"), 52, Vector2.zero);
+            Fixed(coin, 52);
+            amount = Text("Amount", bottom, "40", 54, Color.white, new Vector2(10, 60), Vector2.zero, _matBrownOutline);
+            amount.textWrappingMode = TextWrappingModes.NoWrap;
+            return Button(img);
         }
 
         static void BuildPausePopup(GameUi ui, Transform parent)
         {
-            var (cg, panel) = Popup("PausePopup", parent, 800, "Paused", out _);
+            var (cg, panel) = Popup("PausePopup", parent, 820, "Settings", out _);
             ui.pausePopup = cg; ui.pausePanel = panel;
-            var size = new Vector2(460, 100);
-            ui.pauseResume = WideButton("Resume", panel, "btn_green", "Resume", size, new Vector2(0, 170), out _);
-            ui.pauseRestart = WideButton("Restart", panel, "btn_orange", "Restart", size, new Vector2(0, 50), out _);
-            ui.pauseSound = WideButton("Sound", panel, "btn_orange", "Sound: On", size, new Vector2(0, -70), out var st);
-            ui.pauseHaptics = WideButton("Haptics", panel, "btn_orange", "Vibration: On", size, new Vector2(0, -190), out var ht);
-            ui.pauseSoundText = st; ui.pauseHapticsText = ht;
+            float h = panel.sizeDelta.y;
+            var close = ImgW("Close", panel, S("UI/Icons/btn_close.png"), 104, new Vector2(372, h / 2 - 70), null, true);
+            ui.pauseClose = Button(close);
+
+            Image Tile(string name, string icon, float x, out Image off)
+            {
+                var t = ImgW(name, panel, S("UI/Buttons/btn_tile_yellow.png"), 186, new Vector2(x, 128), null, true);
+                ImgW("Icon", t.transform, S($"UI/Icons/{icon}.png"), 112, new Vector2(0, 8));
+                off = Img("Off", t.transform, S("Generated/rounded.png"), new Vector2(150, 20), new Vector2(0, 8));
+                off.type = Image.Type.Sliced;
+                off.color = new Color32(214, 40, 40, 255);
+                off.rectTransform.localRotation = Quaternion.Euler(0, 0, -45);
+                off.gameObject.SetActive(false);
+                return t;
+            }
+            var snd = Tile("Sound", "icon_sound", -220, out ui.pauseSoundOff);
+            var mus = Tile("Music", "icon_music", 0, out ui.pauseMusicOff);
+            var vib = Tile("Vibration", "icon_vibrate", 220, out ui.pauseHapticsOff);
+            ui.pauseSound = Button(snd); ui.pauseMusic = Button(mus); ui.pauseHaptics = Button(vib);
+            ui.pauseSoundTile = snd; ui.pauseMusicTile = mus; ui.pauseHapticsTile = vib;
+
+            ui.pauseRestore = WideButton("Restore", panel, "btn_orange", "Restore Purchases", new Vector2(640, 118), new Vector2(0, -58), out _);
+            ui.pauseRestart = WideButton("Restart", panel, "btn_red", "Restart", new Vector2(310, 118), new Vector2(-165, -212), out _);
+            ui.pauseResume = WideButton("Continue", panel, "btn_green", "Continue", new Vector2(310, 118), new Vector2(165, -212), out _);
         }
 
         static void BuildStuckPopup(GameUi ui, Transform parent)

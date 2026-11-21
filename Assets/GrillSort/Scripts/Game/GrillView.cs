@@ -16,6 +16,8 @@ namespace GrillSort
         public Image shadow, ember, glow, highlight, grill, skewer;
         /// <summary>Red coal glow bed UNDER the grill (the grill art has the glow cut out) - flickers in GameController. Keep it opaque.</summary>
         public Image coalGlow;
+        /// <summary>Embers shimmering over the glow bed: two layers covering different patches, pulsed out of step.</summary>
+        public Image coalHotA, coalHotB;
         /// <summary>Smoke wisps, spread along the whole grill.</summary>
         public Image[] smokes;
         public const int SmokeCount = 4;
@@ -135,9 +137,11 @@ namespace GrillSort
 
         public void SetLit(bool lit, GameArt art)
         {
-            if (helper && art.grillHelper != null) { grill.sprite = art.grillHelper; if (coalGlow != null) coalGlow.sprite = art.grillDarkGlow; return; }
-            grill.sprite = lit ? art.grill : art.grillDark;
-            if (coalGlow != null) coalGlow.sprite = lit ? art.grillGlow : art.grillDarkGlow;
+            bool hot = lit && !(helper && art.grillHelper != null);
+            grill.sprite = helper && art.grillHelper != null ? art.grillHelper : lit ? art.grill : art.grillDark;
+            if (coalGlow != null) coalGlow.sprite = hot ? art.grillGlow : art.grillDarkGlow;
+            if (coalHotA != null) coalHotA.sprite = hot ? art.grillHotA : art.grillDarkHotA;
+            if (coalHotB != null) coalHotB.sprite = hot ? art.grillHotB : art.grillDarkHotB;
         }
 
         public void ResetFx()

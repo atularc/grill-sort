@@ -1,0 +1,316 @@
+{
+    "items": [
+        {
+            "path": "Canvas/Popups/WinPopup/Safe/Content/Claim/TitleRow",
+            "mask": 3,
+            "pos": {
+                "x": 0.0,
+                "y": 34.4498291015625
+            },
+            "size": {
+                "x": 360.0,
+                "y": 60.89970016479492
+            },
+            "aMin": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "aMax": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "pivot": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "scale": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "rotZ": 0.0,
+            "color": {
+                "r": -1.0,
+                "g": -1.0,
+                "b": -1.0,
+                "a": -1.0
+            },
+            "font": -1.0,
+            "spacing": -1.0,
+            "driven": false
+        },
+        {
+            "path": "Canvas/Popups/WinPopup/Safe/Content/Claim/TitleRow/Label",
+            "mask": 128,
+            "pos": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "size": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "aMin": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "aMax": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "pivot": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "scale": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "rotZ": 0.0,
+            "color": {
+                "r": -1.0,
+                "g": -1.0,
+                "b": -1.0,
+                "a": -1.0
+            },
+            "font": 41.900001525878909,
+            "spacing": -1.0,
+            "driven": false
+        },
+        {
+            "path": "Canvas/Popups/WinPopup/Safe/Content/Claim/AmountRow",
+            "mask": 3,
+            "pos": {
+                "x": 0.0,
+                "y": -15.343899726867676
+            },
+            "size": {
+                "x": 340.79998779296877,
+                "y": 69.31230163574219
+            },
+            "aMin": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "aMax": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "pivot": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "scale": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "rotZ": 0.0,
+            "color": {
+                "r": -1.0,
+                "g": -1.0,
+                "b": -1.0,
+                "a": -1.0
+            },
+            "font": -1.0,
+            "spacing": -1.0,
+            "driven": false
+        },
+        {
+            "path": "Canvas/Popups/WinPopup/Safe/Content/Claim/AmountRow/Amount",
+            "mask": 128,
+            "pos": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "size": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "aMin": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "aMax": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "pivot": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "scale": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "rotZ": 0.0,
+            "color": {
+                "r": -1.0,
+                "g": -1.0,
+                "b": -1.0,
+                "a": -1.0
+            },
+            "font": 49.0,
+            "spacing": -1.0,
+            "driven": false
+        },
+        {
+            "path": "Canvas/Popups/WinPopup/Safe/Content/ClaimX/TitleRow",
+            "mask": 3,
+            "pos": {
+                "x": 0.0,
+                "y": 34.4498291015625
+            },
+            "size": {
+                "x": 360.0,
+                "y": 60.89970016479492
+            },
+            "aMin": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "aMax": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "pivot": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "scale": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "rotZ": 0.0,
+            "color": {
+                "r": -1.0,
+                "g": -1.0,
+                "b": -1.0,
+                "a": -1.0
+            },
+            "font": -1.0,
+            "spacing": -1.0,
+            "driven": false
+        },
+        {
+            "path": "Canvas/Popups/WinPopup/Safe/Content/ClaimX/TitleRow/Label",
+            "mask": 128,
+            "pos": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "size": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "aMin": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "aMax": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "pivot": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "scale": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "rotZ": 0.0,
+            "color": {
+                "r": -1.0,
+                "g": -1.0,
+                "b": -1.0,
+                "a": -1.0
+            },
+            "font": 41.900001525878909,
+            "spacing": -1.0,
+            "driven": false
+        },
+        {
+            "path": "Canvas/Popups/WinPopup/Safe/Content/ClaimX/AmountRow",
+            "mask": 3,
+            "pos": {
+                "x": 0.0,
+                "y": -15.343899726867676
+            },
+            "size": {
+                "x": 340.79998779296877,
+                "y": 69.31230163574219
+            },
+            "aMin": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "aMax": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "pivot": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "scale": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "rotZ": 0.0,
+            "color": {
+                "r": -1.0,
+                "g": -1.0,
+                "b": -1.0,
+                "a": -1.0
+            },
+            "font": -1.0,
+            "spacing": -1.0,
+            "driven": false
+        },
+        {
+            "path": "Canvas/Popups/WinPopup/Safe/Content/ClaimX/AmountRow/Amount",
+            "mask": 128,
+            "pos": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "size": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "aMin": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "aMax": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "pivot": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "scale": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "rotZ": 0.0,
+            "color": {
+                "r": -1.0,
+                "g": -1.0,
+                "b": -1.0,
+                "a": -1.0
+            },
+            "font": 49.0,
+            "spacing": -1.0,
+            "driven": false
+        }
+    ]
+}

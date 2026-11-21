@@ -21,6 +21,8 @@ namespace GrillSort
         void Init(Action<bool> ready);
         string Price(string productId);
         void Buy(string productId, Action<PurchaseResult> done);
+        /// <summary>Restores non-consumables (needed on iOS: Settings > Restore Purchases). done(true) if anything came back.</summary>
+        void Restore(Action<bool> done);
     }
 
     /// <summary>Placeholder until real ad unit ids exist: every rewarded ad "succeeds" immediately.</summary>
@@ -38,6 +40,7 @@ namespace GrillSort
         public void Init(Action<bool> ready) => ready?.Invoke(false);
         public string Price(string productId) => "-";
         public void Buy(string productId, Action<PurchaseResult> done) => done?.Invoke(new PurchaseResult { Cancelled = true });
+        public void Restore(Action<bool> done) { Debug.Log("[IAP] restore (placeholder: nothing to restore)"); done?.Invoke(false); }
     }
 
     public static class Services

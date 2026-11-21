@@ -39,28 +39,51 @@ namespace GrillSort
         public CanvasGroup toast;
         public TMP_Text toastText;
 
-        [Header("Win popup")]
+        [Header("Win screen (FishUp!-style Well Done)")]
         public CanvasGroup winPopup;
         public RectTransform winPanel;
-        public Image[] winStars;
-        public TMP_Text winCoins;
-        public TMP_Text winTitle;
-        public Button winNext;
-        public Button winDouble;
+        public Image winDim;
+        public RectTransform winWord, winBubble, winMultBar, winPointer;
         public Image winGlow, winRays;
-        public RectTransform winWord, winReward;
         public Image[] winSparkles;
+        public Button winNext, winDouble;
+        public TMP_Text winCoins, winDoubleLabel, winDoubleAmount;
+        public RectTransform winCoinPill, winCoinPillIcon;
+        public TMP_Text winCoinPillText;
+        public RectTransform[] winFlyCoins;
 
         [Header("Pause popup")]
         public CanvasGroup pausePopup;
         public RectTransform pausePanel;
-        public Button pauseResume, pauseRestart, pauseSound, pauseHaptics;
-        public TMP_Text pauseSoundText, pauseHapticsText;
+        public Button pauseResume, pauseRestart, pauseSound, pauseMusic, pauseHaptics, pauseClose, pauseRestore;
+        /// <summary>Toggle tiles and their red "off" slashes.</summary>
+        public Image pauseSoundTile, pauseMusicTile, pauseHapticsTile, pauseSoundOff, pauseMusicOff, pauseHapticsOff;
 
         [Header("Stuck popup")]
         public CanvasGroup stuckPopup;
         public RectTransform stuckPanel;
         public Button stuckUndo, stuckShuffle, stuckExtra, stuckRetry;
+
+        [Header("Loading screen (game start)")]
+        public CanvasGroup loading;
+        /// <summary>Full-screen painted scene, cover-fit (sprite set at runtime: theme override or the default key art).</summary>
+        public Image loadingBg;
+        public RectTransform loadingLogo, loadingMascot;
+        public Image loadingRays;
+        public Image[] loadingSteam, loadingEmbers, loadingSparkles;
+        public RectTransform loadingBarFill;
+        public float loadingBarMax = 500f;
+        public TMP_Text loadingText;
+
+        [Header("Tutorial hand")]
+        public RectTransform handLayer;
+        public RectTransform hand;
+        public Image handImage;
+        public Image handRing;
+        /// <summary>Fades the glove and its soft shadow together.</summary>
+        public CanvasGroup handGroup;
+        /// <summary>A see-through copy of the piece the hand drags, so the move is obvious.</summary>
+        public Image handGhost;
 
         [Header("Message popup")]
         public CanvasGroup messagePopup;

@@ -139,3 +139,7 @@ crashlytics-build.properties
 
 # local screenshots (Grill Sort > Screenshot)
 /Screenshots/
+
+# reference videos from the client (keep local, never commit)
+*.mp4
+*.mov
