@@ -493,3 +493,19 @@ Cute cartoon mobile game food icon of one single <subject>, filling most of the 
 ```
 
 Rejected test: "flat" variant (only 2-3 flat tones, one highlight blob): very clean but looked like an icon, not tasty (`ArtSource/Cartoon/v2test/flat_sausage.png`).
+
+## Aaron's feedback 2026-11-21 (9 Figma images, model `gpt-image-2.5-flare`, file `cjHcELnFveS7axiqp8anVh`)
+
+### Grilled tomato v4 (`ArtSource/Cartoon/singleB/food_tomato_grilled_v4.png` -> `FoodFinal_v4/Grilled/tomato.png`, cut by `Tools/ArtPipeline/cut_tomato_v4.py`)
+Aaron: "it looks a bit too juicy right now, not quite like a grilled tomato yet". A script-only pass on the v3 tomato (drops removed, blisters painted on) was tried first and rejected (blisters read as bruises).
+```
+Cute cartoon mobile game food icon of one single whole grilled cherry tomato, round and intact, with a small green stem on top, filling most of the image, slight top-down three-quarter view. Clearly cooked on a grill, not fresh: the red skin is a little softened and wrinkled from the heat, with one small split in the skin, a few soft caramelised brown-red roasted patches and two or three soft thin light grill-mark stripes in a deeper roasted red. Satin skin, only one small soft highlight, NO water droplets, NO juice drops, not wet, not glossy. Style: polished 2D cartoon like a top casual puzzle game, hand-drawn vector look. Bold clean dark brown outline around the shape. Cel shading with a few smooth tones: a soft darker side, a lighter top face. Simple chunky rounded shape. Appetizing, warm rich colors. No realistic texture, no fine specks, no painterly brush strokes, not photographic, not a 3D render, not burnt black. Centered, isolated on a plain solid pure white background, no plate, no skewer, no text, no shadow.
+```
+
+### Customers v2 (`ArtSource/Cartoon/peopleV2/people_<name>.png` -> `CustomersPeople_v2/`, cut + normalised by `Tools/ArtPipeline/cut_people_v2.py`)
+Aaron: "the style feels a bit off from the rest of the art, and the proportions vary (some heads are bigger than others)". Same 8 people, redrawn to match the food (style B). One image each, template (swap `<person>`, his/her):
+```
+Cute cartoon mobile game customer character: <person>. Head and upper body only, cut straight across at the chest at the bottom edge of the image, facing the viewer with a big happy friendly smile, as if standing behind a food stall counter waiting for his order. Framing: a big round head about half the image width, centered, top of the head near the top of the image, shoulders spanning most of the image width. Style: polished 2D cartoon like a top casual puzzle game, hand-drawn vector look, matching chunky cartoon food icons: bold clean thick dark brown outline around every shape, cel shading with a few smooth flat tones (a soft darker side, a lighter front), one or two small soft highlights, simple chunky rounded shapes, big simple expressive eyes, bright saturated warm colors. No thin sketchy lines, no fine detail, no realistic texture, no painterly strokes, not a 3D render. Centered, isolated on a plain solid pure white background, no counter, no text, no shadow.
+```
+`<person>`: same descriptions as sheet_people_1/2 above (pigtails = "a cheerful girl of about ten with two black pigtails tied with orange ribbons and a sky blue dress with small white flowers"; grandma adds "over a flowery blouse"; curly = "a smiling woman with dark brown skin, curly dark hair in a big round puff with a coral headband, and a teal apron-style top over a cream shirt").
+The generator still draws heads at different sizes, so the cut script scales every face to the same width and puts every eye line at the same height (hand-measured face widths, tuned by eye).

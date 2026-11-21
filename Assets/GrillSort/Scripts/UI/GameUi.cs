@@ -17,6 +17,8 @@ namespace GrillSort
         public RectTransform[] flyers;
         public Image[] flyerFoods;
         public Image[] flyerShadows;
+        /// <summary>The small skewer a finished order flies up to its customer on (same layout as the bubble skewers).</summary>
+        public SkewerStack serveSkewer;
 
         [Header("HUD")]
         public Button pauseButton;
@@ -45,6 +47,9 @@ namespace GrillSort
         public TMP_Text winTitle;
         public Button winNext;
         public Button winDouble;
+        public Image winGlow, winRays;
+        public RectTransform winWord, winReward;
+        public Image[] winSparkles;
 
         [Header("Pause popup")]
         public CanvasGroup pausePopup;

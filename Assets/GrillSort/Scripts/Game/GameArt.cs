@@ -25,6 +25,8 @@ namespace GrillSort
             public Sprite background, backgroundCalm, front;
             /// <summary>Counter top in px of the 1024x1536 source image.</summary>
             public float counterTop = 528f;
+            /// <summary>Bottom of the counter front / curtain in px of the source (0 = unknown: fixed gap).</summary>
+            public float counterBottom;
             public int unlockLevel = 1;
             public Sprite Back => backgroundCalm != null ? backgroundCalm : background;
         }
@@ -36,10 +38,10 @@ namespace GrillSort
         [Header("Board")]
         public Sprite grill;
         public Sprite grillDark;
-        /// <summary>The red coal glow, split out of <see cref="grill"/> / <see cref="grillDark"/> so it can flicker on top.</summary>
+        /// <summary>The glowing coal bed, drawn UNDER <see cref="grill"/> / <see cref="grillDark"/> (which have the glow cut out) so it can flicker.</summary>
         public Sprite grillGlow;
         public Sprite grillDarkGlow;
-        /// <summary>Helper tray (no customer): steel frame instead of red enamel, uses <see cref="grillDarkGlow"/>.</summary>
+        /// <summary>Helper tray (no customer): steel frame instead of red enamel, drawn over <see cref="grillDarkGlow"/>.</summary>
         public Sprite grillHelper;
         public Sprite skewer;
 

@@ -26,13 +26,15 @@ namespace GrillSort
         public RectTransform safeArea;
 
         [Tooltip("Counter top in px of the 1024x1536 source")] public float counterTop = 528f;
+        [Tooltip("Bottom of the counter front (curtain) in px of the 1024x1536 source; 0 = use the old fixed gap")] public float counterBottom = 0f;
         public int activeGrills = 5;
 
         public const float GrillSpacing = 200f, GrillHeight = 770f, RowGap = 90f;
         /// <summary>Width a customer + order bubble needs at scale 1 (design px).</summary>
         const float CustomerWidth = 250f;
         const float BoosterReserve = 330f;   // design px above the safe bottom kept for the booster bar + message strip
-        const float BoardGap = 202f;         // design px between counter top and grill top (mockup)
+        const float BoardGap = 202f;         // design px between counter top and grill top (mockup), when counterBottom is 0
+        const float CurtainGap = 14f;        // design px between the bottom of the (compact) curtain and the grill top
 
         Vector2 _lastSize; int _lastActive = -1, _lastCustomers = -1; float _lastCounter; Rect _lastSafe; bool _dirty;
         public void MarkDirty() => _dirty = true;
@@ -43,7 +45,7 @@ namespace GrillSort
         {
             if (world == null) return;
             var size = world.rect.size;
-            if (!_dirty && size == _lastSize && _lastActive == activeGrills && _lastCustomers == activeCustomers && Mathf.Approximately(_lastCounter, counterTop) && _lastSafe == Screen.safeArea) return;
+            if (!_dirty && size == _lastSize && _lastActive == activeGrills && _lastCustomers == activeCustomers && Mathf.Approximately(_lastCounter, counterTop + counterBottom * 10000f) && _lastSafe == Screen.safeArea) return;
             Apply();
         }
 
@@ -52,7 +54,7 @@ namespace GrillSort
             if (world == null) return;
             var size = world.rect.size;
             _dirty = false;
-            _lastSize = size; _lastActive = activeGrills; _lastCustomers = activeCustomers; _lastCounter = counterTop; _lastSafe = Screen.safeArea;
+            _lastSize = size; _lastActive = activeGrills; _lastCustomers = activeCustomers; _lastCounter = counterTop + counterBottom * 10000f; _lastSafe = Screen.safeArea;
             float W = size.x, H = size.y;
             if (W <= 0 || H <= 0) return;
 
@@ -83,7 +85,8 @@ namespace GrillSort
             if (grills == null) return;
             float safeBottom = 0f;
             if (Screen.height > 0) safeBottom = Screen.safeArea.yMin / Screen.height * H;
-            float top = counterY + BoardGap * s / 1.25f;
+            // the compact counter (Aaron 2026-11-21: table + curtain smaller) frees the rows under it for the trays
+            float top = counterBottom > 0f ? counterBottom * s + CurtainGap * s / 1.25f : counterY + BoardGap * s / 1.25f;
             float bottom = H - safeBottom - BoosterReserve;
             float availH = Mathf.Max(200f, bottom - top);
             float availW = W - 40f;
@@ -97,7 +100,9 @@ namespace GrillSort
             grills.pivot = new Vector2(.5f, .5f);
             float contentH = rows * GrillHeight + (rows - 1) * RowGap;
             float used = contentH * gs;
-            grills.anchoredPosition = new Vector2(0f, -(top + used * .5f + Mathf.Max(0f, availH - used) * .45f));
+            // with the compact counter the trays sit right under the curtain; spare height stays above the boosters
+            float spare = Mathf.Max(0f, availH - used) * (counterBottom > 0f ? .15f : .45f);
+            grills.anchoredPosition = new Vector2(0f, -(top + used * .5f + spare));
             grills.localScale = new Vector3(gs, gs, 1f);
 
             int idx = 0;

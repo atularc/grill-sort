@@ -61,11 +61,11 @@ namespace GrillSort.EditorTools
         {
             var borders = new Dictionary<string, Vector4>
             {
-                { Art + "UI/Panels/bar_hud.png", new Vector4(130, 0, 130, 0) },
-                { Art + "UI/Buttons/btn_green.png", new Vector4(110, 0, 110, 0) },
-                { Art + "UI/Buttons/btn_orange.png", new Vector4(110, 0, 110, 0) },
-                { Art + "UI/Buttons/btn_red.png", new Vector4(110, 0, 110, 0) },
-                { Art + "Generated/bar_fill.png", new Vector4(52, 0, 52, 0) },
+                { Art + UiDir + "Panels/bar_hud.png", new Vector4(130, 0, 130, 0) },
+                { Art + UiDir + "Buttons/btn_green.png", new Vector4(110, 0, 110, 0) },
+                { Art + UiDir + "Buttons/btn_orange.png", new Vector4(110, 0, 110, 0) },
+                { Art + UiDir + "Buttons/btn_red.png", new Vector4(110, 0, 110, 0) },
+                { Art + "Generated/" + BarFill, new Vector4(52, 0, 52, 0) },
                 { Art + "Generated/rounded.png", new Vector4(50, 50, 50, 50) },
             };
             foreach (var guid in AssetDatabase.FindAssets("t:Texture2D", new[] { Root + "Art" }))
@@ -77,6 +77,15 @@ namespace GrillSort.EditorTools
                 if (ti.textureType != TextureImporterType.Sprite) { ti.textureType = TextureImporterType.Sprite; ti.spriteImportMode = SpriteImportMode.Single; dirty = true; }
                 if (ti.mipmapEnabled) { ti.mipmapEnabled = false; dirty = true; }
                 if (borders.TryGetValue(path, out var b) && ti.spriteBorder != b) { ti.spriteBorder = b; dirty = true; }
+                // 9-sliced / stretched sprites are packed untrimmed (Full Rect): the atlas trims transparent margins, but a
+                // sliced Image still draws the whole rect, so the cut-off margin sampled the atlas padding, which holds the
+                // neighbours' edge colours (purple/navy lines above the HUD pills, 2026-11-21)
+                if (borders.ContainsKey(path) || path.EndsWith("/bar_track.png"))
+                {
+                    var st = new TextureImporterSettings();
+                    ti.ReadTextureSettings(st);
+                    if (st.spriteMeshType != SpriteMeshType.FullRect) { st.spriteMeshType = SpriteMeshType.FullRect; ti.SetTextureSettings(st); dirty = true; }
+                }
                 bool isBg = path.Contains("/Backgrounds/");
                 int max = isBg ? 2048 : path.Contains("/Shadows") ? 256 : 1024;
                 if (path.Contains("/Board/")) max = 2048;
@@ -105,8 +114,6 @@ namespace GrillSort.EditorTools
 
         // Cartoon art set (client direction 2026-11-18). The old realistic Food/Grilled, Customers (animals) and
         // grill/skewer art stays in the project, unused.
-        /// <summary>Food icon size inside the order bubble (was 112 in the mockup; user asked for smaller, 2026-11-18).</summary>
-        const float OrderIcon = 88f;
         /// <summary>Message strip (tips + toasts) just above the booster tiles (tile centre 130, half height ~85).</summary>
         const float MsgW = 860f, MsgH = 92f, MsgY = 276f;
         // Final food (2026-11-18): Aaron chose style B and asked for less shine. FoodFinal_v2 = half the shine (STYLE=FINAL2);
@@ -114,11 +121,20 @@ namespace GrillSort.EditorTools
         // FoodCartoon (A), FoodCartoonB, FoodCartoonC stay on disk as unused alternatives.
         // FoodFinal_v3 (2026-11-19): Aaron's sign-off note, grill marks softer and lighter, none on some foods
         // (Tools/ArtPipeline/soften_marks.py). FoodFinal_v2 is the backup.
-        const string FoodDir = "FoodFinal_v3/Grilled/", ShadowDir = "Generated/ShadowsFinal/", CustomerDir = "CustomersPeople/";
+        // CustomersPeople_v2 (2026-11-21, Aaron: characters' style off from the rest, head sizes vary): redrawn in the food's
+        // style and normalised to one face size / eye line (Tools/ArtPipeline/cut_people_v2.py). CustomersPeople = backup.
+        const string FoodDir = "FoodFinal_v3/Grilled/", ShadowDir = "Generated/ShadowsFinal/", CustomerDir = "CustomersPeople_v2/";
+        // per-food replacements (2026-11-21, Aaron: tomato "too juicy, not quite like a grilled tomato yet"): a food found
+        // here is used instead of the FoodDir one, with its shadow from FoodOverrideShadowDir (Tools/ArtPipeline/cut_tomato_v4.py)
+        const string FoodOverrideDir = "FoodFinal_v4/Grilled/", FoodOverrideShadowDir = "Generated/ShadowsFinal_v4/";
         static readonly string[] CustomerNames = { "grandpa", "ponytail", "redhead", "curly", "dad", "grandma", "pigtails", "quiff" };
 
-        static readonly string[] AtlasFolders = { Art + "UI/", Art + CustomerDir, Art + "VFX/", Art + FoodDir, Art + ShadowDir };
-        static readonly string[] AtlasFiles = { "badge.png", "disc.png", "rounded.png", "bar_fill.png", "bar_track.png", "glow.png", "soft_rect.png" };
+        // UI_Soft (2026-11-21): Aaron asked for a softer, less glossy UI ("still 3D cartoon"): the glare is toned down
+        // by Tools/ArtPipeline/soften_ui.py. Art/UI/ (and Generated/bar_fill.png) stay as the glossy backups.
+        const string UiDir = "UI_Soft/", BarFill = "bar_fill_soft.png";
+
+        static readonly string[] AtlasFolders = { Art + UiDir, Art + CustomerDir, Art + "VFX/", Art + FoodDir, Art + ShadowDir, Art + FoodOverrideDir, Art + FoodOverrideShadowDir };
+        static readonly string[] AtlasFiles = { "badge.png", "disc.png", "rounded.png", BarFill, "bar_track.png", "glow.png", "soft_rect.png", "rays.png" };
 
         static bool IsAtlased(string path)
         {
@@ -193,10 +209,10 @@ namespace GrillSort.EditorTools
                 foods.Add(new GameArt.FoodArt
                 {
                     name = n,
-                    grilled = Load<Sprite>($"{Art}{FoodDir}{n}.png"),
+                    grilled = Load<Sprite>($"{Art}{FoodFile(n)}"),
                     medium = Load<Sprite>($"{Art}Food/Medium/{n}.png"),
                     raw = Load<Sprite>($"{Art}Food/Raw/{n}.png"),
-                    shadow = Load<Sprite>($"{Art}{ShadowDir}{n}.png"),
+                    shadow = Load<Sprite>($"{Art}{(File.Exists($"{Art}{FoodOverrideDir}{n}.png") ? FoodOverrideShadowDir : ShadowDir)}{n}.png"),
                     shadowRaw = Load<Sprite>($"{Art}Generated/Shadows/{n}_raw.png"),
                     width = FoodWidth[n],
                 });
@@ -208,20 +224,23 @@ namespace GrillSort.EditorTools
                 // Aaron 2026-11-18: bright backgrounds for normal levels, darker ones saved for later levels.
                 // Mean brightness: Food Truck 212, Beach 185, Winter 146, Wood 73, Night Market 69.
                 // Aaron 2026-11-19: keep the Beach background from the demo -> Beach for the whole 50-level build.
-                Theme("Beach", "Beach Shack", 500, 1),
-                Theme("FoodTruck", "Food Truck", 527, 51),
-                Theme("Winter", "Winter Market", 538, 61),
-                Theme("Wood", "Wood Stall", 528, 71),
-                Theme("NightMarket", "Night Market", 520, 81),
+                // counter bottom = bottom of the compact curtain (Tools/ArtPipeline/compact_counter.py, Aaron 2026-11-21)
+                Theme("Beach", "Beach Shack", 500, 619, 1),
+                Theme("FoodTruck", "Food Truck", 527, 606, 51),
+                Theme("Winter", "Winter Market", 538, 612, 61),
+                Theme("Wood", "Wood Stall", 528, 612, 71),
+                Theme("NightMarket", "Night Market", 520, 598, 81),
             };
-            // the coal glow is split into its own layer so it can flicker (Aaron 2026-11-18; Tools/ArtPipeline/split_grill_glow.py)
-            a.grill = Load<Sprite>(Art + "Generated/grill_cartoon_base.png");
-            a.grillGlow = Load<Sprite>(Art + "Generated/grill_cartoon_glow.png");
-            a.grillDark = Load<Sprite>(Art + "Generated/grill_cartoon_dim_base.png"); // brighter than the v3 grill_cartoon_dark (Aaron: bottom too dark)
-            a.grillDarkGlow = Load<Sprite>(Art + "Generated/grill_cartoon_dim_glow.png");
-            a.grillHelper = Load<Sprite>(Art + "Generated/grill_helper_base.png"); // helper trays: steel frame (Tools/ArtPipeline/make_helper_grill.py)
+            // the red coal glow is its own layer UNDER the coals so it can flicker (Aaron 2026-11-21; Tools/ArtPipeline/
+            // split_grill_layers.py): *_bed = the glowing coal bed, *_front = frame + coals + bars with the glow cut out.
+            // (The 2026-11-18 split, grill_cartoon*_base/_glow, only lifted the bright spots and drew them on top.)
+            a.grill = Load<Sprite>(Art + "Generated/grill_cartoon_front.png");
+            a.grillGlow = Load<Sprite>(Art + "Generated/grill_cartoon_bed.png");
+            a.grillDark = Load<Sprite>(Art + "Generated/grill_cartoon_dim_front.png"); // brighter than the v3 grill_cartoon_dark (Aaron: bottom too dark)
+            a.grillDarkGlow = Load<Sprite>(Art + "Generated/grill_cartoon_dim_bed.png");
+            a.grillHelper = Load<Sprite>(Art + "Generated/grill_helper_front.png"); // helper trays: steel frame
             a.skewer = Load<Sprite>(Art + "Board/skewer_cartoon.png");
-            a.starOn = Load<Sprite>(Art + "UI/Icons/icon_star.png");
+            a.starOn = S("UI/Icons/icon_star.png");
             a.starOff = a.starOn;
             string au = Root + "Audio/";
             a.pick = Load<AudioClip>(au + "pick.wav"); a.drop = Load<AudioClip>(au + "drop.wav");
@@ -232,6 +251,8 @@ namespace GrillSort.EditorTools
             return a;
         }
 
+        static string FoodFile(string n) => File.Exists($"{Art}{FoodOverrideDir}{n}.png") ? $"{FoodOverrideDir}{n}.png" : $"{FoodDir}{n}.png";
+
         static T[] Select<T>(this string[] names, System.Func<string, T> f)
         {
             var r = new T[names.Length];
@@ -239,7 +260,7 @@ namespace GrillSort.EditorTools
             return r;
         }
 
-        static GameArt.ThemeDef Theme(string folder, string display, float counterTop, int unlock)
+        static GameArt.ThemeDef Theme(string folder, string display, float counterTop, float counterBottom, int unlock)
         {
             string p = $"{Art}Backgrounds/{folder}/";
             return new GameArt.ThemeDef
@@ -248,11 +269,19 @@ namespace GrillSort.EditorTools
                 displayName = display,
                 background = Load<Sprite>(p + "background.png"),
                 backgroundCalm = File.Exists(p + "background-calm.png") ? Load<Sprite>(p + "background-calm.png") : null,
-                // brightened planks where made (Tools/ArtPipeline/brighten_board.py; Wood, Aaron: bottom too dark)
-                front = Load<Sprite>(p + (File.Exists(p + "layer_front_bright.png") ? "layer_front_bright.png" : "layer_front.png")),
+                // compact counter + curtain (compact_counter.py, Aaron 2026-11-21: smaller), made from the brightened
+                // planks where those exist (brighten_board.py; Wood, Aaron: bottom too dark)
+                front = Load<Sprite>(p + FrontFile(p)),
                 counterTop = counterTop,
+                counterBottom = File.Exists(p + "layer_front_compact.png") ? counterBottom : 0f,
                 unlockLevel = unlock,
             };
+        }
+
+        static string FrontFile(string p)
+        {
+            foreach (var f in new[] { "layer_front_compact.png", "layer_front_bright.png" }) if (File.Exists(p + f)) return f;
+            return "layer_front.png";
         }
 
         public static LevelBank MakeLevelBank()
@@ -268,8 +297,8 @@ namespace GrillSort.EditorTools
         static void MakeAtlases()
         {
             Directory.CreateDirectory(Root + "Atlases");
-            Atlas("UI", new[] { Art + "UI", Art + CustomerDir.TrimEnd('/'), Art + "VFX" }, 2048, new[] { Art + "Generated/badge.png", Art + "Generated/disc.png", Art + "Generated/rounded.png", Art + "Generated/bar_fill.png", Art + "Generated/bar_track.png", Art + "Generated/glow.png", Art + "Generated/soft_rect.png" });
-            Atlas("Food", new[] { Art + FoodDir.TrimEnd('/'), Art + ShadowDir.TrimEnd('/') }, 2048, null);
+            Atlas("UI", new[] { Art + UiDir.TrimEnd('/'), Art + CustomerDir.TrimEnd('/'), Art + "VFX" }, 2048, new[] { Art + "Generated/badge.png", Art + "Generated/disc.png", Art + "Generated/rounded.png", Art + "Generated/" + BarFill, Art + "Generated/bar_track.png", Art + "Generated/glow.png", Art + "Generated/soft_rect.png", Art + "Generated/rays.png" });
+            Atlas("Food", new[] { Art + FoodDir.TrimEnd('/'), Art + ShadowDir.TrimEnd('/'), Art + FoodOverrideDir.TrimEnd('/'), Art + FoodOverrideShadowDir.TrimEnd('/') }, 2048, null);
         }
 
         static void Atlas(string name, string[] folders, int max, string[] files)
@@ -316,7 +345,8 @@ namespace GrillSort.EditorTools
         }
 
         // ------------------------------------------------------------------ scene
-        static Sprite S(string rel) => Load<Sprite>(Art + rel);
+        /// <summary>Loads a sprite under Art/; "UI/..." paths read the softened set (<see cref="UiDir"/>).</summary>
+        static Sprite S(string rel) => Load<Sprite>(Art + (rel.StartsWith("UI/") ? UiDir + rel.Substring(3) : rel));
 
         static void BuildScene(LevelBank bank)
         {
@@ -368,7 +398,7 @@ namespace GrillSort.EditorTools
             ui.background = bg; ui.front = front; ui.layout = layout;
             layout.background = bg.rectTransform; layout.front = front.rectTransform;
             layout.customers = customers; layout.counterOverlay = counterOverlay; layout.grills = grills;
-            layout.counterTop = theme.counterTop;
+            layout.counterTop = theme.counterTop; layout.counterBottom = theme.counterBottom;
 
             // customers (positions relative to the counter line, design px)
             var bubbleSp = S("UI/Panels/bubble_order.png"); var check = S("UI/Icons/icon_check.png");
@@ -384,13 +414,17 @@ namespace GrillSort.EditorTools
                 cv.group.blocksRaycasts = false;
                 cv.animal = Img("Body", slot, _art.customers[i], new Vector2(250, 250), new Vector2(0, CustomerView.BodyY));
                 cv.body = cv.animal.rectTransform;
-                cv.bubble = Rect("Bubble", slot, new Vector2(196, 119), new Vector2(0, CustomerView.BubbleY));
-                var bsh = Img("Shadow", cv.bubble, S("Generated/glow.png"), new Vector2(190, 40), new Vector2(0, -52));
+                float bk = CustomerView.BubbleW / 196f;   // bubble a bit bigger than the mockup's 196 to hold a small skewer
+                cv.bubble = Rect("Bubble", slot, new Vector2(CustomerView.BubbleW, 119 * bk), new Vector2(0, CustomerView.BubbleY));
+                var bsh = Img("Shadow", cv.bubble, S("Generated/glow.png"), new Vector2(190 * bk, 40 * bk), new Vector2(0, -52 * bk));
                 bsh.color = new Color(.08f, .03f, 0f, .35f);
-                ImgW("Bubble", cv.bubble, bubbleSp, 196, Vector2.zero);
-                cv.order = Img("Order", cv.bubble, _art.foods[i].grilled, new Vector2(OrderIcon, OrderIcon), new Vector2(0, 10));
-                cv.order.preserveAspect = true;
-                cv.check = ImgW("Check", cv.bubble, check, 62, new Vector2(80, 46));
+                ImgW("Bubble", cv.bubble, bubbleSp, CustomerView.BubbleW, Vector2.zero);
+                // the order is a small skewer with the wanted pieces (Aaron 2026-11-21); GameController sizes it per level
+                cv.order = BuildSkewer("Order", cv.bubble, new Vector2(0, CustomerView.OrderBoxY), (i * 3) % _art.foods.Length);
+                cv.order.SetTilt(CustomerView.OrderTilt);
+                float k = cv.order.FitScale(CustomerView.OrderTilt, CustomerView.OrderBoxW, CustomerView.OrderBoxH);
+                cv.order.rect.localScale = new Vector3(k, k, 1f);
+                cv.check = ImgW("Check", cv.bubble, check, 62 * bk, new Vector2(80, 46) * bk);
                 cv.check.gameObject.SetActive(false);
                 ui.customers[i] = cv;
                 layout.customerSlots[i] = slot;
@@ -417,8 +451,9 @@ namespace GrillSort.EditorTools
                 gv.glow.color = new Color32(255, 205, 70, 0);
                 gv.highlight = Img("Highlight", root, glowSp, new Vector2(330, 980), Vector2.zero);
                 gv.highlight.color = new Color(1f, .97f, .85f, 0f);
-                gv.grill = Img("Grill", root, _art.grillDark, new Vector2(GrillView.GrillW, GrillView.GrillH), Vector2.zero);
+                // glow bed first, the grill (frame, coals, bars) on top: the glow shows through the gaps between the coals
                 gv.coalGlow = Img("CoalGlow", root, _art.grillDarkGlow, new Vector2(GrillView.GrillW, GrillView.GrillH), Vector2.zero);
+                gv.grill = Img("Grill", root, _art.grillDark, new Vector2(GrillView.GrillW, GrillView.GrillH), Vector2.zero);
                 // fire sparks removed (Aaron 2026-11-18: too busy, add back later as particles)
                 gv.flames = new Image[0];
                 float skH = GrillView.GrillH - 20; float skW = skH * 97f / 1869f;
@@ -476,6 +511,9 @@ namespace GrillSort.EditorTools
                 ui.flyers[f] = fr;
                 fr.gameObject.SetActive(false);
             }
+            // the small skewer a finished order flies up on (drawn above the trays and the counter)
+            ui.serveSkewer = BuildSkewer("ServeSkewer", fly, Vector2.zero, 0);
+            ui.serveSkewer.gameObject.SetActive(false);
 
 
             // ---------------- safe area: HUD + boosters + toast
@@ -500,7 +538,7 @@ namespace GrillSort.EditorTools
 
             float barW = 330f, barScale = barW / 842f;
             var bar = Img("OrdersBar", safe, S("Generated/bar_track.png"), new Vector2(barW, 185 * barScale), new Vector2(0, -186), top);
-            var fill = Sliced("Fill", bar.transform, S("Generated/bar_fill.png"), new Vector2(200, 106 * barScale), Vector2.zero);
+            var fill = Sliced("Fill", bar.transform, S("Generated/" + BarFill), new Vector2(200, 106 * barScale), Vector2.zero);
             var frt = fill.rectTransform;
             frt.anchorMin = frt.anchorMax = new Vector2(0, .5f); frt.pivot = new Vector2(0, .5f);
             frt.anchoredPosition = new Vector2(43 * barScale, (92.5f - 91.5f) * barScale);
@@ -564,19 +602,33 @@ namespace GrillSort.EditorTools
             AssetDatabase.Refresh();
         }
 
+        /// <summary>A small skewer (stick + one image per piece), see <see cref="SkewerStack"/>.</summary>
+        static SkewerStack BuildSkewer(string name, Transform parent, Vector2 pos, int food)
+        {
+            var rt = Rect(name, parent, new Vector2(10, 10), pos);
+            var sk = rt.gameObject.AddComponent<SkewerStack>();
+            sk.rect = rt;
+            sk.stick = Img("Stick", rt, _art.skewer, new Vector2(SkewerStack.StickWidth, 400), Vector2.zero);
+            sk.foods = new Image[LevelGenerator.MaxCapacity];
+            for (int i = 0; i < sk.foods.Length; i++)
+                sk.foods[i] = Img($"Food{i}", rt, _art.foods[food].grilled, new Vector2(150, 150), Vector2.zero);
+            sk.Set(_art.foods[food], 4, _art.foods[food].width);
+            return sk;
+        }
+
         static (CanvasGroup group, RectTransform panel) Popup(string name, Transform parent, float width, string title, out TextMeshProUGUI titleText)
         {
             var root = Stretch(name, parent);
             var cg = root.gameObject.AddComponent<CanvasGroup>();
             var dim = Img("Dim", root, null, Vector2.zero, Vector2.zero, null, true);
             var drt = dim.rectTransform; drt.anchorMin = Vector2.zero; drt.anchorMax = Vector2.one; drt.offsetMin = drt.offsetMax = Vector2.zero;
-            dim.color = new Color(.05f, .02f, 0f, .66f);
+            dim.color = new Color(.05f, .02f, 0f, .76f);   // .66 let the trays show through too much behind popups
             var sp = S("UI/Panels/popup_panel.png");
             float h = width * sp.rect.height / sp.rect.width;
             var panel = Rect("Panel", root, new Vector2(width, h), new Vector2(0, 20));
             var pimg = panel.gameObject.AddComponent<Image>(); pimg.sprite = sp; pimg.raycastTarget = true;
             float sc = width / sp.rect.width;
-            titleText = Text("Title", panel, title, 64, Color.white, new Vector2(width * .7f, 110), new Vector2(0, h / 2 - 100 * sc), _matBrownOutline);
+            titleText = Text("Title", panel, title, 64, Color.white, new Vector2(width * .7f, 110), new Vector2(0, h / 2 - 84 * sc), _matBrownOutline);   // ribbon band centre is 81.5 px from the top of popup_panel (measured)
             titleText.textWrappingMode = TextWrappingModes.NoWrap;
             root.gameObject.SetActive(false);
             return (cg, panel);
@@ -590,24 +642,62 @@ namespace GrillSort.EditorTools
             return Button(img);
         }
 
+        // Win popup redesign (2026-11-21, user: "not looking good"): warm glow + slowly turning sun rays behind the panel,
+        // the headline with room around it, three stars in an arc landing in recessed sockets (an unearned star leaves an
+        // empty socket, not a grey blob) with sparkles, the coins in a pill that counts up, bigger buttons, an AD tag on x2.
         static void BuildWinPopup(GameUi ui, Transform parent)
         {
             var (cg, panel) = Popup("WinPopup", parent, 860, "Level 1", out var title);
             ui.winPopup = cg; ui.winPanel = panel; ui.winTitle = title;
-            ImgW("Word", panel, S("UI/Words/word_level_complete.png"), 540, new Vector2(0, 205));
+            var root = cg.transform;
+            // behind the panel (after the dim)
+            ui.winGlow = Img("Glow", root, S("Generated/glow.png"), new Vector2(1500, 1500), new Vector2(0, 140));
+            ui.winGlow.color = new Color(1f, .82f, .4f, .55f);
+            ui.winGlow.transform.SetSiblingIndex(1);
+            ui.winRays = Img("Rays", root, S("Generated/rays.png"), new Vector2(1500, 1500), new Vector2(0, 140));
+            ui.winRays.color = new Color(1f, .9f, .55f, .55f);
+            ui.winRays.transform.SetSiblingIndex(2);
+
+            // vertical rhythm inside the cream area (user: spacing; headline + stars nudged up so the coins clear the AD tag):
+            // headline 118..294 | stars -66..102 | coins -84..-172 | AD tag top -195 | buttons -210..-314
+            var word = ImgW("Word", panel, S("UI/Words/word_level_complete.png"), 380, new Vector2(0, 206));
+            ui.winWord = word.rectTransform;
+
+            // stars: recessed sockets always visible, the earned stars pop into them
             var star = S("UI/Icons/icon_star.png");
-            ui.winStars = new[]
+            var spots = new (float x, float y, float w, float rot)[] { (-172, -4, 136, 14), (0, 18, 170, 0), (172, -4, 136, -14) };
+            ui.winStars = new Image[3];
+            for (int i = 0; i < 3; i++)
             {
-                ImgW("Star0", panel, star, 150, new Vector2(-180, -5)),
-                ImgW("Star1", panel, star, 185, new Vector2(0, 20)),
-                ImgW("Star2", panel, star, 150, new Vector2(180, -5)),
-            };
-            var row = Rect("Reward", panel, new Vector2(400, 90), new Vector2(0, -135));
-            ImgW("Coin", row, S("UI/Icons/icon_coin.png"), 80, new Vector2(-70, 0));
-            ui.winCoins = Text("Amount", row, "+25", 60, Brown, new Vector2(200, 90), new Vector2(60, 2), _matPlain);
-            ui.winCoins.alignment = TextAlignmentOptions.Left;
-            ui.winDouble = WideButton("Double", panel, "btn_orange", "x2 Ad", new Vector2(250, 100), new Vector2(-138, -250), out _);
-            ui.winNext = WideButton("Next", panel, "btn_green", "Next", new Vector2(250, 100), new Vector2(138, -250), out _);
+                var sp = spots[i];
+                var socket = ImgW($"Socket{i}", panel, star, sp.w * 1.02f, new Vector2(sp.x, sp.y - 4));
+                socket.color = new Color(.55f, .36f, .2f, .32f);
+                socket.rectTransform.localRotation = Quaternion.Euler(0, 0, sp.rot);
+                ui.winStars[i] = ImgW($"Star{i}", panel, star, sp.w, new Vector2(sp.x, sp.y));
+                ui.winStars[i].rectTransform.localRotation = Quaternion.Euler(0, 0, sp.rot);
+            }
+            var spark = S("VFX/fx_sparkle.png");
+            var sparkSpots = new Vector2[] { new(-262, 52), new(-110, 92), new(100, 100), new(258, 56), new(-226, -74), new(232, -76) };
+            ui.winSparkles = new Image[sparkSpots.Length];
+            for (int i = 0; i < sparkSpots.Length; i++)
+            {
+                ui.winSparkles[i] = ImgW($"Sparkle{i}", panel, spark, i % 2 == 0 ? 64 : 50, sparkSpots[i]);
+                ui.winSparkles[i].gameObject.SetActive(false);
+            }
+
+            // coins in a pill
+            var row = Sliced("Reward", panel, S("Generated/rounded.png"), new Vector2(300, 88), new Vector2(0, -128));
+            row.color = new Color(.86f, .72f, .52f, .55f);
+            ui.winReward = row.rectTransform;
+            ImgW("Coin", row.transform, S("UI/Icons/icon_coin.png"), 78, new Vector2(-78, 2));
+            ui.winCoins = Text("Amount", row.transform, "+25", 58, Brown, new Vector2(180, 88), new Vector2(40, 2), _matPlain);
+            ui.winCoins.alignment = TextAlignmentOptions.Center;
+
+            ui.winDouble = WideButton("Double", panel, "btn_orange", "x2 Coins", new Vector2(290, 104), new Vector2(-154, -262), out _);
+            var tag = Sliced("AdTag", ui.winDouble.transform, S("Generated/rounded.png"), new Vector2(78, 42), new Vector2(114, 46));
+            tag.color = new Color32(214, 40, 40, 255);
+            Text("Text", tag.transform, "AD", 26, Color.white, new Vector2(78, 42), new Vector2(0, 1), _matPlain);
+            ui.winNext = WideButton("Next", panel, "btn_green", "Next", new Vector2(290, 104), new Vector2(154, -262), out _);
         }
 
         static void BuildPausePopup(GameUi ui, Transform parent)

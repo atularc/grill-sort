@@ -14,7 +14,7 @@ namespace GrillSort
         public int index;
         public RectTransform rect;
         public Image shadow, ember, glow, highlight, grill, skewer;
-        /// <summary>Red coal glow on top of the grill (split out of the grill art) - flickers in GameController.</summary>
+        /// <summary>Red coal glow bed UNDER the grill (the grill art has the glow cut out) - flickers in GameController. Keep it opaque.</summary>
         public Image coalGlow;
         /// <summary>Smoke wisps, spread along the whole grill.</summary>
         public Image[] smokes;

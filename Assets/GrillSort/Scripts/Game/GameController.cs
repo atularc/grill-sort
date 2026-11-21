@@ -152,6 +152,7 @@ namespace GrillSort
             ui.background.sprite = theme.Back;
             ui.front.sprite = theme.front;
             ui.layout.counterTop = theme.counterTop;
+            ui.layout.counterBottom = theme.counterBottom;
             ui.layout.Apply();
             int idx = System.Array.IndexOf(art.themes, theme);
             if (idx != SaveData.LastTheme)
@@ -217,11 +218,23 @@ namespace GrillSort
                 if (!on) { c.food = -1; continue; }
                 c.food = _board.Target(c.tray);
                 c.animal.sprite = art.customers[_nextAnimal++ % art.customers.Length];
-                c.order.sprite = art.foods[c.food].grilled;
+                SetOrder(c);
                 c.check.gameObject.SetActive(false);
                 c.body.localScale = Vector3.one;
                 StartCoroutine(Arrive(c, .15f + i * .12f));
             }
+        }
+
+        /// <summary>The order bubble shows a small skewer with the pieces this customer wants (Aaron 2026-11-21).</summary>
+        void SetOrder(CustomerView c)
+        {
+            var fa = art.foods[c.food];
+            var o = c.order;
+            o.gameObject.SetActive(true);
+            o.Set(fa, _board.Pieces, fa.width * GrillView.FoodScale);   // same layout the finished tray merges into
+            o.SetTilt(CustomerView.OrderTilt);
+            float k = o.FitScale(CustomerView.OrderTilt, CustomerView.OrderBoxW, CustomerView.OrderBoxH);
+            o.rect.localScale = new Vector3(k, k, 1f);
         }
 
         IEnumerator Arrive(CustomerView c, float delay)
@@ -292,13 +305,15 @@ namespace GrillSort
             for (int i = 0; i < _board.SkewerCount && i < ui.grills.Length; i++)
             {
                 var gv = ui.grills[i];
-                float slow = Mathf.PerlinNoise(t * 1.6f, i * 3.7f);
-                float fast = Mathf.PerlinNoise(t * 7.5f, i * 1.3f + 20f);
-                float heat = Mathf.Clamp01(slow * .7f + fast * .3f);
+                // gentle (Aaron 2026-11-21): slow breathing, a little soft wobble, each grill on its own phase
+                float slow = Mathf.PerlinNoise(t * .9f, i * 3.7f);
+                float soft = Mathf.PerlinNoise(t * 2.4f, i * 1.3f + 20f);
+                float heat = Mathf.Clamp01(slow * .8f + soft * .2f);
                 if (gv.coalGlow != null)
                 {
-                    float a = .5f + heat * .5f;
-                    gv.coalGlow.color = new Color(1f, .9f + heat * .1f, .82f + heat * .18f, a);
+                    // the bed stays opaque (the sand would show through the coal gaps): flicker its brightness instead
+                    float k = .74f + heat * .26f;
+                    gv.coalGlow.color = new Color(k, k * (.9f + heat * .1f), k * (.84f + heat * .16f), 1f);
                 }
                 if (gv.ember != null) GrillView.SetAlpha(gv.ember, .16f + heat * .26f);
                 if (gv.smokes == null || gv.smokes.Length == 0) continue;
@@ -763,10 +778,7 @@ namespace GrillSort
             var c = CustomerForTray(g);
             if (c != null)
             {
-                int done = 0;
-                for (int i = pieces - 1, f = 0; i >= 0; i--, f++)
-                    StartCoroutine(ServePiece(f, v, i, fa, c, f * .07f, () => done++));
-                while (done < pieces) yield return null;
+                yield return ServeSkewer(v, fa, pieces, c);
                 StartCoroutine(Cheer(c));
                 c.tray = -1;
             }
@@ -782,31 +794,62 @@ namespace GrillSort
             v.Show(_board.Stack(g), art, cookOnComplete);
         }
 
-        IEnumerator ServePiece(int flyer, GrillView v, int slot, GameArt.FoodArt fa, CustomerView c, float delay, System.Action done)
+        /// <summary>
+        /// Aaron 2026-11-21: "When the pieces are merged, they combine into one small skewer that flies up." The finished
+        /// pieces slide together on the tray, pop onto one small skewer (<see cref="GameUi.serveSkewer"/>, same layout as
+        /// the bubble's order skewer), and it flies up to the customer, turning and shrinking until it sits exactly on
+        /// the order skewer in their bubble.
+        /// </summary>
+        IEnumerator ServeSkewer(GrillView v, GameArt.FoodArt fa, int pieces, CustomerView c)
         {
-            yield return new WaitForSeconds(delay);
-            var fl = ui.flyers[flyer];
-            PrepareFlyer(flyer, fa, false);
-            var p0 = (Vector2)ui.flyLayer.InverseTransformPoint(v.slots[slot].position);
-            var p2 = (Vector2)ui.flyLayer.InverseTransformPoint(c.order.rectTransform.position);
-            fl.anchoredPosition = p0; fl.localScale = Vector3.one; fl.gameObject.SetActive(true);
-            v.HideSlot(slot);
-            float targetW = c.order.rectTransform.rect.width * c.order.rectTransform.lossyScale.x;
-            float flyW = ui.flyerFoods[flyer].rectTransform.rect.width * ui.flyLayer.lossyScale.x;
-            float endScale = flyW > 0 ? targetW / flyW : .5f;
-            var p1 = new Vector2((p0.x + p2.x) * .5f + 120f, Mathf.Max(p0.y, p2.y) + 220f);
-            yield return Tween.Run(.42f, k =>
+            var sk = ui.serveSkewer;
+            sk.Set(fa, pieces, fa.width * GrillView.FoodScale);
+
+            // 1) merge: the pieces slide together around the middle of the row
+            float mid = 0f;
+            for (int i = 0; i < pieces; i++) mid += GrillView.SlotY[i];
+            mid /= pieces;
+            var from = new float[pieces];
+            for (int i = 0; i < pieces; i++) from[i] = v.slots[i].anchoredPosition.y;
+            yield return Tween.Run(.26f, k =>
+            {
+                for (int i = 0; i < pieces; i++)
+                    v.slots[i].anchoredPosition = new Vector2(0f, Mathf.LerpUnclamped(from[i], mid + sk.PieceY(i), k));
+            }, t => Ease.OutBack(t, 1.3f));
+
+            // 2) they combine onto one small skewer: same spot, same layout, with a little pop
+            var fly = ui.flyLayer;
+            Vector2 p0 = fly.InverseTransformPoint(v.rect.TransformPoint(new Vector3(0f, mid, 0f)));
+            float s0 = v.rect.lossyScale.x / fly.lossyScale.x;
+            sk.SetTilt(0f);
+            sk.rect.anchoredPosition = p0;
+            sk.rect.localScale = new Vector3(s0, s0, 1f);
+            sk.rect.SetAsLastSibling();
+            sk.gameObject.SetActive(true);
+            for (int i = 0; i < pieces; i++) v.HideSlot(i);
+            audioManager.Play(art.drop, .8f);
+            Haptics.Light();
+            yield return Tween.Run(.16f, k =>
+            {
+                float b = s0 * (1f + Mathf.Sin(k * Mathf.PI) * .12f);
+                sk.rect.localScale = new Vector3(b, b, 1f);
+            });
+
+            // 3) it flies up in an arc, tilting and shrinking into the order skewer in the customer's bubble
+            var target = c.order.rect;
+            Vector2 p2 = fly.InverseTransformPoint(target.position);
+            float s2 = target.lossyScale.x / fly.lossyScale.x;
+            var p1 = new Vector2((p0.x + p2.x) * .5f + (p2.x >= p0.x ? -90f : 90f), Mathf.Max(p0.y, p2.y) + 170f);
+            yield return Tween.Run(.55f, k =>
             {
                 float u = 1f - k;
-                fl.anchoredPosition = u * u * p0 + 2f * u * k * p1 + k * k * p2;
-                float s = Mathf.Lerp(1f, endScale, k);
-                fl.localScale = new Vector3(s, s, 1f);
-                var col = new Color(1f, 1f, 1f, k > .8f ? (1f - k) * 5f : 1f);
-                ui.flyerFoods[flyer].color = col; ui.flyerShadows[flyer].color = new Color(1f, 1f, 1f, col.a * (1f - k));
+                sk.rect.anchoredPosition = u * u * p0 + 2f * u * k * p1 + k * k * p2;
+                float sc = Mathf.Lerp(s0, s2, k);
+                sk.rect.localScale = new Vector3(sc, sc, 1f);
+                sk.SetTilt(Mathf.Lerp(0f, CustomerView.OrderTilt, k));
             }, Ease.InOutCubic);
-            fl.gameObject.SetActive(false);
-            StartCoroutine(Tween.Bounce(c.bubble, .12f, .2f));
-            done();
+            sk.gameObject.SetActive(false);
+            StartCoroutine(Tween.Bounce(c.bubble, .14f, .22f));
         }
 
         IEnumerator Cheer(CustomerView c)
@@ -922,22 +965,55 @@ namespace GrillSort
             int stars = _moves <= par + 2 ? 3 : _moves <= par * 3 / 2 + 2 ? 2 : 1;
             _winReward = 10 + stars * 5;
             ui.winTitle.text = $"Level {_levelNumber}";
-            ui.winCoins.text = $"+{_winReward}";
+            ui.winCoins.text = "+0";
+            // everything pops in one after the other: headline, stars (into their sockets), coins, buttons
+            var pops = new Transform[] { ui.winWord, ui.winReward, ui.winDouble.transform, ui.winNext.transform };
+            foreach (var t in pops) t.localScale = Vector3.zero;
             for (int i = 0; i < ui.winStars.Length; i++)
             {
-                ui.winStars[i].sprite = i < stars ? art.starOn : art.starOff;
-                ui.winStars[i].color = i < stars ? Color.white : new Color(.35f, .25f, .2f, .55f);
+                ui.winStars[i].sprite = art.starOn;
+                ui.winStars[i].color = Color.white;
+                ui.winStars[i].gameObject.SetActive(i < stars);   // an unearned star leaves its socket empty
                 ui.winStars[i].rectTransform.localScale = Vector3.zero;
             }
+            foreach (var sp in ui.winSparkles) sp.gameObject.SetActive(false);
             OpenPopup(ui.winPopup, ui.winPanel);
-            yield return new WaitForSeconds(.35f);
-            for (int i = 0; i < ui.winStars.Length; i++)
+            StartCoroutine(WinRays());
+            yield return new WaitForSeconds(.22f);
+            StartCoroutine(Tween.Scale(ui.winWord, Vector3.one, .4f, t => Ease.OutBack(t, 2f)));
+            yield return new WaitForSeconds(.3f);
+            for (int i = 0; i < stars; i++)
             {
-                StartCoroutine(Tween.Scale(ui.winStars[i].rectTransform, Vector3.one, .45f, Ease.OutElastic));
-                if (i < stars) { audioManager.Play(art.coin, .5f, 1f + i * .15f); Haptics.Light(); }
-                yield return new WaitForSeconds(.18f);
+                StartCoroutine(Tween.Scale(ui.winStars[i].rectTransform, Vector3.one, .5f, Ease.OutElastic));
+                audioManager.Play(art.coin, .5f, 1f + i * .15f); Haptics.Light();
+                StartCoroutine(OneSparkle(ui.winSparkles[(i * 2) % ui.winSparkles.Length], .05f));
+                StartCoroutine(OneSparkle(ui.winSparkles[(i * 2 + 1) % ui.winSparkles.Length], .15f));
+                yield return new WaitForSeconds(.22f);
             }
+            yield return new WaitForSeconds(.1f);
+            StartCoroutine(Tween.Scale(ui.winReward, Vector3.one, .3f, t => Ease.OutBack(t)));
+            int reward = _winReward;
+            StartCoroutine(Tween.Run(.5f, k => ui.winCoins.text = $"+{Mathf.RoundToInt(reward * k)}"));
+            yield return new WaitForSeconds(.25f);
+            StartCoroutine(Tween.Scale(ui.winDouble.transform, Vector3.one, .3f, t => Ease.OutBack(t)));
+            yield return new WaitForSeconds(.08f);
+            StartCoroutine(Tween.Scale(ui.winNext.transform, Vector3.one, .3f, t => Ease.OutBack(t)));
             if (_autoPlay) { yield return new WaitForSeconds(.4f); CollectWin(1); }
+        }
+
+        /// <summary>Sun rays turn slowly and the glow breathes while the win popup is open.</summary>
+        IEnumerator WinRays()
+        {
+            var rays = ui.winRays.rectTransform; var glow = ui.winGlow.rectTransform;
+            float t = 0f;
+            while (ui.winPopup.gameObject.activeSelf)
+            {
+                t += Time.deltaTime;
+                rays.localRotation = Quaternion.Euler(0f, 0f, -t * 12f);
+                float b = 1f + Mathf.Sin(t * 2.2f) * .04f;
+                glow.localScale = new Vector3(b, b, 1f);
+                yield return null;
+            }
         }
 
         int _winReward;
