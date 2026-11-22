@@ -25,7 +25,7 @@ SR = 44100
 EFFECTS = {
     # pick + drop are SYNTHESIZED (see pop_sound): the user found the pluck / soft-thud versions bad on every move
     "invalid": ("error_004.ogg", -8),         # can't drop there: short soft buzz
-    "click": ("click_001.ogg", -7),           # buttons
+    # "click" is synthesized (ikame_click): matched to the client's games, see below
     "star": ("glass_002.ogg", -5),            # win stars (pitched up per star) + sparkle
     "whoosh": ("maximize_008.ogg", -7),       # skewer flies to the customer, mascot hops off
     "pop": ("drop_002.ogg", -6),              # bubbles / logo landing
@@ -128,12 +128,46 @@ def pop_sound(f0, f1, dur, body=1.0, tick=0.0, seed=0):
     return y / np.abs(y).max()
 
 
+# ---- iKame-style taps (2026-11-22, user: "we need same click sfx and other sfx" as the client's games).
+# Measured on their screen recordings (FishUp!, Skewer Jam, Screwdom 3D, Mahjong; music + compression make the sounds
+# impossible to lift cleanly, so they are rebuilt from the measurements):
+#   * FishUp! UI button: a soft, warm DOUBLE tap "tok-tok", the 2nd 50 ms after the 1st, brightness ~800 Hz (4 of 4 taps)
+#   * Skewer Jam tap / drop: a mellow wooden "tock" with a ~420 Hz tone (G#4-A4); a dropped stack lands as one tock per
+#     piece ~125 ms apart (the drop cascade)
+#   * all of them are warm and short (no bright digital pings)
+def tock(f, dur=.11, body=1.0, click=.35, bright=2.6, seed=0):
+    """Wood-block style tap: two decaying partials (f, f x bright) + a soft filtered click, no glide."""
+    rng = np.random.default_rng(seed)
+    n = int(dur * SR); t = np.arange(n) / SR
+    # short tonal body (the references ring only ~30 ms) under a crisp broadband click (up to ~5 kHz)
+    env = np.minimum(1, t / .0012) * np.exp(-t / (dur * .13))
+    y = np.sin(2 * np.pi * f * t) * env * body + .3 * np.sin(2 * np.pi * f * bright * t) * np.exp(-t / (dur * .06))
+    k = int(.004 * SR)
+    c = np.zeros(n); c[:k] = rng.standard_normal(k) * np.exp(-np.linspace(0, 6, k))
+    cs = np.fft.rfft(c); fr = np.fft.rfftfreq(n, 1 / SR)
+    c = np.fft.irfft(cs * np.exp(-((fr - 2600) / 2600) ** 2), n)
+    y += c / max(1e-6, np.abs(c).max()) * click
+    fo = int(.008 * SR); y[-fo:] *= np.linspace(1, 0, fo)
+    return y / np.abs(y).max()
+
+
+def ikame_click():
+    """FishUp!-style UI tap: tok (higher) + tok (lower) 50 ms apart, warm."""
+    a = tock(760, .07, body=.6, click=.9, bright=2.1, seed=3)
+    b = tock(560, .08, body=.6, click=.8, bright=2.1, seed=4) * .9
+    gap = int(.05 * SR)
+    y = np.zeros(gap + len(b)); y[:len(a)] += a; y[gap:] += b
+    return y / np.abs(y).max()
+
+
 def main():
     rng = np.random.default_rng(7)
     # pick: a light upward "bloop" (lifting); drop: a round, slightly lower "plop" + soft tick (landing), 3 sizes
-    encode(pop_sound(330, 760, .085, tick=.12) * 10 ** (-9 / 20), os.path.join(SFX, "pick.ogg"))
-    for i, (a, b) in enumerate([(620, 240), (580, 225), (660, 255)]):
-        encode(pop_sound(a, b, .11, tick=.25, seed=i) * 10 ** (-8 / 20), os.path.join(SFX, f"drop_{i}.ogg"))
+    # Skewer Jam-style wooden tocks (the earlier soft "bloop" pops: pop_sound, kept for reference)
+    encode(tock(470, .09, click=.6, seed=1) * 10 ** (-8 / 20), os.path.join(SFX, "pick.ogg"))
+    for i, f in enumerate([415, 405, 428]):
+        encode(tock(f, .12, click=.55, seed=10 + i) * 10 ** (-7 / 20), os.path.join(SFX, f"drop_{i}.ogg"))
+    encode(ikame_click() * 10 ** (-7 / 20), os.path.join(SFX, "click.ogg"))
     for name, (src, peak) in EFFECTS.items():
         encode(tidy(decode(os.path.join(SRC, "Kenney", src)), peak), os.path.join(SFX, name + ".ogg"))
     encode(sizzle(1.5, rng) * 10 ** (-4 / 20), os.path.join(SFX, "sizzle.ogg"))

@@ -713,6 +713,9 @@ namespace GrillSort.EditorTools
         // until the name is final) and a mascot (sausage chef) that pops in and hops off. Steam and embers rise from the
         // painted grill; they are children of the cover-fit background, placed in its normalised coordinates, so they stay
         // on the grill on any aspect. Logo / mascot / bar sit inside the safe area.
+        // The iKame splash is Unity's own startup splash (Project Settings > Player > Splash Image), set up once by hand /
+        // by Claude 2026-11-22: logo = iKame Flame Mascot Logo, background = Loading/splash_bg.png (purple + glow, from the
+        // client's reference). Run Full Setup does NOT touch it, so changes made there stay.
         static void BuildLoading(GameUi ui, Transform croot)
         {
             var root = Stretch("Loading", croot);

@@ -918,7 +918,14 @@ namespace GrillSort
             if (!_board.HasAnyMove(moveRule)) StartCoroutine(Tween.Delay(.5f, () => { if (!_busy && !_won) { audioManager.Play(art.fail, .8f); OpenPopup(ui.stuckPopup, ui.stuckPanel); } }));
         }
 
-        float _lastDropSound = -1f;
+        float _lastDropSound = -1f, _nextDropSound;
+        int _dropStep;
+
+        IEnumerator DropSound(float delay, float pitch)
+        {
+            if (delay > 0f) yield return new WaitForSeconds(delay);
+            audioManager.PlayVariant(art.drops, .85f, pitch);
+        }
 
         IEnumerator FlyPiece(int flyer, GrillView src, int si, GrillView dst, int ti, int food, float delay, System.Action done)
         {
@@ -954,10 +961,12 @@ namespace GrillSort
             dst.SetFood(ti, fa, cookOnComplete);
             dst.ResetSlot(ti);
             StartCoroutine(Tween.Bounce(dst.slots[ti], .16f, .26f));
-            // one pop per move (a dragged stack lands piece by piece: 4 full pops at once sounded messy); the rest of the
-            // stack adds only a faint, slightly higher tick so the landing still feels like a little cascade
-            if (Time.time - _lastDropSound > .09f) { audioManager.PlayVariant(art.drops, .85f, 1f + ti * .04f); _lastDropSound = Time.time; }
-            else audioManager.PlayVariant(art.drops, .25f, 1.15f + ti * .04f);
+            // like Skewer Jam: every landing piece gives its own wooden tock, ~0.12 s apart and stepping up a little,
+            // so a dragged stack lands as a satisfying "tock-tock-tock" cascade (user 2026-11-22)
+            float at = Mathf.Max(Time.time, _nextDropSound);
+            int step = Time.time - _lastDropSound < .6f ? _dropStep + 1 : 0;
+            _dropStep = step; _lastDropSound = Time.time; _nextDropSound = at + .12f;
+            StartCoroutine(DropSound(at - Time.time, 1f + Mathf.Min(step, 5) * .045f));
             Haptics.Light();
             done();
         }
