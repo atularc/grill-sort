@@ -55,6 +55,15 @@ namespace GrillSort
 
         int _levelNumber, _moves, _served, _totalOrders, _skewers;
         int _nextAnimal;
+
+        /// <summary>
+        /// Mirror of the row on screen (tray stacks, orders, customer faces). The Board serves orders instantly; the view
+        /// catches up one serve at a time (tray + customer leave, the rest slide left, the next tray slides in), so this
+        /// keeps the faces with their trays while they slide.
+        /// </summary>
+        struct VisTray { public int[] stack; public int target; public int face; }
+        readonly List<VisTray> _vis = new List<VisTray>();
+        int NextFace() => _nextAnimal++ % art.customers.Length;
         int _selected = -1, _selStart;
         bool _busy, _extraUsed, _won, _autoPlay;
         float _idle;
@@ -79,8 +88,10 @@ namespace GrillSort
             Haptics.Enabled = SaveData.Haptic;
             if (audioManager != null)
             {
-                audioManager.Enabled = SaveData.Sound;
-                audioManager.MusicEnabled = SaveData.Music;
+                audioManager.Enabled = true;
+                audioManager.MusicEnabled = true;
+                audioManager.SetMusicSlider(SaveData.MusicVol);
+                audioManager.SetSfxSlider(SaveData.SfxVol);
                 audioManager.StartMusic(CurrentTrack());   // starts with the loading screen, fades in
             }
 
@@ -99,17 +110,29 @@ namespace GrillSort
                 Services.Iap.Restore(ok => ShowMessage("Restore Purchases", ok ? "Your purchases are back!" : "There was nothing to restore."));
             });
             ui.pauseRestart.onClick.AddListener(() => { Click(); ClosePopup(ui.pausePopup); LoadLevel(_levelNumber); });
-            ui.pauseSound.onClick.AddListener(() => { SaveData.Sound = !SaveData.Sound; audioManager.Enabled = SaveData.Sound; Click(); RefreshPauseTexts(); });
-            ui.pauseMusic.onClick.AddListener(() => { SaveData.Music = !SaveData.Music; audioManager.MusicEnabled = SaveData.Music; if (SaveData.Music) audioManager.StartMusic(CurrentTrack()); Click(); RefreshPauseTexts(); });
+            // volume sliders: live while dragging, saved; a short tick on the sound slider so you hear the new level
+            ui.musicSlider.SetValueWithoutNotify(SaveData.MusicVol);
+            ui.sfxSlider.SetValueWithoutNotify(SaveData.SfxVol);
+            ui.musicSlider.onValueChanged.AddListener(v => { audioManager.SetMusicSlider(v); SaveData.MusicVol = v; RefreshPauseTexts(); });
+            ui.sfxSlider.onValueChanged.AddListener(v =>
+            {
+                audioManager.SetSfxSlider(v); SaveData.SfxVol = v; RefreshPauseTexts();
+                if (Time.unscaledTime - _lastSliderTick > .12f) { _lastSliderTick = Time.unscaledTime; audioManager.Play(art.click, .6f); }
+            });
             ui.pauseHaptics.onClick.AddListener(() => { SaveData.Haptic = !SaveData.Haptic; Haptics.Enabled = SaveData.Haptic; Haptics.Medium(); Click(); RefreshPauseTexts(); });
             for (int i = 0; i < ui.boosters.Length; i++) { int k = i; ui.boosters[i].onClick.AddListener(() => UseBooster(k)); }
-            ui.stuckUndo.onClick.AddListener(() => { ClosePopup(ui.stuckPopup); UseBooster(0); });
-            ui.stuckShuffle.onClick.AddListener(() => { ClosePopup(ui.stuckPopup); UseBooster(2); });
-            ui.stuckExtra.onClick.AddListener(() =>
+            // stuck popup (Continue? -> rescue with coins or an ad; X -> Give up page)
+            ui.stuckBuy.onClick.AddListener(() =>
             {
-                ClosePopup(ui.stuckPopup);
-                Services.Ads.ShowRewarded("stuck_extra", ok => { if (ok) { if (!AddExtraSkewer()) Toast("No room for another tray"); } });
+                if (SaveData.Coins < StuckPriceFor) { Toast("Not enough coins"); Shake(ui.stuckBuy.transform); return; }
+                Click();
+                SaveData.Coins -= StuckPriceFor; _shownCoins = SaveData.Coins; ui.coinText.text = _shownCoins.ToString("N0");
+                ClosePopup(ui.stuckPopup); Rescue();
             });
+            ui.stuckAd.onClick.AddListener(() => { Click(); ClosePopup(ui.stuckPopup); Services.Ads.ShowRewarded("stuck_rescue", ok => { if (ok) Rescue(); else StuckLater(); }); });
+            ui.stuckUndo.onClick.AddListener(() => { Click(); ClosePopup(ui.stuckPopup); DoUndo(); _stuckShown = false; });
+            ui.stuckClose.onClick.AddListener(() => { Click(); ShowStuckPage(false); });
+            ui.stuckKeep.onClick.AddListener(() => { Click(); ShowStuckPage(true); });
             ui.stuckRetry.onClick.AddListener(() => { Click(); ClosePopup(ui.stuckPopup); LoadLevel(_levelNumber); });
             ui.winNext.onClick.AddListener(() => CollectWin(1, ui.winNext.transform));
             // "Claim xN": the pointer stops on press, the multiplier under it is what the ad pays
@@ -312,6 +335,7 @@ namespace GrillSort
             _hintCo = _tipCo = null;
             _selectCo = _selectGlowCo = null;
             _handCo = null; HideHand();
+            _stuckCheckId++; _stuckShown = false;   // cancel a pending stuck check from the previous level
             if (!_loadingScreen && audioManager != null) audioManager.SetAmbience(art.sizzleLoop, true);   // e.g. Restart / no loading screen
             // a level load can come while the win / stuck popup is still animating in (StopAllCoroutines above cuts the
             // pop-ins short): close them now and put every popped element back to full size, so nothing stays stuck
@@ -328,9 +352,11 @@ namespace GrillSort
             _dragging = false;
             _moves = 0; _served = 0; _selected = -1; _busy = false; _extraUsed = false; _won = false; _idle = 0f;
             _history.Clear();
-            _totalOrders = 0;
-            for (int s = 0; s < _skewers; s++) if (_board.Target(s) >= 0) _totalOrders++;
+            _totalOrders = _board.OrdersLeft;   // row + queue
             _nextAnimal = (_levelNumber * 3) % art.customers.Length; // different faces from level to level
+            _vis.Clear();
+            for (int s = 0; s < _skewers; s++)
+                _vis.Add(new VisTray { stack = _board.Stack(s), target = _board.Target(s), face = _board.Target(s) >= 0 ? NextFace() : -1 });
 
             ApplyTheme();
 
@@ -341,12 +367,12 @@ namespace GrillSort
                 g.gameObject.SetActive(on);
                 if (!on) continue;
                 g.ResetFx();
-                g.helper = _board.Target(i) < 0;   // helper tray: no customer, steel frame
+                g.rect.localScale = Vector3.one;   // trays that left last level were shrunk to 0
+                g.helper = _board.Target(i) < 0;   // free tray (Extra tray booster): no customer, steel frame
                 g.SetLit(false, art);
                 g.Show(_board.Stack(i), art, cookOnComplete);
             }
             ui.layout.activeGrills = _skewers;
-            ui.layout.activeCustomers = _totalOrders;
             ui.layout.Apply();
             foreach (var f in ui.flyers) f.gameObject.SetActive(false);
 
@@ -411,9 +437,15 @@ namespace GrillSort
         // one customer above each order tray (Sort Streak style): their order is sorted into the tray right below them
         void SetupCustomers()
         {
-            // customer k stands above the k-th tray that has an order (helper trays at the edges have none)
+            BindCustomers();
+            for (int i = 0; i < _activeCustomers; i++) StartCoroutine(Arrive(ui.customers[i], .15f + i * .12f));
+        }
+
+        /// <summary>Customer k stands above the k-th tray with an order (an Extra tray has none). Instant, no animation.</summary>
+        void BindCustomers()
+        {
             var trays = new List<int>();
-            for (int s = 0; s < _skewers; s++) if (_board.Target(s) >= 0) trays.Add(s);
+            for (int s = 0; s < _vis.Count; s++) if (_vis[s].target >= 0) trays.Add(s);
             _activeCustomers = Mathf.Min(ui.customers.Length, trays.Count);
             var map = new int[ui.customers.Length];
             for (int i = 0; i < map.Length; i++) map[i] = i < trays.Count ? trays[i] : -1;
@@ -429,13 +461,61 @@ namespace GrillSort
                 c.busy = false;
                 c.tray = on ? map[i] : -1;
                 if (!on) { c.food = -1; continue; }
-                c.food = _board.Target(c.tray);
-                c.animal.sprite = art.customers[_nextAnimal++ % art.customers.Length];
+                var t = _vis[c.tray];
+                c.food = t.target;
+                c.animal.sprite = art.customers[Mathf.Max(0, t.face) % art.customers.Length];
                 SetOrder(c);
                 c.check.gameObject.SetActive(false);
                 c.body.localScale = Vector3.one;
-                StartCoroutine(Arrive(c, .15f + i * .12f));
+                c.body.anchoredPosition = new Vector2(0f, CustomerView.BodyY);
+                c.bubble.localScale = Vector3.one;
+                c.group.alpha = 1f;
             }
+        }
+
+        /// <summary>Shows the row mirror on the grills (instant): stacks, steel frame for free trays, layout.</summary>
+        void BindRow()
+        {
+            int n = _vis.Count;
+            for (int i = 0; i < ui.grills.Length; i++)
+            {
+                var g = ui.grills[i];
+                bool on = i < n;
+                g.gameObject.SetActive(on);
+                if (!on) continue;
+                g.ResetFx();
+                g.helper = _vis[i].target < 0;
+                g.SetLit(false, art);
+                g.Show(_vis[i].stack, art, cookOnComplete);
+                g.rect.localScale = Vector3.one;
+            }
+            ui.layout.activeGrills = n;
+            ui.layout.MarkDirty();
+            ui.layout.Apply();
+        }
+
+        /// <summary>Rebuilds the mirror from the Board (after Undo / Shuffle / Extra tray), keeping faces where orders match.</summary>
+        void SyncVisFromBoard()
+        {
+            var old = new List<VisTray>(_vis);
+            _vis.Clear();
+            for (int s = 0; s < _board.SkewerCount; s++)
+            {
+                int t = _board.Target(s);
+                int face = s < old.Count && old[s].target == t ? old[s].face : (t >= 0 ? NextFace() : -1);
+                _vis.Add(new VisTray { stack = _board.Stack(s), target = t, face = face });
+            }
+        }
+
+        bool VisMatchesBoard()
+        {
+            if (_vis.Count != _board.SkewerCount) return false;
+            for (int s = 0; s < _vis.Count; s++)
+            {
+                if (_vis[s].target != _board.Target(s) || _vis[s].stack.Length != _board.Count(s)) return false;
+                for (int i = 0; i < _vis[s].stack.Length; i++) if (_vis[s].stack[i] != _board.Get(s, i)) return false;
+            }
+            return true;
         }
 
         /// <summary>The order bubble shows a small skewer with the pieces this customer wants (Aaron 2026-11-21).</summary>
@@ -555,7 +635,7 @@ namespace GrillSort
             var rt = s.rectTransform;
             s.gameObject.SetActive(true);
             // start anywhere along the coal bed, rise a little, grow and fade: soft and light
-            float x = Random.Range(-45f, 45f), y0 = Random.Range(-330f, 300f);
+            float x = Random.Range(-45f, 45f), y0 = Random.Range(-330f, 300f) * GrillView.VStretch;
             float drift = Random.Range(-35f, 35f), rise = Random.Range(110f, 170f);
             float dur = Random.Range(2.2f, 3f), peak = Random.Range(.09f, .14f);
             rt.localRotation = Quaternion.Euler(0f, 0f, Random.Range(-20f, 20f));
@@ -801,7 +881,7 @@ namespace GrillSort
                 float d = Mathf.Abs(local.x);
                 if (d < bd) { bd = d; best = g; }
             }
-            return bd <= StageLayout.GrillSpacing * .6f ? best : -1;
+            return bd <= StageLayout.Spacing * .6f ? best : -1;
         }
 
         void OnDragEnd(Vector2 screen)
@@ -870,8 +950,15 @@ namespace GrillSort
             for (int i = lifted; i < m.Index; i++) stay.Add((i, _board.Get(m.From, i)));
 
             _history.Push((_board.Clone(), _moves));
-            int completed = _board.Apply(m, out int servedFrom);
-            if (verboseLog) Debug.Log($"[Grill Sort] move {m} -> {_board} served to={completed} from={servedFrom}");
+            // how both trays look right after the move, before any order is served (the view shows this first)
+            var preSrc = new int[m.Index];
+            for (int i = 0; i < m.Index; i++) preSrc[i] = _board.Get(m.From, i);
+            int dstN = _board.Count(m.To);
+            var preDst = new int[dstN + m.Count];
+            for (int i = 0; i < dstN; i++) preDst[i] = _board.Get(m.To, i);
+            for (int k = 0; k < m.Count; k++) preDst[dstN + k] = moved[k];
+            var served = _board.Apply(m);
+            if (verboseLog) Debug.Log($"[Grill Sort] move {m} -> {_board} served {served.Count}");
             _moves++;
 
             int flying = 0;
@@ -906,16 +993,21 @@ namespace GrillSort
             }
             while (flying > 0) yield return null;
 
-            if (servedFrom < 0) src.Show(_board.Stack(m.From), art, cookOnComplete);
-            if (completed < 0) dst.Show(_board.Stack(m.To), art, cookOnComplete);
+            src.Show(preSrc, art, cookOnComplete);
+            dst.Show(preDst, art, cookOnComplete);
+            SetVis(m.From, preSrc); SetVis(m.To, preDst);
 
-            // both ends can fill up in one move (the last wrong piece leaves a full tray): serve one after the other
-            if (servedFrom >= 0) yield return Complete(m.From, servedFrom);
-            if (completed >= 0) yield return Complete(m.To, completed);
+            // serve whatever the move completed, one after the other (both ends can fill up in one move); each serve
+            // removes the tray, slides the rest left and brings in the next queued tray
+            int arrivals = 0;
+            foreach (var e in served) if (e.Arrived) arrivals++;
+            int q = _board.QueueNext - arrivals;
+            foreach (var e in served) yield return ServeOrder(e, e.Arrived ? q++ : -1);
+            if (served.Count > 0 && !VisMatchesBoard()) { SyncVisFromBoard(); BindRow(); BindCustomers(); }
 
             if (_served >= _totalOrders) { yield return Win(); yield break; }
             _busy = false;
-            if (!_board.HasAnyMove(moveRule)) StartCoroutine(Tween.Delay(.5f, () => { if (!_busy && !_won) { audioManager.Play(art.fail, .8f); OpenPopup(ui.stuckPopup, ui.stuckPanel); } }));
+            CheckStuck();
         }
 
         float _lastDropSound = -1f, _nextDropSound;
@@ -983,12 +1075,20 @@ namespace GrillSort
         }
 
         // ------------------------------------------------------------------ completion & serving
-        IEnumerator Complete(int g, int food)
+        void SetVis(int s, int[] stack) { var t = _vis[s]; t.stack = stack; _vis[s] = t; }
+
+        /// <summary>
+        /// One order served (Sort Streak style): the finished tray glows, the pieces fly up to the customer on a small
+        /// skewer, the customer cheers, then tray and customer leave, the trays after it slide one slot left and the
+        /// next queued tray (new customer + mixed food) slides in from the right.
+        /// </summary>
+        IEnumerator ServeOrder(Served e, int queueIndex)
         {
+            int g = e.Slot;
             var v = ui.grills[g];
-            var fa = art.foods[food];
+            var fa = art.foods[e.Food];
             int pieces = _board.Pieces;
-            audioManager.Play(art.sizzle, .9f);
+            audioManager.Play(art.sizzle, .55f);   // softer: the serve chime is the star
             Haptics.Medium();
             // bring the finished tray to the front so its glow, sparkles, steam and "Perfect!" are not hidden behind the
             // trays to its right (user 2026-11-21); the fly layer stays on top of everything
@@ -1019,19 +1119,84 @@ namespace GrillSort
             if (c != null)
             {
                 yield return ServeSkewer(v, fa, pieces, c);
-                StartCoroutine(Cheer(c));
-                c.tray = -1;
+                yield return Cheer(c, false);
             }
             else for (int i = 0; i < pieces; i++) v.HideSlot(i);
 
             _served++;
             _history.Clear();
             UpdateOrders(true);
-            audioManager.Play(art.serve, .9f);
+            // (the serve chime already played when the skewer landed)
             Haptics.Medium();
-            StartCoroutine(Tween.Fade(v.glow, 0f, .4f));
-            v.SetLit(false, art);
-            v.Show(_board.Stack(g), art, cookOnComplete);
+            // the level's last order: no row shuffle (the user only saw the leftover helper tray for seconds), go to Well Done
+            if (_served >= _totalOrders) yield break;
+            yield return ShiftRow(g, e.Arrived, queueIndex, c);
+        }
+
+        /// <summary>Tray g and its customer leave; trays after it slide left; the next queued tray slides in from the right.</summary>
+        IEnumerator ShiftRow(int g, bool arrived, int queueIndex, CustomerView leaving)
+        {
+            int nBefore = _vis.Count;
+            var gone = ui.grills[g];
+            // 1) the served tray shrinks away, its customer sinks behind the counter
+            if (leaving != null)
+            {
+                StartCoroutine(Tween.Scale(leaving.bubble, Vector3.zero, .2f, Ease.InCubic));
+                StartCoroutine(Tween.Move(leaving.body, new Vector2(0f, CustomerView.BodyY - 330f), .28f, Ease.InCubic));
+            }
+            StartCoroutine(Tween.Fade(gone.glow, 0f, .2f));
+            yield return Tween.Run(.26f, k => { float sc = 1f - Ease.InCubic(k); gone.rect.localScale = new Vector3(sc, sc, 1f); });
+            gone.gameObject.SetActive(false);
+
+            _vis.RemoveAt(g);
+            if (arrived && queueIndex >= 0)
+            {
+                int t = _board.QueueTarget(queueIndex);
+                _vis.Add(new VisTray { stack = _board.QueueStack(queueIndex), target = t, face = t >= 0 ? NextFace() : -1 });
+            }
+            int nAfter = _vis.Count;
+
+            // 2) everything else slides to its new place (and the row re-centres if it got shorter)
+            var lay = ui.layout;
+            var tweens = new List<(RectTransform rt, float from, float to)>();
+            for (int j = 0; j < nBefore; j++)
+            {
+                if (j == g) continue;
+                int nj = j > g ? j - 1 : j;
+                var rt = ui.grills[j].rect;
+                tweens.Add((rt, rt.anchoredPosition.x, lay.TrayX(nj, nAfter)));
+            }
+            foreach (var c in ui.customers)
+            {
+                if (!c.gameObject.activeSelf || c == leaving || c.tray < 0) continue;
+                int nj = c.tray > g ? c.tray - 1 : c.tray;
+                tweens.Add((c.rect, c.rect.anchoredPosition.x, lay.CustomerX(nj, nAfter)));
+            }
+            if (arrived) audioManager.Play(art.whoosh, .25f, .95f);
+            yield return Tween.Run(.34f, k =>
+            {
+                float e2 = Ease.InOutCubic(k);
+                foreach (var (rt, from, to) in tweens) rt.anchoredPosition = new Vector2(Mathf.LerpUnclamped(from, to, e2), rt.anchoredPosition.y);
+            });
+
+            // 3) the views follow the new row (same picture, now bound to the right trays)
+            BindRow();
+            BindCustomers();
+
+            // 4) the new tray slides in from the right, its customer pops up behind the counter
+            if (arrived)
+            {
+                int i = nAfter - 1;
+                var rt = ui.grills[i].rect;
+                float home = rt.anchoredPosition.x;
+                rt.anchoredPosition = new Vector2(home + 900f, rt.anchoredPosition.y);
+                CustomerView nc = null;
+                foreach (var c in ui.customers) if (c.gameObject.activeSelf && c.tray == i) nc = c;
+                if (nc != null) StartCoroutine(Arrive(nc, .12f));
+                yield return Tween.Run(.42f, k => rt.anchoredPosition = new Vector2(Mathf.LerpUnclamped(home + 900f, home, Ease.OutBack(k, 1.1f)), rt.anchoredPosition.y));
+                rt.anchoredPosition = new Vector2(home, rt.anchoredPosition.y);
+                audioManager.Play(art.pop, .3f, 1.05f);
+            }
         }
 
         /// <summary>
@@ -1067,7 +1232,7 @@ namespace GrillSort
             sk.rect.SetAsLastSibling();
             sk.gameObject.SetActive(true);
             for (int i = 0; i < pieces; i++) v.HideSlot(i);
-            audioManager.Play(art.pop, .8f, 1.1f);
+            audioManager.Play(art.pop, .45f, 1.1f);
             Haptics.Light();
             yield return Tween.Run(.16f, k =>
             {
@@ -1080,7 +1245,7 @@ namespace GrillSort
             Vector2 p2 = fly.InverseTransformPoint(target.position);
             float s2 = target.lossyScale.x / fly.lossyScale.x;
             var p1 = new Vector2((p0.x + p2.x) * .5f + (p2.x >= p0.x ? -90f : 90f), Mathf.Max(p0.y, p2.y) + 170f);
-            audioManager.Play(art.whoosh, .7f, 1.05f);
+            audioManager.Play(art.whoosh, .35f, 1.05f);
             yield return Tween.Run(.55f, k =>
             {
                 float u = 1f - k;
@@ -1090,16 +1255,16 @@ namespace GrillSort
                 sk.SetTilt(Mathf.Lerp(0f, CustomerView.OrderTilt, k));
             }, Ease.InOutCubic);
             sk.gameObject.SetActive(false);
-            audioManager.Play(art.star, .7f, 1.2f);
+            audioManager.Play(art.serve, 1f);   // THE order-served sound (one clean chime)
             StartCoroutine(Tween.Bounce(c.bubble, .14f, .22f));
         }
 
-        IEnumerator Cheer(CustomerView c)
+        IEnumerator Cheer(CustomerView c, bool leave = true)
         {
             c.check.gameObject.SetActive(true);
             c.check.rectTransform.localScale = Vector3.zero;
             StartCoroutine(Tween.Scale(c.check.rectTransform, Vector3.one, .35f, Ease.OutElastic));
-            audioManager.Play(art.coin, .6f);
+            // no coin here: it clashed with the serve chime
             var b = c.body;
             yield return Tween.Run(.45f, k =>
             {
@@ -1109,7 +1274,7 @@ namespace GrillSort
                 b.localScale = new Vector3(1f + sq, 1f - sq, 1f);
             });
             b.localScale = Vector3.one;
-            StartCoroutine(Leave(c));
+            if (leave) StartCoroutine(Leave(c));
         }
 
         IEnumerator SteamLoop(GrillView v, float duration)
@@ -1206,7 +1371,7 @@ namespace GrillSort
             // the win screen doesn't replay a finished level
             if (!useTestLevel && !(limitToTenLevels && _levelNumber + 1 > 10) && SaveData.Level <= _levelNumber)
                 SaveData.Level = _levelNumber + 1;
-            yield return new WaitForSeconds(1.1f);
+            yield return new WaitForSeconds(.35f);   // was 1.1 s: just long enough to see the last customer cheer
             int par = Mathf.Max(1, _level.par);
             if (moveRule == MoveRule.SingleTop && _level.rule != MoveRule.SingleTop) par = par * 3 / 2; // single moves take longer
             int stars = _moves <= par + 2 ? 3 : _moves <= par * 3 / 2 + 2 ? 2 : 1;
@@ -1237,7 +1402,7 @@ namespace GrillSort
             }));
             yield return new WaitForSeconds(.2f);
             StartCoroutine(Tween.Scale(ui.winBubble, Vector3.one, .45f, t => Ease.OutBack(t, 1.8f)));
-            StartCoroutine(Tween.Run(.5f, k => GrillView.SetAlpha(ui.winRays, k * .22f)));
+            StartCoroutine(Tween.Run(.5f, k => GrillView.SetAlpha(ui.winRays, k * .32f)));
             StartCoroutine(WinAmbient());
             audioManager.Play(art.coin, .6f);
             yield return new WaitForSeconds(.3f);
@@ -1440,6 +1605,7 @@ namespace GrillSort
             Deselect();
             var (b, mv) = _history.Pop();
             _board = b; _moves = mv;
+            SyncVisFromBoard();
             RedrawAll(true);
             return true;
         }
@@ -1448,7 +1614,7 @@ namespace GrillSort
         {
             Deselect();
             var mv = Solver.NextMove(_board, moveRule);
-            if (!mv.HasValue) { Toast("No way out. Try Shuffle!"); return false; }
+            if (!mv.HasValue) { ShowStuck(); return false; }   // same rescue popup as the automatic check
             StopHint();
             _hintCo = StartCoroutine(HintAnim(mv.Value));
             return true;
@@ -1468,6 +1634,7 @@ namespace GrillSort
             {
                 rng.Shuffle(pieces);
                 var nb = new Board(_board.Capacity, _board.Pieces);
+                for (int qq = _board.QueueNext; qq < _board.QueueCount; qq++) nb.AddQueued(_board.QueueStack(qq), _board.QueueTarget(qq));
                 int p = 0; bool bad = false;
                 for (int s = 0; s < counts.Length; s++)
                 {
@@ -1482,9 +1649,73 @@ namespace GrillSort
             if (best == null) { Toast("Couldn't shuffle. Try Undo!"); return false; }
             _board = best;
             _history.Clear();
+            SyncVisFromBoard();
             RedrawAll(true);
             return true;
         }
+
+        // ------------------------------------------------------------------ stuck detection (user 2026-11-22)
+        // After every move the solver checks in the background whether the board can still be won. Before, only "no legal
+        // move at all" was caught, so a board with moves left but no way to win (the user's level 3) never warned.
+        const int StuckPriceFor = 150;   // coins for the rescue (the client's games ask 190)
+        bool _stuckShown;
+        int _stuckCheckId;
+
+        void CheckStuck()
+        {
+            if (_won || _autoPlay) return;
+            int id = ++_stuckCheckId;
+            var snapshot = _board.Clone();
+            var rule = moveRule;
+            var task = System.Threading.Tasks.Task.Run(() => Solver.IsStuck(snapshot, rule));
+            StartCoroutine(WaitStuck(task, id));
+        }
+
+        IEnumerator WaitStuck(System.Threading.Tasks.Task<bool> task, int id)
+        {
+            while (!task.IsCompleted) yield return null;
+            if (task.IsFaulted || !task.Result || id != _stuckCheckId) yield break;   // a newer move superseded it
+            yield return new WaitForSeconds(.45f);
+            while (_busy) yield return null;
+            if (_won || id != _stuckCheckId || AnyPopupOpen()) yield break;
+            ShowStuck();
+        }
+
+        void ShowStuck()
+        {
+            _stuckShown = true;
+            StopHint();
+            bool tray = !_extraUsed && _board.SkewerCount < ui.grills.Length;
+            ui.stuckIcon.sprite = tray ? art.iconAddTray : art.iconShuffle;
+            ui.stuckCaption.text = tray ? "Add 1 Tray and Continue" : "Shuffle the Grill and Continue";
+            ui.stuckPrice.text = StuckPriceFor.ToString();
+            ShowStuckPage(true);
+            audioManager.Play(art.fail, .8f);
+            OpenPopup(ui.stuckPopup, ui.stuckPanel);
+        }
+
+        void ShowStuckPage(bool offer)
+        {
+            ui.stuckOffer.gameObject.SetActive(offer);
+            ui.stuckGiveUp.gameObject.SetActive(!offer);
+            ui.stuckTitle.text = offer ? "Out of Moves!" : "Give Up?";
+            var rt = offer ? ui.stuckOffer : ui.stuckGiveUp;
+            rt.localScale = Vector3.one * .9f;
+            ui.StartCoroutine(Tween.Scale(rt, Vector3.one, .2f, k => Ease.OutBack(k)));
+        }
+
+        /// <summary>The rescue: an extra tray while one is free, otherwise a shuffle (guaranteed solvable).</summary>
+        void Rescue()
+        {
+            _stuckShown = false;
+            if (!_extraUsed && _board.SkewerCount < ui.grills.Length) AddExtraSkewer();
+            else if (!DoShuffle()) { StuckLater(); return; }
+            CheckStuck();
+        }
+
+        void StuckLater() => StartCoroutine(Tween.Delay(.4f, () => { if (!_won && !AnyPopupOpen()) ShowStuck(); }));
+
+        void Shake(Transform t) => StartCoroutine(Tween.Shake((RectTransform)t, 14f, .3f));
 
         bool AddExtraSkewer()
         {
@@ -1492,6 +1723,7 @@ namespace GrillSort
             Deselect();
             _extraUsed = true;
             int g = _board.AddSkewer();
+            _vis.Add(new VisTray { stack = new int[0], target = -1, face = -1 });
             var v = ui.grills[g];
             v.gameObject.SetActive(true);
             v.ResetFx(); v.helper = true; v.SetLit(false, art); v.Show(_board.Stack(g), art, cookOnComplete);
@@ -1672,7 +1904,7 @@ namespace GrillSort
         {
             "Drag food to fill each tray!",
             "Drop food onto the same food!",
-            "Steel trays are spare space!",
+            "Serve orders to bring in new ones!",
         };
 
         // tips (levels 1-3): shown once per level ever, in the message strip above the boosters, and gone after the
@@ -1779,16 +2011,14 @@ namespace GrillSort
             OpenPopup(ui.messagePopup, ui.messagePanel);
         }
 
+        float _lastSliderTick;
+
         void RefreshPauseTexts()
         {
-            void Set(Image tile, Image off, bool on)
-            {
-                off.gameObject.SetActive(!on);
-                tile.color = on ? Color.white : new Color(.62f, .62f, .62f, 1f);   // off: greyed tile + red slash
-            }
-            Set(ui.pauseSoundTile, ui.pauseSoundOff, SaveData.Sound);
-            Set(ui.pauseMusicTile, ui.pauseMusicOff, SaveData.Music);
-            Set(ui.pauseHapticsTile, ui.pauseHapticsOff, SaveData.Haptic);
+            ui.musicValue.text = $"{Mathf.RoundToInt(ui.musicSlider.value * 100)}%";
+            ui.sfxValue.text = $"{Mathf.RoundToInt(ui.sfxSlider.value * 100)}%";
+            ui.pauseHapticsText.text = SaveData.Haptic ? "ON" : "OFF";
+            ui.pauseHapticsImage.sprite = SaveData.Haptic ? ui.hapticsOnSprite : ui.hapticsOffSprite;
         }
 
         AudioClip CurrentTrack()

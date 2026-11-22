@@ -13,7 +13,7 @@ namespace GrillSort
         public AudioSource[] voices;
         public AudioSource music;
         public AudioSource ambience;
-        [Range(0, 1)] public float musicVolume = .3f;   // user 2026-11-21: "lower the music a little bit"
+        [Range(0, 1)] public float musicVolume = .1f;   // user 2026-11-22: still too loud at .22 (only -2.7 dB); .1 = about a third of .3   // user 2026-11-21: "lower the music a little bit"
         [Range(0, 1)] public float ambienceVolume = .16f;
         [Tooltip("Soft continuous grill sizzle under the music while playing. Off (user 2026-11-21: the constant grilling sound wasn't good).")]
         public bool ambienceOn = false;
@@ -31,8 +31,23 @@ namespace GrillSort
         public bool MusicEnabled { get => _music; set { _music = value; _musicTarget = value ? musicVolume : 0f; } }
         bool _ambWanted;
 
+        /// <summary>Settings slider values 0..1 (user 2026-11-22). Music slider 1 = <see cref="MusicMax"/>.</summary>
+        public float sfxVolume = 1f;
+        public const float MusicMax = .3f;
+
+        public void SetMusicSlider(float v)
+        {
+            musicVolume = Mathf.Clamp01(v) * MusicMax;
+            _musicTarget = _music ? musicVolume : 0f;
+            if (music != null && Mathf.Abs(music.volume - _musicTarget) > .001f) music.volume = _musicTarget;   // immediate while dragging
+        }
+
+        public void SetSfxSlider(float v) { sfxVolume = Mathf.Clamp01(v); }
+
         public void Play(AudioClip clip, float volume = 1f, float pitch = 1f)
         {
+            volume *= sfxVolume;
+            if (volume <= .001f) return;
             if (!_sound || clip == null || voices == null || voices.Length == 0) return;
             // take a free voice; if all are busy, reuse the oldest one in turn
             AudioSource v = null;

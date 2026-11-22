@@ -55,14 +55,21 @@ namespace GrillSort
         [Header("Pause popup")]
         public CanvasGroup pausePopup;
         public RectTransform pausePanel;
-        public Button pauseResume, pauseRestart, pauseSound, pauseMusic, pauseHaptics, pauseClose, pauseRestore;
-        /// <summary>Toggle tiles and their red "off" slashes.</summary>
-        public Image pauseSoundTile, pauseMusicTile, pauseHapticsTile, pauseSoundOff, pauseMusicOff, pauseHapticsOff;
+        public Button pauseResume, pauseRestart, pauseHaptics, pauseClose, pauseRestore;
+        public TMP_Text pauseHapticsText;
+        public Image pauseHapticsImage;
+        public Sprite hapticsOnSprite, hapticsOffSprite;
+        /// <summary>Volume sliders (0..1) and their % labels.</summary>
+        public Slider musicSlider, sfxSlider;
+        public TMP_Text musicValue, sfxValue;
 
         [Header("Stuck popup")]
         public CanvasGroup stuckPopup;
         public RectTransform stuckPanel;
-        public Button stuckUndo, stuckShuffle, stuckExtra, stuckRetry;
+        public TMP_Text stuckTitle, stuckCaption, stuckPrice;
+        public Image stuckIcon;
+        public RectTransform stuckOffer, stuckGiveUp;
+        public Button stuckClose, stuckBuy, stuckAd, stuckUndo, stuckRetry, stuckKeep;
 
         [Header("Loading screen (game start)")]
         public CanvasGroup loading;

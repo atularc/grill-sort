@@ -160,7 +160,7 @@ namespace GrillSort.EditorTools
         const string UiDir = "UI_Soft/", BarFill = "bar_fill_soft.png";
 
         static readonly string[] AtlasFolders = { Art + UiDir, Art + CustomerDir, Art + "VFX/", Art + FoodDir, Art + ShadowDir, Art + FoodOverrideDir, Art + FoodOverrideShadowDir };
-        static readonly string[] AtlasFiles = { "badge.png", "disc.png", "rounded.png", BarFill, "bar_track.png", "glow.png", "soft_rect.png", "rays.png", "bar_track_clean.png" };
+        static readonly string[] AtlasFiles = { "badge.png", "disc.png", "rounded.png", BarFill, "bar_track.png", "glow.png", "soft_rect.png", "rays.png", "bar_track_clean.png", "glow_hd.png", "rays_hd.png" };
 
         static bool IsAtlased(string path)
         {
@@ -277,6 +277,7 @@ namespace GrillSort.EditorTools
             a.mascot = Load<Sprite>(Art + "Loading/mascot.png");
             a.skewer = Load<Sprite>(Art + "Board/skewer_cartoon.png");
             a.starOn = S("UI/Icons/icon_star.png");
+            a.iconAddTray = S("UI/Icons/icon_add_skewer.png"); a.iconShuffle = S("UI/Icons/icon_shuffle.png");
             a.starOff = a.starOn;
             // CC0 sound set + music (Tools/ArtPipeline/make_audio.py; licences: ArtSource/Audio/LICENSES.md). The old
             // synthesized placeholders (Audio/*.wav) stay on disk, unused.
@@ -342,7 +343,7 @@ namespace GrillSort.EditorTools
         static void MakeAtlases()
         {
             Directory.CreateDirectory(Root + "Atlases");
-            Atlas("UI", new[] { Art + UiDir.TrimEnd('/'), Art + CustomerDir.TrimEnd('/'), Art + "VFX" }, 2048, new[] { Art + "Generated/badge.png", Art + "Generated/disc.png", Art + "Generated/rounded.png", Art + "Generated/" + BarFill, Art + "Generated/bar_track.png", Art + "Generated/glow.png", Art + "Generated/soft_rect.png", Art + "Generated/rays.png", Art + "Generated/bar_track_clean.png" });
+            Atlas("UI", new[] { Art + UiDir.TrimEnd('/'), Art + CustomerDir.TrimEnd('/'), Art + "VFX" }, 2048, new[] { Art + "Generated/badge.png", Art + "Generated/disc.png", Art + "Generated/rounded.png", Art + "Generated/" + BarFill, Art + "Generated/bar_track.png", Art + "Generated/glow.png", Art + "Generated/soft_rect.png", Art + "Generated/rays.png", Art + "Generated/bar_track_clean.png", Art + "Generated/glow_hd.png", Art + "Generated/rays_hd.png" });
             Atlas("Food", new[] { Art + FoodDir.TrimEnd('/'), Art + ShadowDir.TrimEnd('/'), Art + FoodOverrideDir.TrimEnd('/'), Art + FoodOverrideShadowDir.TrimEnd('/') }, 2048, null);
         }
 
@@ -862,12 +863,13 @@ namespace GrillSort.EditorTools
             // reward bubble: turning rays, warm glow, a pile of coins, sparkles
             var bubble = Rect("Bubble", content, new Vector2(460, 460), new Vector2(0, 170));
             ui.winBubble = bubble;
-            ui.winRays = Img("Rays", bubble, S("Generated/rays.png"), new Vector2(1000, 1000), Vector2.zero);
-            ui.winRays.color = new Color(1f, .88f, .5f, .45f);   // alpha set at runtime (kept faint so the screen stays dark)
-            ui.winGlow = Img("Glow", bubble, S("Generated/glow.png"), new Vector2(920, 920), Vector2.zero);
-            ui.winGlow.color = new Color(1f, .78f, .3f, .7f);
-            var orb = Img("Orb", bubble, S("Generated/disc.png"), new Vector2(500, 500), Vector2.zero);
-            orb.color = new Color(1f, .95f, .8f, .16f);
+            // smooth 1024 px glow + rays (user 2026-11-22: the stretched whitish disc looked low quality); no disc
+            ui.winRays = Img("Rays", bubble, S("Generated/rays_hd.png"), new Vector2(950, 950), Vector2.zero);
+            ui.winRays.color = new Color(1f, .86f, .42f, .45f);
+            ui.winGlow = Img("Glow", bubble, S("Generated/glow_hd.png"), new Vector2(900, 900), Vector2.zero);
+            ui.winGlow.color = new Color(1f, .72f, .22f, .85f);
+            var core = Img("Core", bubble, S("Generated/glow_hd.png"), new Vector2(460, 460), Vector2.zero);
+            core.color = new Color(1f, .93f, .62f, .55f);   // warm bright centre behind the coins
             var coin = S("UI/Icons/icon_coin.png");
             var pile = new (float x, float y, float w, float r)[] { (-70, -55, 170, -12), (75, -60, 165, 10), (0, -20, 185, 0), (-35, 60, 160, -6), (55, 45, 150, 14) };
             foreach (var p in pile)
@@ -983,46 +985,134 @@ namespace GrillSort.EditorTools
             return Button(img);
         }
 
+        // Settings panel v2 (user 2026-11-22: "I need sliders for music and sfx which we can manage in game directly ...
+        // match our design, increase the size of the setting page if needed"). Bigger panel (900 wide). Rows on the cream:
+        // Music slider, Sound slider, Vibration on/off, Restore Purchases, Restart + Continue. Sliders: dark rounded track,
+        // warm fill, cream knob with a brown ring, the value in % on the right.
+        // Grid measured on popup_panel at 900 wide: cream area x -347..344, y +302..-351. Content column = cream minus a 40 px
+        // margin each side (x -307..304, 610 wide, centre -1). Vertical: 42 px top margin, three 88 px setting rows 100 apart,
+        // 40 px gap, Restore (108), 24 px gap, Restart + Continue (108), ~43 px bottom margin.
+        const float SetCX = -1f, SetW = 610f, SetL = -307f, SetR = 304f, SetRowH = 88f;
+
         static void BuildPausePopup(GameUi ui, Transform parent)
         {
-            var (cg, panel) = Popup("PausePopup", parent, 820, "Settings", out _);
+            var (cg, panel) = Popup("PausePopup", parent, 900, "Settings", out _);
             ui.pausePopup = cg; ui.pausePanel = panel;
             float h = panel.sizeDelta.y;
-            var close = ImgW("Close", panel, S("UI/Icons/btn_close.png"), 104, new Vector2(372, h / 2 - 70), null, true);
+            var close = ImgW("Close", panel, S("UI/Icons/btn_close.png"), 108, new Vector2(406, h / 2 - 72), null, true);
             ui.pauseClose = Button(close);
 
-            Image Tile(string name, string icon, float x, out Image off)
-            {
-                var t = ImgW(name, panel, S("UI/Buttons/btn_tile_yellow.png"), 186, new Vector2(x, 128), null, true);
-                ImgW("Icon", t.transform, S($"UI/Icons/{icon}.png"), 112, new Vector2(0, 8));
-                off = Img("Off", t.transform, S("Generated/rounded.png"), new Vector2(150, 20), new Vector2(0, 8));
-                off.type = Image.Type.Sliced;
-                off.color = new Color32(214, 40, 40, 255);
-                off.rectTransform.localRotation = Quaternion.Euler(0, 0, -45);
-                off.gameObject.SetActive(false);
-                return t;
-            }
-            var snd = Tile("Sound", "icon_sound", -220, out ui.pauseSoundOff);
-            var mus = Tile("Music", "icon_music", 0, out ui.pauseMusicOff);
-            var vib = Tile("Vibration", "icon_vibrate", 220, out ui.pauseHapticsOff);
-            ui.pauseSound = Button(snd); ui.pauseMusic = Button(mus); ui.pauseHaptics = Button(vib);
-            ui.pauseSoundTile = snd; ui.pauseMusicTile = mus; ui.pauseHapticsTile = vib;
+            ui.musicSlider = VolumeRow(panel, "Music", "icon_music", 216, out var mv);
+            ui.sfxSlider = VolumeRow(panel, "Sound", "icon_sound", 116, out var sv);
+            ui.musicValue = mv; ui.sfxValue = sv;
 
-            ui.pauseRestore = WideButton("Restore", panel, "btn_orange", "Restore Purchases", new Vector2(640, 118), new Vector2(0, -58), out _);
-            ui.pauseRestart = WideButton("Restart", panel, "btn_red", "Restart", new Vector2(310, 118), new Vector2(-165, -212), out _);
-            ui.pauseResume = WideButton("Continue", panel, "btn_green", "Continue", new Vector2(310, 118), new Vector2(165, -212), out _);
+            // vibration: icon | label (left-aligned with the sliders) | ON/OFF pill on the right edge
+            var vRow = Rect("VibrationRow", panel, new Vector2(SetW, SetRowH), new Vector2(SetCX, 16));
+            ImgW("Icon", vRow, S("UI/Icons/icon_vibrate.png"), 64, new Vector2(SetL + 36 - SetCX, 0));
+            var vl = Text("Label", vRow, "Vibration", 44, Brown, new Vector2(300, SetRowH), new Vector2(SetL + 87 + 150 - SetCX, 2), _matPlain);
+            vl.alignment = TextAlignmentOptions.Left; vl.textWrappingMode = TextWrappingModes.NoWrap;
+            ui.pauseHaptics = WideButton("Toggle", vRow, "btn_green", "ON", new Vector2(170, 84), new Vector2(SetR - 85 - SetCX, 0), out var vt);
+            ui.pauseHapticsText = vt;
+            ui.pauseHapticsImage = ui.pauseHaptics.GetComponent<Image>();
+            ui.hapticsOnSprite = S("UI/Buttons/btn_green.png"); ui.hapticsOffSprite = S("UI/Buttons/btn_red.png");
+
+            ui.pauseRestore = WideButton("Restore", panel, "btn_orange", "Restore Purchases", new Vector2(SetW, 108), new Vector2(SetCX, -122), out _);
+            float bw = (SetW - 24f) / 2f;
+            ui.pauseRestart = WideButton("Restart", panel, "btn_red", "Restart", new Vector2(bw, 108), new Vector2(SetCX - bw / 2 - 12, -254), out _);
+            ui.pauseResume = WideButton("Continue", panel, "btn_green", "Continue", new Vector2(bw, 108), new Vector2(SetCX + bw / 2 + 12, -254), out _);
         }
+
+        /// <summary>One volume row on the settings grid: icon (left edge) | slider | value (right-aligned to the right edge).</summary>
+        static Slider VolumeRow(Transform panel, string name, string icon, float y, out TextMeshProUGUI value)
+        {
+            var row = Rect(name + "Row", panel, new Vector2(SetW, SetRowH), new Vector2(SetCX, y));
+            ImgW("Icon", row, S($"UI/Icons/{icon}.png"), 64, new Vector2(SetL + 36 - SetCX, 0));
+            // slider from x -220 to 180 (400 wide); value text right-aligned on the column's right edge
+            const float sw = 400f, sx = -20f;
+            var sl = Rect("Slider", row, new Vector2(sw, 66), new Vector2(sx - SetCX, 0));
+            var slider = sl.gameObject.AddComponent<Slider>();
+            var track = Sliced("Track", sl, S("Generated/rounded.png"), new Vector2(sw, 34), Vector2.zero, null, true);
+            track.color = new Color32(92, 46, 18, 255);
+            var inner = Sliced("Inner", sl, S("Generated/rounded.png"), new Vector2(sw - 8, 26), Vector2.zero);
+            inner.color = new Color32(60, 28, 10, 255);
+            var fillArea = Rect("FillArea", sl, new Vector2(sw - 8, 26), Vector2.zero);
+            var fill = Sliced("Fill", fillArea, S("Generated/rounded.png"), new Vector2(0, 26), Vector2.zero);
+            fill.color = new Color32(255, 176, 40, 255);
+            var frt = fill.rectTransform; frt.anchorMin = new Vector2(0, 0); frt.anchorMax = new Vector2(0, 1); frt.sizeDelta = Vector2.zero; frt.anchoredPosition = Vector2.zero;
+            var handleArea = Rect("HandleArea", sl, new Vector2(sw - 60, 66), Vector2.zero);
+            var knob = Img("Handle", handleArea, S("Generated/disc.png"), new Vector2(60, 60), Vector2.zero, null, true);
+            knob.color = new Color32(92, 46, 18, 255);
+            var knobIn = Img("Inner", knob.transform, S("Generated/disc.png"), new Vector2(46, 46), Vector2.zero);
+            knobIn.color = new Color32(255, 240, 205, 255);
+            var hrt = knob.rectTransform; hrt.anchorMin = new Vector2(0, 0); hrt.anchorMax = new Vector2(0, 1); hrt.sizeDelta = new Vector2(60, 0);
+            slider.fillRect = frt; slider.handleRect = hrt; slider.targetGraphic = knob;
+            slider.direction = Slider.Direction.LeftToRight; slider.minValue = 0; slider.maxValue = 1; slider.value = .4f;
+            slider.transition = Selectable.Transition.None;
+            var nav = slider.navigation; nav.mode = Navigation.Mode.None; slider.navigation = nav;
+            value = Text("Value", row, "40%", 40, Brown, new Vector2(100, SetRowH), new Vector2(SetR - 50 - SetCX, 2), _matPlain);
+            value.alignment = TextAlignmentOptions.Right; value.textWrappingMode = TextWrappingModes.NoWrap;
+            return slider;
+        }
+
+        // "Stuck" popup, built like the client's Mahjong / Screwdom "Continue?" (user 2026-11-22: the old 4-button list was
+        // too basic). Two pages in one popup:
+        //   Offer  : card with the rescue item (Extra tray, or Shuffle once the tray is used) "x1" + caption, then
+        //            [coin price] and [AD Free]; small "Undo last move" link; red X -> Give up page.
+        //   Give up: card "You'll restart this level", [Retry] [Keep Playing].
+        // Grid on popup_panel at 860 wide: cream x -332..329, y +289..-335 (measured), 44 px margins.
+        public const int StuckPrice = 150;
 
         static void BuildStuckPopup(GameUi ui, Transform parent)
         {
-            var (cg, panel) = Popup("StuckPopup", parent, 800, "No moves!", out _);
-            ui.stuckPopup = cg; ui.stuckPanel = panel;
-            Text("Body", panel, "The grill is jammed.\nPick a way out:", 40, Brown, new Vector2(620, 100), new Vector2(0, 205), _matPlain);
-            var size = new Vector2(440, 92);
-            ui.stuckUndo = WideButton("Undo", panel, "btn_orange", "Undo", size, new Vector2(0, 100), out _);
-            ui.stuckShuffle = WideButton("Shuffle", panel, "btn_orange", "Shuffle", size, new Vector2(0, -8), out _);
-            ui.stuckExtra = WideButton("Extra", panel, "btn_green", "Extra Skewer (Ad)", size, new Vector2(0, -116), out _);
-            ui.stuckRetry = WideButton("Retry", panel, "btn_red", "Retry", size, new Vector2(0, -224), out _);
+            var (cg, panel) = Popup("StuckPopup", parent, 860, "Out of Moves!", out var title);
+            ui.stuckPopup = cg; ui.stuckPanel = panel; ui.stuckTitle = title;
+            float h = panel.sizeDelta.y;
+            ui.stuckClose = Button(ImgW("Close", panel, S("UI/Icons/btn_close.png"), 104, new Vector2(388, h / 2 - 70), null, true));
+            const float cx = -1.5f, cw = 572f;
+
+            // ---- offer page
+            var offer = Rect("Offer", panel, new Vector2(860, 700), Vector2.zero);
+            ui.stuckOffer = offer;
+            var card = Sliced("Card", offer, S("Generated/rounded.png"), new Vector2(cw, 280), new Vector2(cx, 108));
+            card.color = new Color32(238, 222, 190, 255);
+            var tile = Sliced("Tile", offer, S("Generated/rounded.png"), new Vector2(190, 160), new Vector2(cx, 150));
+            tile.color = new Color32(214, 186, 140, 255);
+            ui.stuckIcon = ImgW("Icon", offer, S("UI/Icons/icon_add_skewer.png"), 128, new Vector2(cx, 152));
+            var x1 = Text("x1", offer, "x1", 46, Color.white, new Vector2(100, 60), new Vector2(cx + 92, 92), _matBrownOutline);
+            x1.textWrappingMode = TextWrappingModes.NoWrap;
+            ui.stuckCaption = Text("Caption", offer, "Add 1 Tray and Continue", 36, Brown, new Vector2(cw - 40, 56), new Vector2(cx, 18), _matPlain);
+            ui.stuckCaption.textWrappingMode = TextWrappingModes.NoWrap;
+
+            float bw = (cw - 24f) / 2f;
+            var buy = Sliced("Buy", offer, S("UI/Buttons/btn_green.png"), new Vector2(bw, 116), new Vector2(cx - bw / 2 - 12, -112), null, true);
+            ImgW("Coin", buy.transform, S("UI/Icons/icon_coin.png"), 62, new Vector2(-62, 4));
+            ui.stuckPrice = Text("Price", buy.transform, StuckPrice.ToString(), 54, Color.white, new Vector2(150, 80), new Vector2(34, 4), _matBrownOutline);
+            ui.stuckPrice.textWrappingMode = TextWrappingModes.NoWrap;
+            ui.stuckBuy = Button(buy);
+            var ad = Sliced("Free", offer, S("UI/Buttons/btn_orange.png"), new Vector2(bw, 116), new Vector2(cx + bw / 2 + 12, -112), null, true);
+            var tag = Sliced("AdTag", ad.transform, S("Generated/rounded.png"), new Vector2(70, 42), new Vector2(-66, 4));
+            tag.color = new Color32(214, 40, 40, 255);
+            Text("Text", tag.transform, "AD", 24, Color.white, new Vector2(70, 42), new Vector2(0, 1), _matPlain);
+            var ft = Text("Label", ad.transform, "Free", 50, Color.white, new Vector2(150, 80), new Vector2(40, 4), _matBrownOutline);
+            ft.textWrappingMode = TextWrappingModes.NoWrap;
+            ui.stuckAd = Button(ad);
+
+            var undo = Text("Undo", offer, "<u>Undo last move</u>", 36, new Color32(140, 80, 30, 255), new Vector2(360, 64), new Vector2(cx, -232), _matPlain);
+            undo.raycastTarget = true;
+            ui.stuckUndo = undo.gameObject.AddComponent<UnityEngine.UI.Button>();
+            ui.stuckUndo.transition = Selectable.Transition.None;
+
+            // ---- give-up page
+            var quit = Rect("GiveUp", panel, new Vector2(860, 700), Vector2.zero);
+            ui.stuckGiveUp = quit;
+            var qcard = Sliced("Card", quit, S("Generated/rounded.png"), new Vector2(cw, 280), new Vector2(cx, 108));
+            qcard.color = new Color32(238, 222, 190, 255);
+            ImgW("Icon", quit, S("UI/Icons/icon_heart.png"), 120, new Vector2(cx, 152));
+            var qt = Text("Caption", quit, "You'll restart this level", 38, new Color32(200, 40, 30, 255), new Vector2(cw - 40, 56), new Vector2(cx, 18), _matPlain);
+            qt.textWrappingMode = TextWrappingModes.NoWrap;
+            ui.stuckRetry = WideButton("Retry", quit, "btn_red", "Retry", new Vector2(bw, 116), new Vector2(cx - bw / 2 - 12, -112), out _);
+            ui.stuckKeep = WideButton("Keep", quit, "btn_green", "Resume", new Vector2(bw, 116), new Vector2(cx + bw / 2 + 12, -112), out _);
+            quit.gameObject.SetActive(false);
         }
 
         static void BuildMessagePopup(GameUi ui, Transform parent)

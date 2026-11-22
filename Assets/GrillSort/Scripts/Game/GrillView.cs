@@ -50,7 +50,17 @@ namespace GrillSort
         public const int MaxSlots = 6;
         public const float GrillW = 180f, GrillH = 770f, ShadowRatio = 712f / 512f;
         public static readonly Vector2 ShadowOffset = new Vector2(8f, -18f);
-        const float TopY = 268f, BottomY = -290f;   // highest / lowest food centre on the coal bed
+        const float TopY = 268f, BottomY = -290f;   // span for trays of 5+ slots
+        /// <summary>Centre of a full stack in grill units (0 = tray centre; nudge to balance the hook at the top).</summary>
+        public static float StackCenterY = 0f;
+
+        /// <summary>
+        /// Fit to the screen (user 2026-11-22: with 7 trays everything got small and left a big empty band at the bottom).
+        /// VStretch makes every tray taller (art, skewer, slot spacing; the food itself stays round) to use spare height;
+        /// FoodBoost makes the food a little bigger inside narrower trays. Set by StageLayout.
+        /// </summary>
+        public static float VStretch { get; private set; } = 1f;
+        public static float FoodBoost { get; private set; } = 1f;
 
         public static void SetCapacity(int capacity)
         {
@@ -59,13 +69,68 @@ namespace GrillSort
             FoodScale = scale;
         }
 
+        /// <summary>Returns true when the fit changed (callers then re-apply it to every grill).</summary>
+        public static bool SetFit(float vstretch, float foodBoost)
+        {
+            if (Mathf.Approximately(vstretch, VStretch) && Mathf.Approximately(foodBoost, FoodBoost)) return false;
+            VStretch = vstretch; FoodBoost = foodBoost;
+            SetCapacity(Capacity);
+            return true;
+        }
+
         static float[] Layout(int capacity, out float scale)
         {
             float step = capacity <= 4 ? 163f : (TopY - BottomY) / (capacity - 1);
-            scale = Mathf.Min(1f, step / 138f);
+            scale = Mathf.Min(1f, step / 138f) * FoodBoost;
+            // a full tray's stack is centred in the tray (user 2026-11-22: equal gap above the first and below the last
+            // piece); food still hangs from the top, slot 0 highest
+            float top = StackCenterY + step * (capacity - 1) * .5f;
             var y = new float[MaxSlots];
-            for (int i = 0; i < MaxSlots; i++) y[i] = TopY - step * i;   // hangs down from the top
+            for (int i = 0; i < MaxSlots; i++) y[i] = (top - step * i) * VStretch;
             return y;
+        }
+
+        // authored (unstretched) heights / positions, captured the first time the fit is applied
+        Graphic[] _tall; float[] _tallH, _tallY; RectTransform[] _moved; float[] _movedY; float _rootH;
+        readonly float[] _foodW = new float[MaxSlots];
+
+        /// <summary>Applies <see cref="VStretch"/> / <see cref="FoodScale"/> to this grill's art, effects and food.</summary>
+        public void ApplyFit()
+        {
+            if (_tall == null)
+            {
+                var t = new System.Collections.Generic.List<Graphic> { shadow, ember, glow, highlight, grill, coalGlow, coalHotA, coalHotB, skewer };
+                t.RemoveAll(g => g == null);
+                _tall = t.ToArray();
+                _tallH = new float[_tall.Length]; _tallY = new float[_tall.Length];
+                for (int i = 0; i < _tall.Length; i++) { _tallH[i] = _tall[i].rectTransform.sizeDelta.y; _tallY[i] = _tall[i].rectTransform.anchoredPosition.y; }
+                var m = new System.Collections.Generic.List<RectTransform>();
+                foreach (var g in steam) m.Add(g.rectTransform);
+                foreach (var g in sparkles) m.Add(g.rectTransform);
+                if (perfect != null) m.Add(perfect.rectTransform);
+                _moved = m.ToArray(); _movedY = new float[_moved.Length];
+                for (int i = 0; i < _moved.Length; i++) _movedY[i] = _moved[i].anchoredPosition.y;
+                _rootH = rect.sizeDelta.y;
+            }
+            float k = VStretch;
+            for (int i = 0; i < _tall.Length; i++)
+            {
+                var r = _tall[i].rectTransform;
+                r.sizeDelta = new Vector2(r.sizeDelta.x, _tallH[i] * k);
+                r.anchoredPosition = new Vector2(r.anchoredPosition.x, _tallY[i] * k);
+            }
+            for (int i = 0; i < _moved.Length; i++) _moved[i].anchoredPosition = new Vector2(_moved[i].anchoredPosition.x, _movedY[i] * k);
+            rect.sizeDelta = new Vector2(rect.sizeDelta.x, _rootH * k);
+            for (int i = 0; i < slots.Length; i++)
+            {
+                if (_foodW[i] > 0f && foods[i].enabled)
+                {
+                    float w = _foodW[i] * FoodScale;
+                    foods[i].rectTransform.sizeDelta = new Vector2(w, w);
+                    foodShadows[i].rectTransform.sizeDelta = new Vector2(w * ShadowRatio, w * ShadowRatio);
+                }
+                ResetSlot(i);
+            }
         }
 
         public Action<int, int> onTap;   // (grill, tapped slot index)
@@ -104,6 +169,7 @@ namespace GrillSort
             if (art == null) { img.enabled = false; sh.enabled = false; return; }
             img.enabled = sh.enabled = true;
             img.sprite = raw ? art.raw : art.grilled;
+            _foodW[slot] = art.width;
             sh.sprite = raw && art.shadowRaw != null ? art.shadowRaw : art.shadow;
             float w = art.width * FoodScale;
             img.rectTransform.sizeDelta = new Vector2(w, w);

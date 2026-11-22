@@ -81,6 +81,7 @@ namespace GrillSort.EditorTools
                 foreach (var rt in AllRects()) byPath[PathOf(rt)] = rt;
                 foreach (var o in overrides.items)
                 {
+                    if (IsIgnored(o.path)) continue;
                     if (!byPath.TryGetValue(o.path, out var rt)) continue;
                     if (rt.parent != null && rt.parent.GetComponent<LayoutGroup>() != null) o.mask &= ~Driven;
                     if (o.mask == 0) continue;
@@ -125,11 +126,25 @@ namespace GrillSort.EditorTools
             return string.Join("/", parts);
         }
 
+        /// <summary>
+        /// Never tracked: the game area (trays, food, customers) and the loading-screen background are positioned and sized
+        /// by code (StageLayout, GrillView, AspectRatioFitter), so differences there are not hand edits. (2026-11-22: a tray
+        /// stretch experiment resized grill parts in the saved scene and the keeper wrongly kept 192 of them.)
+        /// </summary>
+        static readonly string[] Ignored = { "Canvas/World", "Canvas/Loading/Background" };
+
+        static bool IsIgnored(string path)
+        {
+            foreach (var p in Ignored) if (path.StartsWith(p)) return true;
+            return false;
+        }
+
         static List<Entry> Read()
         {
             var list = new List<Entry>();
             foreach (var rt in AllRects())
             {
+                if (IsIgnored(PathOf(rt))) continue;
                 var e = new Entry
                 {
                     path = PathOf(rt), pos = rt.anchoredPosition, size = rt.sizeDelta, scale = rt.localScale,

@@ -30,8 +30,7 @@ EFFECTS = {
     "whoosh": ("maximize_008.ogg", -7),       # skewer flies to the customer, mascot hops off
     "pop": ("drop_002.ogg", -6),              # bubbles / logo landing
     "coin": ("handleCoins.ogg", -6),          # reward coins
-    "win": ("jingles_STEEL03.ogg", -3),       # level complete: steel drums C C C5 (rising)
-    "serve": ("jingles_STEEL10.ogg", -5),     # order served: steel drums D -> G
+    # "win" and "serve" are synthesized (serve_chime, win_fanfare): user 2026-11-22, the steel-drum jingles weren't great
     "fail": ("jingles_STEEL07.ogg", -6),      # no moves: steel drums E D# D (gentle "wah-wah")
 }
 # background music (user pick 2026-11-21): "Which Brand of Mustard Shall I Buy?" (CC0). Its file ends in a fade-out,
@@ -160,6 +159,44 @@ def ikame_click():
     return y / np.abs(y).max()
 
 
+# ---- serve + win (2026-11-22, user: the serve sounds were "frustrating" and the win sound "not great"). Serving used to
+# fire 7 clashing sounds; now ONE bright chime in C major carries it (the rest is quiet). Built like the reward chimes in
+# the client's games (Skewer Jam's level-complete rises E4 -> E5 -> C6 -> E6): a quick rising major arpeggio of soft bells.
+def bell(f, dur, bright=1.0):
+    """Soft bell / glockenspiel note: fundamental + inharmonic partials that die faster, gentle attack."""
+    n = int(dur * SR); t = np.arange(n) / SR
+    env = np.minimum(1, t / .004) * np.exp(-t / (dur * .32))
+    y = np.sin(2 * np.pi * f * t) * env
+    for k, a, d in ((2.0, .45 * bright, .16), (3.01, .22 * bright, .09), (4.2, .10 * bright, .05)):
+        y += a * np.sin(2 * np.pi * f * k * t) * np.minimum(1, t / .002) * np.exp(-t / (dur * d))
+    return y
+
+
+def place_notes(notes, total, gain=1.0):
+    y = np.zeros(int(total * SR))
+    for start, f, dur, amp in notes:
+        b = bell(f, dur) * amp
+        i = int(start * SR); j = min(len(y), i + len(b)); y[i:j] += b[:j - i]
+    fo = int(.05 * SR); y[-fo:] *= np.linspace(1, 0, fo)
+    return y / np.abs(y).max() * gain
+
+
+def serve_chime():
+    """Order served: C6 E6 G6 C7 in 0.2 s, a sparkly 'ta-da-ding'."""
+    C6, E6, G6, C7 = 1046.5, 1318.5, 1568.0, 2093.0
+    return place_notes([(0, C6, .5, .8), (.055, E6, .5, .8), (.11, G6, .55, .85), (.17, C7, .9, 1.0)], 1.0)
+
+
+def win_fanfare():
+    """Level complete: rising arpeggio C5 E5 G5 C6, a beat, then a full C major chord that rings out (~1.8 s)."""
+    C5, E5, G5, C6, E6, G6 = 523.3, 659.3, 784.0, 1046.5, 1318.5, 1568.0
+    notes = [(0, C5, .5, .7), (.11, E5, .5, .7), (.22, G5, .5, .75), (.33, C6, .6, .8)]
+    for f, a in ((C5, .55), (E5, .5), (G5, .5), (C6, .65), (E6, .45), (G6, .35)):
+        notes.append((.52, f, 1.4, a))
+    notes += [(.52, C6 * 2, .9, .25), (.64, E6 * 2, .8, .18)]         # shimmer on top
+    return place_notes(notes, 2.0)
+
+
 def main():
     rng = np.random.default_rng(7)
     # pick: a light upward "bloop" (lifting); drop: a round, slightly lower "plop" + soft tick (landing), 3 sizes
@@ -168,6 +205,10 @@ def main():
     for i, f in enumerate([415, 405, 428]):
         encode(tock(f, .12, click=.55, seed=10 + i) * 10 ** (-7 / 20), os.path.join(SFX, f"drop_{i}.ogg"))
     encode(ikame_click() * 10 ** (-7 / 20), os.path.join(SFX, "click.ogg"))
+    # synthesized serve/win kept as backups; the game's serve.ogg / win.ogg come from the client's games
+    # (Tools/ArtPipeline/extract_ref_sfx.py, user 2026-11-22)
+    encode(serve_chime() * 10 ** (-5 / 20), os.path.join(SFX, "serve_synth.ogg"))
+    encode(win_fanfare() * 10 ** (-3 / 20), os.path.join(SFX, "win_synth.ogg"))
     for name, (src, peak) in EFFECTS.items():
         encode(tidy(decode(os.path.join(SRC, "Kenney", src)), peak), os.path.join(SFX, name + ".ogg"))
     encode(sizzle(1.5, rng) * 10 ** (-4 / 20), os.path.join(SFX, "sizzle.ogg"))

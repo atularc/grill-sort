@@ -29,10 +29,10 @@ namespace GrillSort.EditorTools
             var report = new StringBuilder();
             report.AppendLine("# Grill Sort level report");
             report.AppendLine();
-            report.AppendLine($"Move rule: **{rule}** (Sort Streak style: food hangs from the top of each tray, drag any piece and the pieces below it come along, drop only where the bottom piece matches). One tray per customer holding exactly that order (4 or 5 pieces) + {LevelGenerator.Helpers} helper trays without customers. Every level was solved by the A* solver (admissible heuristic, so par is the true minimum unless marked `~`), and the solution was replayed on a fresh board to confirm it ends with every order served.");
+            report.AppendLine($"Move rule: **{rule}** (Sort Streak style: food hangs from the top of each tray, drag any piece and the pieces below it come along, drop only where the bottom piece matches). Sort Streak order queue: a row of trays on screen, every one with a customer; serving an order removes its tray and the next queued tray (new customer + mixed food) slides in from the right. Trays hold {LevelGenerator.Capacity} pieces for {LevelGenerator.Pieces}-piece orders (one spare slot each). Every level was solved by the A* solver (admissible heuristic, so par is the true minimum unless marked `~`), and the solution was replayed on a fresh board to confirm it ends with every order served.");
             report.AppendLine();
-            report.AppendLine("| Level | Customers | Pieces per order | Look-alike pairs | Target par | Par (min moves) | Bar |");
-            report.AppendLine("|---|---|---|---|---|---|---|");
+            report.AppendLine("| Level | On screen | Orders | Foods | Look-alike pairs | Target par | Par (min moves) | Bar |");
+            report.AppendLine("|---|---|---|---|---|---|---|---|");
             var sw = Stopwatch.StartNew();
             int prevPar = 0, failures = 0;
             try
@@ -48,7 +48,7 @@ namespace GrillSort.EditorTools
                     if (!ok) { failures++; Debug.LogError($"[Grill Sort] Level {n} failed verification"); continue; }
                     bank.levels.Add(lv);
                     prevPar = lv.par;
-                    report.AppendLine($"| {n} | {lv.foodTypes} | {lv.pieces} | {lv.lookAlikePairs} | {LevelGenerator.TierFor(n).TargetPar} | {lv.par}{(lv.parOptimal ? "" : "~")} | {new string('#', lv.par)} |");
+                    report.AppendLine($"| {n} | {lv.skewers} | {lv.TotalOrders} | {lv.foodTypes} | {lv.lookAlikePairs} | {LevelGenerator.TierFor(n).TargetPar} | {lv.par}{(lv.parOptimal ? "" : "~")} | {new string('#', lv.par)} |");
                 }
             }
             finally { EditorUtility.ClearProgressBar(); }
@@ -73,12 +73,9 @@ namespace GrillSort.EditorTools
             {
                 if (!b.TryMakeMove(rule, m.From, rule == MoveRule.AnyWithAbove ? m.Index : -1, m.To, out var mm)) return false;
                 if (mm.Index != m.Index || mm.Count != m.Count) return false;
-                if (b.Apply(mm, out int fromServed) >= 0) served++;
-                if (fromServed >= 0) served++;
+                served += b.Apply(mm).Count;
             }
-            int orders = 0;
-            foreach (var o in lv.orders) if (o >= 0) orders++;
-            return b.IsSolved() && served == orders;
+            return b.IsSolved() && served == lv.TotalOrders;
         }
     }
 }

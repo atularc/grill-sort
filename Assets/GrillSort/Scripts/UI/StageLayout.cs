@@ -30,6 +30,10 @@ namespace GrillSort
         public int activeGrills = 5;
 
         public const float GrillSpacing = 200f, GrillHeight = 770f, RowGap = 90f;
+        /// <summary>Column spacing in use (tighter with many trays, like Sort Streak's frameless ropes).</summary>
+        public static float Spacing { get; private set; } = GrillSpacing;
+        [Tooltip("Most a tray may be stretched taller to use spare screen height (1 = never). User 2026-11-22: keep the trays their normal length")] public float maxStretch = 1f;
+        [Tooltip("Food size boost when there are more than 5 trays")] public float manyTraysFoodBoost = 1.08f;
         /// <summary>Width a customer + order bubble needs at scale 1 (design px).</summary>
         const float CustomerWidth = 250f;
         const float BoosterReserve = 330f;   // design px above the safe bottom kept for the booster bar + message strip
@@ -40,6 +44,20 @@ namespace GrillSort
         public void MarkDirty() => _dirty = true;
 
         public float StageScale { get; private set; } = 1.25f;
+
+        // ---- positions for a row of n trays (used to slide trays when an order is served, Sort Streak style)
+        float _W = 1080f, _availH = 800f, _cs = 1f, _gs = 1f;
+        public static float SpacingFor(int n) => n > 5 ? 186f : GrillSpacing;
+        public float ScaleFor(int n)
+        {
+            bool many = n > 5;
+            float aw = _W - (many ? 16f : 40f);
+            return Mathf.Min(1f, aw / (Mathf.Max(1, n) * SpacingFor(n)), _availH / GrillHeight);
+        }
+        /// <summary>X of tray i in a row of n, in the Grills container's units.</summary>
+        public float TrayX(int i, int n) => (i - (n - 1) * .5f) * SpacingFor(n);
+        /// <summary>X of the customer above tray i in a row of n, in the Customers container's units.</summary>
+        public float CustomerX(int i, int n) => TrayX(i, n) * _gs / _cs;
 
         void LateUpdate()
         {
@@ -89,19 +107,27 @@ namespace GrillSort
             float top = counterBottom > 0f ? counterBottom * s + CurtainGap * s / 1.25f : counterY + BoardGap * s / 1.25f;
             float bottom = H - safeBottom - BoosterReserve;
             float availH = Mathf.Max(200f, bottom - top);
-            float availW = W - 40f;
-
             int n = Mathf.Max(1, activeGrills);
+            // fit (user 2026-11-22): with many trays use tighter columns and smaller side margins, a slightly bigger
+            // food, and let the trays grow taller into the spare height instead of leaving an empty band at the bottom
+            bool many = n > 5;
+            Spacing = many ? 186f : GrillSpacing;
+            float availW = W - (many ? 16f : 40f);
             // always one row: every customer stands right above their own tray (Sort Streak style)
-            float gs = Mathf.Min(1f, availW / (n * GrillSpacing), availH / GrillHeight);
+            float gs = Mathf.Min(1f, availW / (n * Spacing), availH / GrillHeight);
+            _W = W; _availH = availH; _cs = cs; _gs = gs;
+            float k = Mathf.Clamp(availH * .97f / (GrillHeight * gs), 1f, maxStretch);
+            if (GrillView.SetFit(k, many ? manyTraysFoodBoost : 1f) && grillSlots != null)
+                foreach (var gsl in grillSlots) { var gv = gsl != null ? gsl.GetComponent<GrillView>() : null; if (gv != null) gv.ApplyFit(); }
             int rows = 1, perRow2 = n;
 
             grills.anchorMin = grills.anchorMax = new Vector2(.5f, 1f);
             grills.pivot = new Vector2(.5f, .5f);
             float contentH = rows * GrillHeight + (rows - 1) * RowGap;
-            float used = contentH * gs;
+            float used = contentH * gs * k;
             // with the compact counter the trays sit right under the curtain; spare height stays above the boosters
-            float spare = Mathf.Max(0f, availH - used) * (counterBottom > 0f ? .15f : .45f);
+            // spare height split evenly above and below the trays (user 2026-11-22: no big empty band at the bottom)
+            float spare = Mathf.Max(0f, availH - used) * .5f;
             grills.anchoredPosition = new Vector2(0f, -(top + used * .5f + spare));
             grills.localScale = new Vector3(gs, gs, 1f);
 
@@ -113,14 +139,14 @@ namespace GrillSort
                 for (int c = 0; c < inRow; c++, idx++)
                 {
                     if (idx >= grillSlots.Length) break;
-                    float x = (c - (inRow - 1) * .5f) * GrillSpacing;
+                    float x = (c - (inRow - 1) * .5f) * Spacing;
                     grillSlots[idx].anchoredPosition = new Vector2(x, y);
                 }
             }
 
             // customers: centred over their trays, shrunk when the trays are close together
             if (customerSlots == null) return;
-            float trayGap = GrillSpacing * gs;            // screen-design px between tray centres
+            float trayGap = Spacing * gs;            // screen-design px between tray centres
             float fit = Mathf.Min(1f, trayGap * 1.22f / (CustomerWidth * cs));
             for (int i = 0; i < customerSlots.Length; i++)
             {

@@ -23,12 +23,23 @@ namespace GrillSort
         public override string ToString() => $"{From}[{Index}]x{Count}->{To}";
     }
 
+    /// <summary>One order served by a move: the tray at <see cref="Slot"/> left the row (the trays after it moved one
+    /// slot left) and, when <see cref="Arrived"/>, the next queued tray was appended at the end of the row.</summary>
+    public struct Served
+    {
+        public int Slot, Food;
+        public bool Arrived;
+    }
+
     /// <summary>
-    /// Pure puzzle state (Sort Streak style, Aaron 2026-11-18): N trays, each a bottom-to-top stack of food ids with
-    /// room for <see cref="Capacity"/> pieces. Each tray belongs to the customer above it and has a target food.
-    /// A tray holding exactly <see cref="Pieces"/> pieces of its own target food is complete: the order is served,
-    /// the tray empties and stays on the board as free space (no target any more).
-    /// Trays without a target (served ones, the Extra tray booster) are plain free space.
+    /// Pure puzzle state, Sort Streak style with an order queue (user 2026-11-22, from the Sort Streak "rows" video):
+    /// a ROW of trays (the ones on screen), each a stack of food ids (index 0 = fixed end) with room for
+    /// <see cref="Capacity"/> pieces and the customer's order (target food) above it; plus a QUEUE of trays still to
+    /// come. A tray holding exactly <see cref="Pieces"/> pieces of its own target food (nothing else) is served: it
+    /// LEAVES the row, the trays after it move one slot left, and the next queued tray (new customer + mixed food)
+    /// joins at the right end. With no queue left the row just gets shorter. Every tray has a customer; free room is
+    /// the spare slot each tray has (Capacity = Pieces + 1) and part-empty trays. Trays without a target (the Extra
+    /// tray booster) are plain free space and never leave.
     /// </summary>
     public sealed class Board
     {
@@ -39,8 +50,37 @@ namespace GrillSort
         readonly List<int[]> _cells = new List<int[]>();
         readonly List<int> _count = new List<int>();
         readonly List<int> _target = new List<int>();
+        readonly List<int[]> _queueCells = new List<int[]>();
+        readonly List<int> _queueTarget = new List<int>();
+        int _queueNext;
 
         public Board(int capacity, int pieces = 4) { Capacity = capacity; Pieces = pieces; }
+
+        /// <summary>Adds a tray to the queue (it joins the row when an order is served).</summary>
+        public void AddQueued(IList<int> bottomToTop, int target)
+        {
+            var arr = new int[bottomToTop.Count];
+            for (int i = 0; i < arr.Length; i++) arr[i] = bottomToTop[i];
+            _queueCells.Add(arr); _queueTarget.Add(target);
+        }
+
+        public int QueueCount => _queueCells.Count;
+        /// <summary>Index of the next queued tray to arrive.</summary>
+        public int QueueNext => _queueNext;
+        public int QueueLeft => _queueCells.Count - _queueNext;
+        public int QueueTarget(int i) => _queueTarget[i];
+        public int[] QueueStack(int i) => (int[])_queueCells[i].Clone();
+
+        /// <summary>Orders this level has in total (row + queue), served or not.</summary>
+        public int OrdersLeft
+        {
+            get
+            {
+                int n = QueueLeft;
+                foreach (var t in _target) if (t >= 0) n++;
+                return n;
+            }
+        }
 
         public int SkewerCount => _cells.Count;
         public int Count(int s) => _count[s];
@@ -64,6 +104,8 @@ namespace GrillSort
         {
             var b = new Board(Capacity, Pieces);
             for (int s = 0; s < _cells.Count; s++) { b._cells.Add((int[])_cells[s].Clone()); b._count.Add(_count[s]); b._target.Add(_target[s]); }
+            for (int q = 0; q < _queueCells.Count; q++) { b._queueCells.Add(_queueCells[q]); b._queueTarget.Add(_queueTarget[q]); }
+            b._queueNext = _queueNext;
             return b;
         }
 
@@ -102,6 +144,7 @@ namespace GrillSort
 
         public bool IsSolved()
         {
+            if (QueueLeft > 0) return false;
             for (int s = 0; s < _cells.Count; s++) if (_count[s] != 0 || _target[s] >= 0) return false;
             return true;
         }
@@ -139,30 +182,40 @@ namespace GrillSort
             return index;
         }
 
-        /// <summary>Applies a move. Returns the food id served by the target tray (it filled up), or -1.</summary>
-        public int Apply(Move m) => Apply(m, out _);
-
         /// <summary>
-        /// Applies a move. Returns the food id served by the target tray, or -1. <paramref name="servedFrom"/> is the
-        /// food served by the source tray, or -1 (lifting the last wrong piece off a tray that already holds its full order).
+        /// Applies a move and serves whatever it completed. The source tray is checked first (lifting the last wrong
+        /// piece off a tray can leave it holding exactly its order), then the destination. Each serve removes the tray
+        /// from the row (later trays shift one slot left) and appends the next queued tray. Returns the serves in the
+        /// order they happened; each Slot is the row index at that moment. The Solver applies moves the same way.
         /// </summary>
-        public int Apply(Move m, out int servedFrom)
+        public List<Served> Apply(Move m)
         {
             var src = _cells[m.From]; var dst = _cells[m.To];
             for (int k = 0; k < m.Count; k++) dst[_count[m.To]++] = src[m.Index + k];
             for (int k = m.Index; k < m.Index + m.Count; k++) src[k] = -1;
             _count[m.From] = m.Index;
-            servedFrom = Serve(m.From);
-            return Serve(m.To);
+            var r = new List<Served>(2);
+            int to = m.To;
+            if (IsComplete(m.From))
+            {
+                r.Add(ServeAt(m.From));
+                if (to > m.From) to--;
+            }
+            if (IsComplete(to)) r.Add(ServeAt(to));
+            return r;
         }
 
-        int Serve(int s)
+        Served ServeAt(int s)
         {
-            if (!IsComplete(s)) return -1;
-            int f = _target[s];
-            Clear(s);
-            _target[s] = -1;
-            return f;
+            var e = new Served { Slot = s, Food = _target[s] };
+            _cells.RemoveAt(s); _count.RemoveAt(s); _target.RemoveAt(s);
+            if (_queueNext < _queueCells.Count)
+            {
+                AddSkewer(_queueCells[_queueNext], _queueTarget[_queueNext]);
+                _queueNext++;
+                e.Arrived = true;
+            }
+            return e;
         }
 
         public void Clear(int s)

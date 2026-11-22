@@ -54,6 +54,7 @@ namespace GrillSort
         public Sprite skewer;
 
         [Header("UI swaps")]
+        public Sprite iconAddTray, iconShuffle;
         public Sprite starOn;
         public Sprite starOff;
 

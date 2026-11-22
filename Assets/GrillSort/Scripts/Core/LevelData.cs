@@ -14,8 +14,17 @@ namespace GrillSort
         public int skewers;
         /// <summary>skewers * capacity food ids, bottom to top per tray, -1 = empty slot.</summary>
         public int[] cells;
+        /// <summary>Orders in the whole level (row + queue).</summary>
+        public int TotalOrders
+        {
+            get { int n = queueOrders != null ? queueOrders.Length : 0; foreach (var o in orders) if (o >= 0) n++; return n; }
+        }
         /// <summary>Order of each tray: the food its customer wants (-1 = free tray). One customer stands above each tray.</summary>
         public int[] orders;
+        /// <summary>Trays waiting to join the row (Sort Streak queue): queueOrders[i] = order of queued tray i,
+        /// queueCells = queueOrders.Length * capacity food ids, -1 = empty slot.</summary>
+        public int[] queueOrders = new int[0];
+        public int[] queueCells = new int[0];
         public int foodTypes;
         public int par;
         public bool parOptimal;
@@ -36,6 +45,13 @@ namespace GrillSort
                 }
                 b.AddSkewer(stack, orders != null && s < orders.Length ? orders[s] : -1);
             }
+            if (queueOrders != null)
+                for (int q = 0; q < queueOrders.Length; q++)
+                {
+                    var stack = new System.Collections.Generic.List<int>();
+                    for (int i = 0; i < capacity; i++) { int f = queueCells[q * capacity + i]; if (f >= 0) stack.Add(f); }
+                    b.AddQueued(stack, queueOrders[q]);
+                }
             return b;
         }
 
