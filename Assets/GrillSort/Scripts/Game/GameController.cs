@@ -20,8 +20,8 @@ namespace GrillSort
         [Header("Rules")]
         [Tooltip("AnyWithAbove (default, client decision 2026-11-18): grab any piece, everything above comes along. TopGroup = classic Water Sort: the whole top run of the same food moves. SingleTop = only the top piece moves.")]
         public MoveRule moveRule = MoveRule.AnyWithAbove;
-        [Tooltip("Cooking stages (2026-11-23): pieces are RAW while sorting; a finished tray flares up and the pieces turn GRILLED before they are served. Off = grilled food all the time (the client-approved look).")]
-        public bool cookOnComplete = true;
+        [Tooltip("Cooking stages (2026-11-23): pieces are RAW while sorting; a finished tray flares up and the pieces turn GRILLED before they are served. Off = grilled food all the time (the client-approved look). OFF since the user's 2026-11-23 call: the food should look the same as before.")]
+        public bool cookOnComplete = false;
         [Tooltip("Demo / review builds: only levels 1-10 can be played.")]
         public bool limitToTenLevels = false;
         [Tooltip("Free idle hint on levels <= 10 after this many seconds.")]
@@ -61,7 +61,7 @@ namespace GrillSort
         /// catches up one serve at a time (tray + customer leave, the rest slide left, the next tray slides in), so this
         /// keeps the faces with their trays while they slide.
         /// </summary>
-        struct VisTray { public int[] stack; public int target; public int face; }
+        struct VisTray { public int[] stack; public int target; public int face; public int who; }   // who: this customer's id (their mood + waiting time, GameController.Moods)
         readonly List<VisTray> _vis = new List<VisTray>();
         int NextFace() => _nextAnimal++ % art.customers.Length;
         int _selected = -1, _selStart;
@@ -342,7 +342,7 @@ namespace GrillSort
             _hintCo = _tipCo = null;
             _selectCo = _selectGlowCo = null;
             _handCo = null; HideHand();
-            _stuckCheckId++; _stuckShown = false;   // cancel a pending stuck check from the previous level
+            _stuckCheckId++; _stuckShown = false; _deadMoves = -1;   // cancel a pending stuck check from the previous level
             if (!_loadingScreen && audioManager != null) audioManager.SetAmbience(art.sizzleLoop, true);   // e.g. Restart / no loading screen
             // a level load can come while the win / stuck popup is still animating in (StopAllCoroutines above cuts the
             // pop-ins short): close them now and put every popped element back to full size, so nothing stays stuck
@@ -362,8 +362,14 @@ namespace GrillSort
             _totalOrders = _board.OrdersLeft;   // row + queue
             _nextAnimal = (_levelNumber * 3) % art.customers.Length; // different faces from level to level
             _vis.Clear();
+            _moods.Clear();
+            int firstRow = 0;
             for (int s = 0; s < _skewers; s++)
-                _vis.Add(new VisTray { stack = _board.Stack(s), target = _board.Target(s), face = _board.Target(s) >= 0 ? NextFace() : -1 });
+            {
+                int t0 = _board.Target(s);
+                // the first customers don't all lose patience at the same moment: each one starts a few seconds later
+                _vis.Add(new VisTray { stack = _board.Stack(s), target = t0, face = t0 >= 0 ? NextFace() : -1, who = t0 >= 0 ? NewCustomer(-patienceStagger * firstRow++) : 0 });
+            }
 
             ApplyTheme();
 
@@ -471,10 +477,10 @@ namespace GrillSort
                 var t = _vis[c.tray];
                 c.food = t.target;
                 c.face = Mathf.Max(0, t.face) % art.customers.Length;
-                c.waited = 0f; c.anim = false;
+                c.who = t.who; c.anim = false;
                 if (c.moodCo != null) { StopCoroutine(c.moodCo); c.moodCo = null; }
                 if (c.emote != null) c.emote.gameObject.SetActive(false);
-                SetMood(c, Mood.Wait);
+                SetMood(c, MoodOf(c).mood);   // re-binding after a serve keeps everyone's face (it used to reset to waiting)
                 SetOrder(c);
                 c.check.gameObject.SetActive(false);
                 c.body.localScale = Vector3.one;
@@ -513,8 +519,10 @@ namespace GrillSort
             for (int s = 0; s < _board.SkewerCount; s++)
             {
                 int t = _board.Target(s);
-                int face = s < old.Count && old[s].target == t ? old[s].face : (t >= 0 ? NextFace() : -1);
-                _vis.Add(new VisTray { stack = _board.Stack(s), target = t, face = face });
+                bool same = s < old.Count && old[s].target == t;
+                int face = same ? old[s].face : (t >= 0 ? NextFace() : -1);
+                int who = same ? old[s].who : (t >= 0 ? NewCustomer(0f) : 0);
+                _vis.Add(new VisTray { stack = _board.Stack(s), target = t, face = face, who = who });
             }
         }
 
@@ -598,8 +606,7 @@ namespace GrillSort
             if (_levelNumber <= 10 && _idle >= wait && _hintCo == null && _selected < 0)
             {
                 _idle = -4f; // don't spam
-                var mv = Solver.NextMove(_board, moveRule);
-                if (mv.HasValue) _hintCo = StartCoroutine(HintAnim(mv.Value, tutorial ? 9999f : 3.6f));
+                if (!_hintSearching) StartCoroutine(IdleHint(tutorial ? 9999f : 3.6f));
             }
         }
 
@@ -1157,7 +1164,7 @@ namespace GrillSort
             if (arrived && queueIndex >= 0)
             {
                 int t = _board.QueueTarget(queueIndex);
-                _vis.Add(new VisTray { stack = _board.QueueStack(queueIndex), target = t, face = t >= 0 ? NextFace() : -1 });
+                _vis.Add(new VisTray { stack = _board.QueueStack(queueIndex), target = t, face = t >= 0 ? NextFace() : -1, who = t >= 0 ? NewCustomer(0f) : 0 });
             }
             int nAfter = _vis.Count;
 
@@ -1598,6 +1605,7 @@ namespace GrillSort
                 2 => DoShuffle(),
                 _ => AddExtraSkewer(),
             };
+            if (i == 1 && _hintSearching) StartCoroutine(Tween.Bounce(ui.boosters[i].transform, .15f, .3f));   // Hint charges itself when its move shows
             if (used)
             {
                 SaveData.SetBooster(i, SaveData.Booster(i) - 1);
@@ -1617,17 +1625,70 @@ namespace GrillSort
             _board = b; _moves = mv;
             SyncVisFromBoard();
             RedrawAll(true);
+            CheckStuck(false);   // back to a winnable board clears the warning; still dead = warn again
             return true;
         }
 
+        bool _hintSearching;
+
+        /// <summary>
+        /// Hint booster: the search runs on a worker thread (it can take ~0.5 s on hard boards) and the booster is only
+        /// charged when a move is shown. Only a PROVEN dead end opens the stuck popup; a search that merely ran out of
+        /// budget says so instead (it used to open "Out of Moves!" on winnable boards, user 2026-11-23).
+        /// Returns false: UseBooster must not charge it; HintWhenReady does.
+        /// </summary>
         bool DoHint()
         {
+            if (_hintSearching) return false;
             Deselect();
-            var mv = Solver.NextMove(_board, moveRule);
-            if (!mv.HasValue) { ShowStuck(); return false; }   // same rescue popup as the automatic check
             StopHint();
-            _hintCo = StartCoroutine(HintAnim(mv.Value));
-            return true;
+            _hintSearching = true;
+            var snapshot = _board.Clone();
+            var rule = moveRule;
+            var task = System.Threading.Tasks.Task.Run(() =>
+            {
+                var m = Solver.NextMove(snapshot, rule, out bool dead);
+                return (m, dead);
+            });
+            StartCoroutine(HintWhenReady(task, snapshot.ToString() + "|" + snapshot.QueueNext, _levelNumber));
+            return false;
+        }
+
+        /// <summary>The free idle hint (levels up to 10): searched on a worker thread too, shown only if nothing changed.</summary>
+        IEnumerator IdleHint(float duration)
+        {
+            _hintSearching = true;
+            var snapshot = _board.Clone();
+            string key = snapshot.ToString() + "|" + snapshot.QueueNext;
+            int level = _levelNumber;
+            var rule = moveRule;
+            var task = System.Threading.Tasks.Task.Run(() => Solver.NextMove(snapshot, rule));
+            while (!task.IsCompleted) yield return null;
+            _hintSearching = false;
+            if (task.IsFaulted || !task.Result.HasValue) yield break;
+            if (level != _levelNumber || _won || _busy || _dragging || _selected >= 0 || _hintCo != null || AnyPopupOpen()) yield break;
+            if (key != _board.ToString() + "|" + _board.QueueNext) yield break;
+            _hintCo = StartCoroutine(HintAnim(task.Result.Value, duration));
+        }
+
+        IEnumerator HintWhenReady(System.Threading.Tasks.Task<(Move? m, bool dead)> task, string boardKey, int level)
+        {
+            while (!task.IsCompleted) yield return null;
+            _hintSearching = false;
+            if (task.IsFaulted) { Debug.LogException(task.Exception); yield break; }
+            // the player moved / undid / changed level while it searched: that hint is for another board
+            if (level != _levelNumber || _won || boardKey != _board.ToString() + "|" + _board.QueueNext) yield break;
+            while (_busy || _dragging) yield return null;
+            var (m, dead) = task.Result;
+            if (m.HasValue)
+            {
+                SaveData.SetBooster(1, SaveData.Booster(1) - 1);
+                RefreshBoosters();
+                StopHint();
+                _hintCo = StartCoroutine(HintAnim(m.Value));
+            }
+            else if (dead) ShowStuck();
+            else Toast("No hint found here. Try Undo!");
         }
 
         bool DoShuffle()
@@ -1661,34 +1722,72 @@ namespace GrillSort
             _history.Clear();
             SyncVisFromBoard();
             RedrawAll(true);
+            CheckStuck(false);
             return true;
         }
 
-        // ------------------------------------------------------------------ stuck detection (user 2026-11-22)
-        // After every move the solver checks in the background whether the board can still be won. Before, only "no legal
-        // move at all" was caught, so a board with moves left but no way to win (the user's level 3) never warned.
+        // ------------------------------------------------------------------ stuck detection (user 2026-11-22, 2026-11-23)
+        // After every move the solver checks in the background whether the board can still be won. The check is exact
+        // (audited 2026-11-23 on all 50 baked levels: 4139 positions, never a false alarm, never a miss), but in ~80% of
+        // dead ends food can STILL be moved, even onto a tray that then gets served, so popping "Out of Moves!" right
+        // away was confusing (user 2026-11-23). Now:
+        //  - nothing can move at all -> the "You're Stuck!" popup at once;
+        //  - food can still move but the orders can't all be filled -> a warning toast + the Undo booster pulses; the
+        //    popup only comes if the player makes StuckGraceMoves more moves without getting out of it.
+        // The popup never opens mid-drag / mid-move.
         const int StuckPriceFor = 150;   // coins for the rescue (the client's games ask 190)
+        const int StuckGraceMoves = 2;
         bool _stuckShown;
         int _stuckCheckId;
+        int _deadMoves = -1;   // -1 = the board can be won; 0.. = moves made since the dead end was first spotted
 
-        void CheckStuck()
+        /// <param name="playerMove">false after Undo / a booster / the rescue: re-checks the board without counting it as
+        /// one of the grace moves.</param>
+        void CheckStuck(bool playerMove = true)
         {
             if (_won || _autoPlay) return;
             int id = ++_stuckCheckId;
             var snapshot = _board.Clone();
             var rule = moveRule;
             var task = System.Threading.Tasks.Task.Run(() => Solver.IsStuck(snapshot, rule));
-            StartCoroutine(WaitStuck(task, id));
+            StartCoroutine(WaitStuck(task, id, playerMove));
         }
 
-        IEnumerator WaitStuck(System.Threading.Tasks.Task<bool> task, int id)
+        IEnumerator WaitStuck(System.Threading.Tasks.Task<bool> task, int id, bool playerMove)
         {
             while (!task.IsCompleted) yield return null;
-            if (task.IsFaulted || !task.Result || id != _stuckCheckId) yield break;   // a newer move superseded it
+            if (task.IsFaulted || id != _stuckCheckId) yield break;   // a newer move superseded it
+            if (!task.Result) { _deadMoves = -1; yield break; }       // still winnable (e.g. after Undo)
             yield return new WaitForSeconds(.45f);
-            while (_busy) yield return null;
+            while (_busy || _dragging) yield return null;
             if (_won || id != _stuckCheckId || AnyPopupOpen()) yield break;
+            bool firstSeen = _deadMoves < 0;
+            if (firstSeen) _deadMoves = 0;
+            else if (playerMove) _deadMoves++;
+            if (_board.HasAnyMove(moveRule) && _deadMoves < StuckGraceMoves)
+            {
+                WarnDead(firstSeen);
+                yield break;
+            }
             ShowStuck();
+        }
+
+        /// <summary>Food can still move, but the orders can't all be filled any more: say so and point at Undo.</summary>
+        void WarnDead(bool first)
+        {
+            Toast(first ? "These orders can't all be filled now. Try Undo!" : "Still stuck. Tap Undo to go back!", 3.5f);
+            audioManager.Play(art.invalid, .5f, .9f);
+            if (ui.boosters.Length > 0) StartCoroutine(PulseUndo());
+        }
+
+        IEnumerator PulseUndo()
+        {
+            var t = ui.boosters[0].transform;   // booster 0 = Undo
+            for (int i = 0; i < 3; i++)
+            {
+                yield return Tween.Bounce(t, .18f, .3f);
+                yield return new WaitForSeconds(.15f);
+            }
         }
 
         void ShowStuck()
@@ -1699,6 +1798,10 @@ namespace GrillSort
             ui.stuckIcon.sprite = tray ? art.iconAddTray : art.iconShuffle;
             ui.stuckCaption.text = tray ? "Add 1 Tray and Continue" : "Shuffle the Grill and Continue";
             ui.stuckPrice.text = StuckPriceFor.ToString();
+            if (ui.stuckReason != null)
+                ui.stuckReason.text = _board.HasAnyMove(moveRule)
+                    ? "You can still move food, but these orders can't all be filled anymore."
+                    : "No food can be moved anywhere.";
             ShowStuckPage(true);
             AllWorried();
             audioManager.Play(art.fail, .8f);
@@ -1709,7 +1812,8 @@ namespace GrillSort
         {
             ui.stuckOffer.gameObject.SetActive(offer);
             ui.stuckGiveUp.gameObject.SetActive(!offer);
-            ui.stuckTitle.text = offer ? "Out of Moves!" : "Give Up?";
+            ui.stuckTitle.text = offer ? "You're Stuck!" : "Give Up?";
+            if (ui.stuckReason != null) ui.stuckReason.gameObject.SetActive(offer);
             var rt = offer ? ui.stuckOffer : ui.stuckGiveUp;
             rt.localScale = Vector3.one * .9f;
             ui.StartCoroutine(Tween.Scale(rt, Vector3.one, .2f, k => Ease.OutBack(k)));
@@ -1721,7 +1825,7 @@ namespace GrillSort
             _stuckShown = false;
             if (!_extraUsed && _board.SkewerCount < ui.grills.Length) AddExtraSkewer();
             else if (!DoShuffle()) { StuckLater(); return; }
-            CheckStuck();
+            CheckStuck(false);
         }
 
         void StuckLater() => StartCoroutine(Tween.Delay(.4f, () => { if (!_won && !AnyPopupOpen()) ShowStuck(); }));
@@ -1743,6 +1847,7 @@ namespace GrillSort
             v.rect.localScale = Vector3.zero;
             StartCoroutine(Tween.Scale(v.rect, Vector3.one, .4f, t => Ease.OutBack(t)));
             audioManager.Play(art.pop, .8f, .9f);
+            CheckStuck(false);   // the extra space may open a way out
             return true;
         }
 
@@ -1915,7 +2020,7 @@ namespace GrillSort
         {
             "Drag food to fill each tray!",
             "Drop food onto the same food!",
-            "Fill a tray to grill it for the customer!",
+            "Fill a tray to serve the customer!",
             "Serve orders to bring in new ones!",
         };
 
@@ -1959,14 +2064,17 @@ namespace GrillSort
             if (ui.tip.alpha > 0f) StartCoroutine(Tween.Fade(ui.tip, 0f, .2f));
         }
 
-        public void Toast(string msg)
+        public void Toast(string msg) => Toast(msg, 1.3f);
+
+        /// <summary>A message in the strip above the boosters, held for <paramref name="hold"/> seconds.</summary>
+        public void Toast(string msg, float hold)
         {
             // one message at a time in the strip: a tutorial banner steps aside for the toast and comes back after it
             if (_levelNumber <= tutorialLevels && _tipCo != null) StartCoroutine(TipAside());
             else HideTip();
             if (_toastCo != null) ui.StopCoroutine(_toastCo);
             ui.toastText.text = msg;
-            _toastCo = ui.StartCoroutine(ToastAnim());
+            _toastCo = ui.StartCoroutine(ToastAnim(hold));
         }
 
         IEnumerator TipAside()
@@ -1977,13 +2085,13 @@ namespace GrillSort
             if (!_won && _tipCo != null) yield return Tween.Fade(ui.tip, 1f, .25f);
         }
 
-        IEnumerator ToastAnim()
+        IEnumerator ToastAnim(float hold)
         {
             var rt = (RectTransform)ui.toast.transform;
             rt.localScale = Vector3.one * .8f;
             ui.StartCoroutine(Tween.Scale(rt, Vector3.one, .25f, t => Ease.OutBack(t)));
             yield return Tween.Fade(ui.toast, 1f, .15f);
-            yield return new WaitForSeconds(1.3f);
+            yield return new WaitForSeconds(hold);
             yield return Tween.Fade(ui.toast, 0f, .25f);
             _toastCo = null;
         }
@@ -2031,7 +2139,15 @@ namespace GrillSort
             ui.sfxValue.text = $"{Mathf.RoundToInt(ui.sfxSlider.value * 100)}%";
             ui.pauseHapticsText.text = SaveData.Haptic ? "ON" : "OFF";
             ui.pauseHapticsImage.sprite = SaveData.Haptic ? ui.hapticsOnSprite : ui.hapticsOffSprite;
-            ui.pauseRestart.gameObject.SetActive(!_homeUp);
+            // Restart only makes sense in a level. On Home it's hidden and Continue takes the whole row, the same width as
+            // Restore Purchases (a lone half-width button on the right looked odd, user 2026-11-23).
+            bool restart = !_homeUp;
+            ui.pauseRestart.gameObject.SetActive(restart);
+            var restore = (RectTransform)ui.pauseRestore.transform;
+            var cont = (RectTransform)ui.pauseResume.transform;
+            float full = restore.sizeDelta.x, half = (full - 24f) / 2f;
+            cont.sizeDelta = new Vector2(restart ? half : full, cont.sizeDelta.y);
+            cont.anchoredPosition = new Vector2(restore.anchoredPosition.x + (restart ? half / 2f + 12f : 0f), cont.anchoredPosition.y);
         }
 
         AudioClip CurrentTrack()

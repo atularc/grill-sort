@@ -74,21 +74,142 @@ namespace GrillSort
             if (b.IsSolved()) return false;
             if (!b.HasAnyMove(rule)) return true;
             var r = Solve(b, rule, budget, 0);
-            return !r.Solvable && !r.Exhausted;
+            if (r.Solvable) return false;
+            if (!r.Exhausted) return true;
+            // A* ran out of budget (typical with the Extra tray): settle it depth-first (a win is usually found fast;
+            // a dead board is proven by visiting every position, up to DepthFirstCap)
+            DepthFirst(b, rule, DepthFirstCap, out bool dead);
+            return dead;
         }
 
         /// <summary>Next move toward a solution (Hint booster, idle hint, autoplay), or null when none is found.</summary>
-        public static Move? NextMove(Board b, MoveRule rule)
+        public static Move? NextMove(Board b, MoveRule rule) => NextMove(b, rule, out _);
+
+        /// <summary>
+        /// Next move toward a solution. <paramref name="provenDead"/> is true only when a search ran to the end without a
+        /// solution (the board really can't be won). Null with provenDead false = not found within the budget.
+        /// Audit 2026-11-23: the old budgets (15k exact, then 30k at weight 4) gave no hint on ~35% of WINNABLE
+        /// positions (even the start of levels 22-30), and the Hint booster then showed the stuck popup. Now it escalates
+        /// to greedier, bigger searches (all of levels 20-50 found, worst ~0.5 s in the Editor); the game runs it on a
+        /// worker thread.
+        /// </summary>
+        public static Move? NextMove(Board b, MoveRule rule, out bool provenDead)
         {
+            provenDead = false;
             if (b.IsSolved()) return null;
             var s = Ctx;
             if (!s.Init(b, rule)) return null;
-            int found = s.Run(15000, 1, out bool exhausted);
-            if (found < 0 && exhausted) found = s.Run(30000, 4, out exhausted);
-            if (found < 0) return null;
+            // 1) a quick exact search on the real board
+            int found = s.Run(HintSearches[0].budget, HintSearches[0].weight, out bool exhausted);
+            if (found >= 0) return First(s, found, b);
+            if (!exhausted) { provenDead = true; return null; }
+            // 2) an empty tray without a customer (the Extra tray, an emptied helper) multiplies the positions to search
+            //    (with it, 23 of 50 level starts found no hint). A solution that leaves one such tray alone is also a
+            //    solution on the real board, and the search without it is far smaller: try that first.
+            for (int r = b.SkewerCount - 1; r >= 0; r--)
+            {
+                if (b.Count(r) != 0 || b.Target(r) >= 0) continue;
+                var reduced = Without(b, r);
+                if (!s.Init(reduced, rule)) continue;
+                for (int i = 0; i < HintSearches.Length - 1; i++)
+                {
+                    int f = s.Run(HintSearches[i].budget, HintSearches[i].weight, out bool ex);
+                    if (f >= 0)
+                    {
+                        var m = First(s, f, reduced);
+                        if (!m.HasValue) break;
+                        var mv = m.Value;
+                        if (mv.From >= r) mv.From++;
+                        if (mv.To >= r) mv.To++;
+                        return mv;
+                    }
+                    if (!ex) break;   // no solution without that tray: it is needed
+                }
+            }
+            // 3) the real board with bigger, greedier searches
+            if (!s.Init(b, rule)) return null;
+            for (int i = 1; i < HintSearches.Length; i++)
+            {
+                found = s.Run(HintSearches[i].budget, HintSearches[i].weight, out exhausted);
+                if (found >= 0) return First(s, found, b);
+                if (!exhausted) { provenDead = true; return null; }
+            }
+            // 4) depth-first with promising moves first: A* drowns in the positions an extra empty tray creates (48 of
+            //    102 winnable positions after Extra Tray got no hint), a dive down one good line finds a win at once
+            return DepthFirst(b, rule, DepthFirstCap, out provenDead);
+        }
+
+        /// <summary>States the depth-first fallback may visit (it runs on a worker thread in the game).</summary>
+        public static int DepthFirstCap = 400000;
+
+        /// <summary>
+        /// Any winning line by depth-first search (moves that serve first, then moves onto the same food, then the rest).
+        /// Returns its first move, or null: <paramref name="provenDead"/> = every reachable position was visited and
+        /// none wins. Not shortest; used only when A* runs out of budget.
+        /// </summary>
+        public static Move? DepthFirst(Board start, MoveRule rule, int cap, out bool provenDead)
+        {
+            provenDead = false;
+            if (start.IsSolved()) return null;
+            string Key(Board x) => x.ToString() + "|" + x.QueueNext;
+            var seen = new HashSet<string> { Key(start) };
+            var stack = new List<(Board b, List<Move> moves, int next, Move first)>();
+            stack.Add((start, Ordered(start, rule), 0, default));
+            while (stack.Count > 0)
+            {
+                var top = stack[stack.Count - 1];
+                if (top.next >= top.moves.Count) { stack.RemoveAt(stack.Count - 1); continue; }
+                var m = top.moves[top.next];
+                stack[stack.Count - 1] = (top.b, top.moves, top.next + 1, top.first);
+                var nb = top.b.Clone();
+                nb.Apply(m);
+                var first = stack.Count == 1 ? m : top.first;
+                if (nb.IsSolved()) return first;
+                if (!seen.Add(Key(nb))) continue;
+                if (seen.Count > cap) return null;
+                stack.Add((nb, Ordered(nb, rule), 0, first));
+            }
+            provenDead = true;
+            return null;
+        }
+
+        static List<Move> Ordered(Board b, MoveRule rule)
+        {
+            var list = new List<Move>();
+            b.LegalMoves(rule, list, true);
+            var scored = new List<(Move m, int sc)>(list.Count);
+            foreach (var m in list)
+            {
+                int sc = 0;
+                int food = b.Get(m.From, m.Index);
+                if (b.Count(m.To) > 0) sc += 10;                                    // joins the same food
+                if (b.Target(m.To) == food && b.Settled(m.To) == b.Count(m.To)) sc += 20;   // lands on its own order
+                if (b.Count(m.To) + m.Count == b.Pieces && b.Target(m.To) == food && b.Settled(m.To) == b.Count(m.To)) sc += 100;   // serves
+                if (m.Index == 0 && b.Target(m.From) < 0) sc -= 5;                  // emptying a helper into another tray
+                scored.Add((m, sc));
+            }
+            scored.Sort((x, y) => y.sc.CompareTo(x.sc));
+            for (int i = 0; i < scored.Count; i++) list[i] = scored[i].m;
+            return list;
+        }
+
+        static Move? First(Search s, int found, Board b)
+        {
             var p = s.Path(found, b, 1);
             return p.Count > 0 ? p[0] : (Move?)null;
         }
+
+        /// <summary>The same board without tray <paramref name="r"/> (and the same queue still to come).</summary>
+        static Board Without(Board b, int r)
+        {
+            var nb = new Board(b.Capacity, b.Pieces);
+            for (int q = b.QueueNext; q < b.QueueCount; q++) nb.AddQueued(b.QueueStack(q), b.QueueTarget(q));
+            for (int t = 0; t < b.SkewerCount; t++) if (t != r) nb.AddSkewer(b.Stack(t), b.Target(t));
+            return nb;
+        }
+
+        /// <summary>Escalating (node budget, weight) searches for a hint; public so tests can try other settings.</summary>
+        public static (int budget, int weight)[] HintSearches = { (15000, 1), (120000, 3) };   // then depth-first (a bigger A* stage only cost time: 2 s worst vs the dive)
 
         // ------------------------------------------------------------------ search internals
 

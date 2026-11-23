@@ -66,7 +66,7 @@ namespace GrillSort
         [Header("Stuck popup")]
         public CanvasGroup stuckPopup;
         public RectTransform stuckPanel;
-        public TMP_Text stuckTitle, stuckCaption, stuckPrice;
+        public TMP_Text stuckTitle, stuckCaption, stuckPrice, stuckReason;
         public Image stuckIcon;
         public RectTransform stuckOffer, stuckGiveUp;
         public Button stuckClose, stuckBuy, stuckAd, stuckUndo, stuckRetry, stuckKeep;
@@ -120,6 +120,7 @@ namespace GrillSort
         public Button[] decorBuy;
         public TMP_Text[] decorPrice;
         public Image[] decorBuilt;
+        public TMP_Text decorProgress;   // "Stall built: 3 / 6" under the ribbon
         public Button decorClose;
 
         /// <summary>The wooden shelf the booster tiles stand on.</summary>

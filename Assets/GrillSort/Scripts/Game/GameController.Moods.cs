@@ -13,30 +13,53 @@ namespace GrillSort
     {
         public enum Mood { Wait, Happy, Angry }
 
+        // Moods are STICKY (user 2026-11-23: "when the expression changes it should not go back to normal, only when they
+        // get their item, and it should follow the time consumed"):
+        //  - every customer has a clock from the moment their order appears (not reset by progress);
+        //  - normal face -> happy once their tray gets their food (stays happy) -> impatient after patienceSeconds
+        //    (stays impatient, with a sweat / anger pop every impatientNagSeconds);
+        //  - a wrong drop on their tray or running out of moves makes them impatient at once (stays);
+        //  - only being served changes it again (they cheer and leave; the next person starts normal).
+        // The state lives by customer id (VisTray.who), so it survives the row re-binding after every serve.
+
         [Header("Customers")]
-        [Tooltip("Seconds a customer waits without progress on their tray before they look impatient (not on tutorial levels)")]
-        public float patienceSeconds = 22f;
+        [Tooltip("Seconds after their order appears before a customer turns impatient (the clock is stopped on tutorial levels and while a popup / the Home screen is up)")]
+        public float patienceSeconds = 40f;
+        [Tooltip("The first customers of a level start their clock this many seconds apart, so they don't all turn at once")]
+        public float patienceStagger = 6f;
+        [Tooltip("An impatient customer pops a sweat / anger emote this often")]
+        public float impatientNagSeconds = 14f;
+
+        sealed class CustomerMood { public Mood mood; public float waited, nag; }
+        readonly System.Collections.Generic.Dictionary<int, CustomerMood> _moods = new System.Collections.Generic.Dictionary<int, CustomerMood>();
+        int _lastCustomer;
+
+        /// <summary>A new person in the line (their clock starts at <paramref name="clock"/>, negative = a head start).</summary>
+        int NewCustomer(float clock)
+        {
+            int id = ++_lastCustomer;
+            _moods[id] = new CustomerMood { mood = Mood.Wait, waited = clock };
+            return id;
+        }
+
+        CustomerMood MoodOf(CustomerView c)
+        {
+            if (!_moods.TryGetValue(c.who, out var m)) { m = new CustomerMood(); _moods[c.who] = m; }
+            return m;
+        }
+
+        /// <summary>Changes the face and remembers it (it stays until they're served).</summary>
+        void Feel(CustomerView c, Mood m)
+        {
+            MoodOf(c).mood = m;
+            if (!c.anim) SetMood(c, m);
+        }
 
         void SetMood(CustomerView c, Mood m)
         {
             var set = m == Mood.Happy ? art.customersHappy : m == Mood.Angry ? art.customersAngry : art.customers;
             if (set == null || set.Length == 0) set = art.customers;
             c.animal.sprite = set[c.face % set.Length];
-        }
-
-        /// <summary>Shows a mood for a while, then back to waiting (unless the customer is cheering / leaving by then).</summary>
-        void MoodFor(CustomerView c, Mood m, float seconds)
-        {
-            if (c.moodCo != null) StopCoroutine(c.moodCo);
-            c.moodCo = StartCoroutine(MoodAnim(c, m, seconds));
-        }
-
-        IEnumerator MoodAnim(CustomerView c, Mood m, float seconds)
-        {
-            SetMood(c, m);
-            yield return new WaitForSeconds(seconds);
-            if (!c.anim && c.gameObject.activeSelf) SetMood(c, Mood.Wait);
-            c.moodCo = null;
         }
 
         void ShowEmote(CustomerView c, Sprite s, float hold)
@@ -67,16 +90,20 @@ namespace GrillSort
             e.gameObject.SetActive(false);
         }
 
-        /// <summary>A wrong drop on someone's tray: they frown and an anger mark pops.</summary>
+        /// <summary>A wrong drop on someone's tray: they turn impatient (and stay so) and an anger mark pops.</summary>
         void Annoy(int tray)
         {
             var c = CustomerForTray(tray);
             if (c == null || c.busy || c.anim) return;
-            MoodFor(c, Mood.Angry, 1.1f);
+            Feel(c, Mood.Angry);
+            MoodOf(c).nag = 0f;
             ShowEmote(c, art.emoteAngry, .7f);
         }
 
-        /// <summary>Their tray got closer to the order (only their food on it): a happy face; one piece to go = yummy face.</summary>
+        /// <summary>
+        /// Their tray got closer to the order (only their food on it): happy (stays) unless they're already impatient;
+        /// one piece to go = a yummy pop either way.
+        /// </summary>
         void Progress(int tray)
         {
             var c = CustomerForTray(tray);
@@ -84,31 +111,24 @@ namespace GrillSort
             int n = _board.Count(tray);
             if (n < 2) return;
             for (int i = 0; i < n; i++) if (_board.Get(tray, i) != c.food) return;
-            c.waited = 0f;
-            MoodFor(c, Mood.Happy, .9f);
+            if (MoodOf(c).mood != Mood.Angry) Feel(c, Mood.Happy);
             if (n == _board.Pieces - 1) ShowEmote(c, art.emoteYummy, .8f);
         }
 
-        /// <summary>Out of moves: every customer looks worried until the popup closes.</summary>
+        /// <summary>Out of moves: every customer turns impatient (and stays so until served).</summary>
         void AllWorried()
         {
             foreach (var c in ui.customers)
             {
                 if (!c.gameObject.activeSelf || c.busy) continue;
                 if (c.moodCo != null) { StopCoroutine(c.moodCo); c.moodCo = null; }
-                SetMood(c, Mood.Angry);
+                Feel(c, Mood.Angry);
+                MoodOf(c).nag = 0f;
                 ShowEmote(c, art.emoteSweat, 1.2f);
             }
-            StartCoroutine(CalmWhenClosed());
         }
 
-        IEnumerator CalmWhenClosed()
-        {
-            while (IsOpen(ui.stuckPopup)) yield return null;
-            foreach (var c in ui.customers) if (c.gameObject.activeSelf && !c.anim) { SetMood(c, Mood.Wait); c.waited = 0f; }
-        }
-
-        /// <summary>Every frame: idle breathing (each on its own phase) and impatience when nothing happens for them.</summary>
+        /// <summary>Every frame: idle breathing (each on its own phase) and each customer's clock.</summary>
         void CustomersLive()
         {
             float t = Time.time, dt = Time.deltaTime;
@@ -119,13 +139,22 @@ namespace GrillSort
                 if (!c.gameObject.activeSelf || c.busy || c.anim) continue;
                 float s = Mathf.Sin(t * 2.1f + i * 1.7f);
                 c.body.localScale = new Vector3(1f + s * .012f, 1f - s * .012f, 1f);
-                if (!clock) continue;
-                c.waited += dt;
-                if (c.waited > patienceSeconds + i * 4f)
+                if (!clock || c.food < 0) continue;
+                var m = MoodOf(c);
+                m.waited += dt;
+                if (m.mood != Mood.Angry)
                 {
-                    c.waited = -10f;   // the next sigh comes later
-                    MoodFor(c, Mood.Angry, 1.6f);
+                    if (m.waited < patienceSeconds) continue;
+                    Feel(c, Mood.Angry);   // waited too long: impatient from now until served
+                    m.nag = 0f;
                     ShowEmote(c, art.emoteSweat, 1.1f);
+                    continue;
+                }
+                m.nag += dt;
+                if (m.nag >= impatientNagSeconds)
+                {
+                    m.nag = 0f;
+                    ShowEmote(c, Random.value < .5f ? art.emoteAngry : art.emoteSweat, 1f);
                 }
             }
         }

@@ -18,7 +18,7 @@ namespace GrillSort
         public Image emote;
 
         // CustomersPeople_v2 put every eye line at the same height (284 of 512), lower than the old set: body raised to match
-        public const float BodyY = 118f, BubbleY = 302f;
+        public const float BodyY = 102f, BubbleY = 302f;   // 102 (was 118): the bust bottoms sit ~20 px behind the counter, so nobody floats (v4 art)
         /// <summary>Order bubble size and the box its skewer fits in (design px).</summary>
         public const float BubbleW = 224f, OrderBoxW = 172f, OrderBoxH = 90f, OrderBoxY = 12f;
         /// <summary>Tilt of the order skewer in the bubble: nearly flat, handle on the right.</summary>
@@ -34,6 +34,7 @@ namespace GrillSort
         [System.NonSerialized] public int face;
         /// <summary>Seconds since this customer last had something happen (served piece, arrival): drives impatience.</summary>
         [System.NonSerialized] public float waited;
+        [System.NonSerialized] public int who;   // id of the person standing here (GameController.Moods keeps their mood by it)
         /// <summary>True while a hop / cheer animates the body (the idle breathing leaves it alone).</summary>
         [System.NonSerialized] public bool anim;
         [System.NonSerialized] public Coroutine moodCo;

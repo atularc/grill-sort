@@ -48,6 +48,10 @@ Win:   every order served.
 **Boosters** (bottom bar, yellow tiles with red count badges): **Undo**, **Hint**, **Shuffle**, **Extra tray (+)** (an empty tray without a customer; Sort Streak has "Add a Rope").
 
 **Fail/stuck:** detect when no valid moves remain → offer Undo / Shuffle / Extra skewer (rewarded ad) / Retry.
+- **Stuck rework (user 2026-11-23: "I made a move, a grill matched, and I still got Out of Moves ... we don't have a moves system").** Audit (random play on all 50 baked levels vs. an exhaustive search): the stuck check (`Solver.IsStuck`) was never wrong, but in ~80% of dead ends food can still be moved (even onto a tray that gets served). Now:
+  - Title "You're Stuck!" (never "Out of Moves") + a reason line (`GameUi.stuckReason`).
+  - Nothing can move -> popup at once. Food can still move but the orders can't all be filled -> toast "These orders can't all be filled now. Try Undo!" + Undo pulses; the popup only after `StuckGraceMoves` (2) more moves. Undo / boosters / rescue re-check without counting. Never mid-drag.
+  - **Real bug fixed:** Hint (`Solver.NextMove`) gave up on ~35% of WINNABLE positions (budget 15k/30k) and the Hint booster then opened the stuck popup. Now: exact 15k -> the board without an empty customer-less tray -> weighted 120k -> depth-first dive (`Solver.DepthFirst`, cap 400k). 840/840 test positions (with and without Extra tray) get a legal hint, worst ~1.3 s in the Editor, run on a worker thread; the booster is charged only when a move shows; only a PROVEN dead end opens the popup. `IsStuck` also falls back to the dive, so dead ends after Extra tray are caught.
 
 ## 3. Levels & difficulty (user requirements)
 
@@ -248,13 +252,10 @@ Full-size originals (white background, uncut) are in `ArtSource/` outside Assets
 **VFX** (`VFX/`): `fx_flame`, `fx_smoke`, `fx_sparkle`, `fx_steam`. These were cut from black (brightness → alpha). Use them as particle textures (additive or alpha blend).
 
 **Docs:**
-- `Docs/Mockups/`: approved screenshots.
-  - `Grill-Sort-Mockup.png` (v1)
-  - `-v2` (white outline, rejected)
-  - `-v3-shadow` (**recommended**)
-  - `-v4-lane`, `-v5-glow` (not chosen)
-  - `Grill-Food-Lineup.png`, `Grill-Food-Stages.png`
-  - `Themes/<Theme>-mockup.png` / `-mockup-calm.png`, `All-Themes.png`, `All-Themes-Calm.png`
+- `Docs/Mockups/` (cleaned 2026-11-23 at the user's request: only current images are kept; every older mockup, lineup and before/after named elsewhere in this file is deleted but still in git history):
+  - `Grill-Sort-Mockup-v3-shadow.png`: the client-approved first look (layout reference)
+  - `Themes/<Theme>-mockup-calm.png`, `All-Themes-Calm.png`
+  - Polish round: `Home-Stall-All-Decor`, `Home-Stall-New-Player`, `Daily-Reward`, `Decorate-Buy-Sequence`, `Cook-And-Moods-Sequence`, `Customers-v3-Moods`, `Food-Raw-vs-Grilled`, `Food-Grilled-v5-Before-After`, `Level-Raw-Food-Shelf`
 - `Docs/ArtPrompts.md`: the **exact prompt** used for every asset.
 
 **Not made yet:**
@@ -336,11 +337,14 @@ Goal: a playable portrait prototype that looks like `Docs/Mockups/Grill-Sort-Moc
 ## Current state of the prototype
 
 **Update 2026-11-23, polish round on branch `polish-cook-meta`** (user asked for an honest 1-10 review, then "do all" of its recommendations; ~41 Figma images, prompts at the end of `Docs/ArtPrompts.md`, review images in `Docs/Mockups/` named `Home-*`, `Daily-Reward`, `Decorate-*`, `Cook-And-Moods-*`, `Food-Raw-vs-Grilled`, `Food-Grilled-v5-*`, `Customers-v3-Moods`, `Level-Raw-Food-Shelf`). All new art is NEW files; old sets stay.
-1. **Cooking stages are ON** (`GameController.cookOnComplete`, default now true; was the OPEN question in §2, still Aaron's call): pieces show **raw** while sorting (`FoodRaw_v1/Raw/`, cartoon, shaped like each grilled piece; old realistic `Food/Raw|Medium` unused, no Medium stage). A finished tray flares orange and the pieces pop to grilled bottom-up (`GameController.Moods.cs` `CookTray`), then the serve continues. Order bubbles still show the grilled skewer. Readability risk: raw chicken (pink) / shrimp (grey) / squid (white) look different from their grilled bubble; turn the flag off if Aaron finds it confusing.
+1. **Cooking stages: tried, then turned OFF (user 2026-11-23: "I need the food items same as previous, this system is not looking good")**. `cookOnComplete` defaults to false again; the code and `FoodRaw_v1` stay for later. What was tried (`GameController.cookOnComplete`, default now true; was the OPEN question in §2, still Aaron's call): pieces show **raw** while sorting (`FoodRaw_v1/Raw/`, cartoon, shaped like each grilled piece; old realistic `Food/Raw|Medium` unused, no Medium stage). A finished tray flares orange and the pieces pop to grilled bottom-up (`GameController.Moods.cs` `CookTray`), then the serve continues. Order bubbles still show the grilled skewer. Readability risk: raw chicken (pink) / shrimp (grey) / squid (white) look different from their grilled bubble; turn the flag off if Aaron finds it confusing.
 2. **Clearer cooked food**: `FoodFinal_v5/Grilled/` squid, bacon, beef (v3 ones read as raw); `GrillSortSetup.FoodOverrides` checks v5 then v4 (tomato).
-3. **Living customers**: `CustomersPeople_v3/` = the 8 people x waiting / `_happy` / `_angry`, each person ONE Figma image (3 faces side by side) so faces match (`cut_people_v3.py`, hand-measured FACE_PX/EYE_PX). `CustomerView.emote` pops `Meta/emote_*` (heart on serve, yummy when one piece short, anger on a wrong drop onto their tray, sweat when they wait > `patienceSeconds` 22 s without progress (not on tutorial levels) and on the stuck popup). Idle breathing. Code: `GameController.Moods.cs`.
+3. **Moods are sticky (user 2026-11-23):** a face never goes back to normal on its own, only when the customer is served. Each customer has a clock from when their order appears (`VisTray.who` -> `GameController.Moods` `_moods`, so it survives the row re-binding after a serve, which used to reset everyone): normal -> happy when their food lands on their tray (stays) -> impatient after `patienceSeconds` 40 (first row staggered by `patienceStagger` 6 s; a sweat/anger pop every `impatientNagSeconds` 14). A wrong drop on their tray or the stuck popup makes them impatient at once. Clock paused on tutorial levels, popups, Home, autoplay.
+   **`CustomersPeople_v4/`** (in use, "people are in the air"): v3 with every bust extended down to the sprite bottom (`extend_people_v4.py`, repeats a row of the clothes; eye line unchanged) + `CustomerView.BodyY` 118 -> 102, so every bust ends ~20 px behind the counter. Home customers: pivot y .04 -> .1.
+   Earlier version: **Living customers**: `CustomersPeople_v3/` = the 8 people x waiting / `_happy` / `_angry`, each person ONE Figma image (3 faces side by side) so faces match (`cut_people_v3.py`, hand-measured FACE_PX/EYE_PX). `CustomerView.emote` pops `Meta/emote_*` (heart on serve, yummy when one piece short, anger on a wrong drop onto their tray, sweat when they wait > `patienceSeconds` 22 s without progress (not on tutorial levels) and on the stuck popup). Idle breathing. Code: `GameController.Moods.cs`.
 4. **Booster shelf**: `Meta/shelf.png` under the booster tiles (`GameUi.boosterShelf`).
 5. **Meta layer / Home screen** (`GameController.Meta.cs`, `GrillSortSetup.BuildHome/BuildDailyPopup/BuildDecorPopup`): loading -> **Home** -> Play -> level -> Well Done -> Claim -> Home (next level is set up behind it). From level `homeFromLevel` (3); earlier levels and Test Level skip it; `homeScreen` flag turns it off. Home = the current theme's stall (cover-fit, same as the game), 2 customers + the mascot on the counter, **6 decorations** bought in "My Stall" (`DecorCost` 100-500 coins, `SaveData.Decor` bitmask; not-built ones show as faint silhouettes; placed in art px by `HomeDecor`), **Daily reward** 7-day calendar (`DailyRewards`, `SaveData.DailyIndex/DailyLast`, auto-opens when ready), progress to the next stall theme, Settings (Restart hidden on Home). Atlases now: UI, Customers, Meta, Food.
+   - **Spacing pass (user, 2026-11-23):** Daily and My Stall use `MetaPopup` (960 wide, `popup_panel` 9-sliced taller: ribbon/bolts/trim fixed, borders 120/200/120/300) with `MetaPad` 36 on every side of the cream area (`PopupInner`). Daily = 7 equal 160x206 tiles (4 + 3 centred, "Tray x1" short label). My Stall = "Stall built: x / 6" line + equal rows (round plate, name, price), built rows pale green. Stall card = `Generated/card_cream.png` (`make_card.py`, 9-slice 72) with name / bar / next line evenly spaced. The string lights live in the Home safe area between Daily and Decorate (they ran across both buttons on tall phones).
 6. Verified in the Editor at 1080x1920: Home, daily claim, decorate/buy animation, Home -> level, cook + moods in play, autoplay L6-L8 at par, zero console errors. APK: `Build/Grill Sort - polish-cook-meta.apk`. Still not tried on a real phone by a person.
 Not done from the review: per-theme grate variation (tinting the red enamel looked muddy in theory; needs real art per theme), decorations inside the level screen (Home only), a world map screen.
 

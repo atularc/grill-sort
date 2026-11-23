@@ -34,6 +34,9 @@ namespace GrillSort
             return r.booster < 0 ? r.coins.ToString() : $"{BoosterName(r.booster)} x{r.count}";
         }
 
+        /// <summary>Short label for a calendar tile (every tile is the same width, so "Extra Tray x1" becomes "Tray x1").</summary>
+        public static string DailyTileLabel(int i) => DailyLabel(i).Replace("Extra ", "");
+
         bool _homeUp;
         Coroutine _homeIdle;
         int _homeLevel;
@@ -231,17 +234,25 @@ namespace GrillSort
             OpenPopup(ui.decorPopup, ui.decorPanel);
         }
 
+        static readonly Color32 DecorRowOpen = new Color32(246, 232, 204, 255), DecorRowBuilt = new Color32(222, 238, 196, 255);
+
         void RefreshDecorList()
         {
+            int count = 0;
             for (int i = 0; i < ui.decorBuy.Length; i++)
             {
                 bool built = SaveData.HasDecor(i);
+                if (built) count++;
                 ui.decorBuy[i].gameObject.SetActive(!built);
                 ui.decorBuilt[i].gameObject.SetActive(built);
+                var row = ui.decorBuilt[i].transform.parent.GetComponent<Image>();   // the row plate: built ones turn pale green
+                if (row != null) row.color = built ? DecorRowBuilt : DecorRowOpen;
                 ui.decorPrice[i].text = DecorCost[i].ToString();
                 var img = ui.decorBuy[i].GetComponent<Image>();
                 img.color = SaveData.Coins >= DecorCost[i] ? Color.white : new Color(.62f, .62f, .62f, 1f);
             }
+            if (ui.decorProgress != null)
+                ui.decorProgress.text = count == ui.decorBuy.Length ? "Your stall is complete!" : $"Stall built: {count} / {ui.decorBuy.Length}";
         }
 
         void BuyDecor(int i)

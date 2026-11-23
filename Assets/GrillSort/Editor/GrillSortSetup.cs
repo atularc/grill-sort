@@ -71,6 +71,10 @@ namespace GrillSort.EditorTools
                 { Art + UiDir + "Buttons/btn_red.png", new Vector4(110, 0, 110, 0) },
                 { Art + "Generated/" + BarFill, new Vector4(52, 0, 52, 0) },
                 { Art + "Generated/rounded.png", new Vector4(50, 50, 50, 50) },
+                // popup frame: ribbon + top bolts / bottom bolts + checkered trim stay fixed, the plain wood + cream middle
+                // stretches, so a popup can be taller than the art with even padding (Popup(height))
+                { Art + UiDir + "Panels/popup_panel.png", new Vector4(120, 200, 120, 300) },
+                { Art + "Generated/card_cream.png", new Vector4(72, 72, 72, 72) },
             };
             foreach (var guid in AssetDatabase.FindAssets("t:Texture2D", new[] { Root + "Art" }))
             {
@@ -149,9 +153,10 @@ namespace GrillSort.EditorTools
         // (Tools/ArtPipeline/soften_marks.py). FoodFinal_v2 is the backup.
         // CustomersPeople_v2 (2026-11-21, Aaron: characters' style off from the rest, head sizes vary): redrawn in the food's
         // style and normalised to one face size / eye line (Tools/ArtPipeline/cut_people_v2.py). CustomersPeople = backup.
+        // CustomersPeople_v4 (2026-11-23, "people are in the air"): v3 with every bust reaching the sprite bottom (extend_people_v4.py)
         // CustomersPeople_v3 (2026-11-23): the same 8 people with three moods each, drawn as one picture per person
         // (<name>.png waiting, <name>_happy.png, <name>_angry.png; Tools/ArtPipeline/cut_people_v3.py). v2 = backup.
-        const string FoodDir = "FoodFinal_v3/Grilled/", ShadowDir = "Generated/ShadowsFinal/", CustomerDir = "CustomersPeople_v3/";
+        const string FoodDir = "FoodFinal_v3/Grilled/", ShadowDir = "Generated/ShadowsFinal/", CustomerDir = "CustomersPeople_v4/";
         // Raw stage (2026-11-23, cooking stages as the hook): FoodRaw_v1 in the game food's style (Tools/ArtPipeline/cut_food_v5.py).
         // The old stylized-realistic Food/Raw + Food/Medium stay on disk, unused (no Medium in the cartoon set: raw -> grilled).
         const string RawDir = "FoodRaw_v1/Raw/", RawShadowDir = "Generated/ShadowsRaw_v1/", MetaDir = "Meta/";
@@ -372,7 +377,7 @@ namespace GrillSort.EditorTools
             // customers (24 faces) and the meta art get their own atlases: together with the UI they no longer fit one page
             Atlas("Customers", new[] { Art + CustomerDir.TrimEnd('/') }, 2048, null);
             Atlas("Meta", new[] { Art + MetaDir.TrimEnd('/') }, 2048, null);
-            Atlas("UI", new[] { Art + UiDir.TrimEnd('/'), Art + "VFX" }, 2048, new[] { Art + "Generated/badge.png", Art + "Generated/disc.png", Art + "Generated/rounded.png", Art + "Generated/" + BarFill, Art + "Generated/bar_track.png", Art + "Generated/glow.png", Art + "Generated/soft_rect.png", Art + "Generated/rays.png", Art + "Generated/bar_track_clean.png", Art + "Generated/glow_hd.png", Art + "Generated/rays_hd.png" });
+            Atlas("UI", new[] { Art + UiDir.TrimEnd('/'), Art + "VFX" }, 2048, new[] { Art + "Generated/badge.png", Art + "Generated/disc.png", Art + "Generated/rounded.png", Art + "Generated/" + BarFill, Art + "Generated/bar_track.png", Art + "Generated/glow.png", Art + "Generated/soft_rect.png", Art + "Generated/rays.png", Art + "Generated/bar_track_clean.png", Art + "Generated/glow_hd.png", Art + "Generated/rays_hd.png", Art + "Generated/card_cream.png" });
             var food = new List<string> { Art + FoodDir.TrimEnd('/'), Art + ShadowDir.TrimEnd('/'), Art + RawDir.TrimEnd('/'), Art + RawShadowDir.TrimEnd('/') };
             foreach (var o in FoodOverrides) { food.Add(Art + o.food.TrimEnd('/')); food.Add(Art + o.shadow.TrimEnd('/')); }
             Atlas("Food", food.ToArray(), 2048, null);
@@ -857,7 +862,11 @@ namespace GrillSort.EditorTools
             return sk;
         }
 
-        static (CanvasGroup group, RectTransform panel) Popup(string name, Transform parent, float width, string title, out TextMeshProUGUI titleText)
+        /// <summary>
+        /// Popup on popup_panel. <paramref name="height"/> 0 = the art's own aspect; taller = 9-sliced (only the plain
+        /// wood/cream middle stretches). The usable cream area is then <see cref="PopupInner"/>.
+        /// </summary>
+        static (CanvasGroup group, RectTransform panel) Popup(string name, Transform parent, float width, string title, out TextMeshProUGUI titleText, float height = 0f)
         {
             var root = Stretch(name, parent);
             var cg = root.gameObject.AddComponent<CanvasGroup>();
@@ -865,14 +874,26 @@ namespace GrillSort.EditorTools
             var drt = dim.rectTransform; drt.anchorMin = Vector2.zero; drt.anchorMax = Vector2.one; drt.offsetMin = drt.offsetMax = Vector2.zero;
             dim.color = new Color(.05f, .02f, 0f, .76f);   // .66 let the trays show through too much behind popups
             var sp = S("UI/Panels/popup_panel.png");
-            float h = width * sp.rect.height / sp.rect.width;
+            float sc = width / sp.rect.width;
+            float h = Mathf.Max(height, width * sp.rect.height / sp.rect.width);
             var panel = Rect("Panel", root, new Vector2(width, h), new Vector2(0, 20));
             var pimg = panel.gameObject.AddComponent<Image>(); pimg.sprite = sp; pimg.raycastTarget = true;
-            float sc = width / sp.rect.width;
+            if (height > 0f) { pimg.type = Image.Type.Sliced; pimg.pixelsPerUnitMultiplier = 1f / sc; }
             titleText = Text("Title", panel, title, 64, Color.white, new Vector2(width * .7f, 110), new Vector2(0, h / 2 - 84 * sc), _matBrownOutline);   // ribbon band centre is 81.5 px from the top of popup_panel (measured)
             titleText.textWrappingMode = TextWrappingModes.NoWrap;
             root.gameObject.SetActive(false);
             return (cg, panel);
+        }
+
+        /// <summary>
+        /// The cream area of a popup panel that content can use, in the panel's local units: clear of the ribbon (its
+        /// tails dip to ~232 px of the 946x1027 art at the sides), the bolts and the wood rim. Measured on popup_panel.png:
+        /// cream x 104..839, top 254 (under the ribbon tails), bottom 873 (above the bottom bolts' line).
+        /// </summary>
+        static (float top, float bottom, float half) PopupInner(RectTransform panel)
+        {
+            float w = panel.sizeDelta.x, h = panel.sizeDelta.y, sc = w / 946f;
+            return (h / 2 - 254 * sc, -h / 2 + (1027 - 873) * sc, 367 * sc);
         }
 
         static UnityEngine.UI.Button WideButton(string name, Transform parent, string sprite, string label, Vector2 size, Vector2 pos, out TextMeshProUGUI text)
@@ -1105,14 +1126,18 @@ namespace GrillSort.EditorTools
 
         static void BuildStuckPopup(GameUi ui, Transform parent)
         {
-            var (cg, panel) = Popup("StuckPopup", parent, 860, "Out of Moves!", out var title);
+            // "You're Stuck!" (was "Out of Moves!": the game has no move counter, user 2026-11-23) + a line saying WHY.
+            // The panel is 9-sliced 110 taller than the art to make room for that line; the pages sit 80 lower.
+            var (cg, panel) = Popup("StuckPopup", parent, 860, "You're Stuck!", out var title, 860f * 1027f / 946f + 110f);
             ui.stuckPopup = cg; ui.stuckPanel = panel; ui.stuckTitle = title;
             float h = panel.sizeDelta.y;
             ui.stuckClose = Button(ImgW("Close", panel, S("UI/Icons/btn_close.png"), 104, new Vector2(388, h / 2 - 70), null, true));
-            const float cx = -1.5f, cw = 572f;
+            const float cx = -1.5f, cw = 572f, pageY = -80f;
+            var (innerTop, _, _) = PopupInner(panel);
+            ui.stuckReason = Text("Reason", panel, "These orders can't all be filled anymore.", 32, Brown, new Vector2(cw + 60, 90), new Vector2(cx, innerTop - 16 - 45), _matPlain);
 
             // ---- offer page
-            var offer = Rect("Offer", panel, new Vector2(860, 700), Vector2.zero);
+            var offer = Rect("Offer", panel, new Vector2(860, 700), new Vector2(0, pageY));
             ui.stuckOffer = offer;
             var card = Sliced("Card", offer, S("Generated/rounded.png"), new Vector2(cw, 280), new Vector2(cx, 108));
             card.color = new Color32(238, 222, 190, 255);
@@ -1144,7 +1169,7 @@ namespace GrillSort.EditorTools
             ui.stuckUndo.transition = Selectable.Transition.None;
 
             // ---- give-up page
-            var quit = Rect("GiveUp", panel, new Vector2(860, 700), Vector2.zero);
+            var quit = Rect("GiveUp", panel, new Vector2(860, 700), new Vector2(0, pageY));
             ui.stuckGiveUp = quit;
             var qcard = Sliced("Card", quit, S("Generated/rounded.png"), new Vector2(cw, 280), new Vector2(cx, 108));
             qcard.color = new Color32(238, 222, 190, 255);
@@ -1167,9 +1192,9 @@ namespace GrillSort.EditorTools
         {
             ("deco_lights", 512, 168, 108, true),    // string lights across the top of the stall (between Daily and Decorate)
             ("deco_plant", 205, 850, 250, false),    // left, on the sand
-            ("deco_menu", 330, 990, 205, false),     // left front
+            ("deco_menu", 330, 970, 205, false),     // left front (kept clear of the stall card's top edge)
             ("deco_torch", 842, 800, 370, false),    // right, tall
-            ("deco_smoker", 690, 1000, 225, false),  // right front
+            ("deco_smoker", 690, 975, 225, false),   // right front
             ("deco_sign", 512, 566, 124, true),      // the stall's badge on the middle of the counter front
         };
 
@@ -1200,7 +1225,7 @@ namespace GrillSort.EditorTools
             for (int i = 0; i < HomeDecor.Length; i++)
             {
                 var d = HomeDecor[i];
-                if (!d.hang || d.y > theme.counterTop) continue;   // low items (the counter badge) go in front of the counter
+                if (!d.hang || d.y > theme.counterTop || d.file == "deco_lights") continue;   // low items (the counter badge) go in front of the counter; the lights live in the safe area (below)
                 ui.homeDecor[i] = DecorImg(stall, d, At(d.x, d.y), k);
             }
             ui.homeCustomers = new Image[2];
@@ -1208,7 +1233,7 @@ namespace GrillSort.EditorTools
             for (int i = 0; i < 2; i++)
             {
                 var c = Img($"Customer{i}", stall, _art.customers[i * 3], new Vector2(270, 270), Vector2.zero, At(i == 0 ? 352 : 672, counterY));
-                c.rectTransform.pivot = new Vector2(.5f, .04f);   // like the game: the bust's cut edge just behind the counter top
+                c.rectTransform.pivot = new Vector2(.5f, .1f);   // like the game: the bust's cut edge hidden ~20 px behind the counter top
                 ui.homeCustomers[i] = c;
             }
             ui.homeFront = Full("Front", theme.front);
@@ -1235,6 +1260,20 @@ namespace GrillSort.EditorTools
             safe.gameObject.AddComponent<SafeArea>();
             var top = new Vector2(.5f, 1f); var bottom = new Vector2(.5f, 0f);
             var hud = S("UI/Panels/bar_hud.png");
+            // String lights: hung in screen space between the Daily and Decorate buttons, under the HUD. In the stall's art
+            // space they were cropped wider than the screen on tall phones and ran across both buttons (user 2026-11-23).
+            for (int i = 0; i < HomeDecor.Length; i++)
+            {
+                if (HomeDecor[i].file != "deco_lights") continue;
+                var lights = Img("deco_lights", safe, S(MetaDir + "deco_lights.png"), Vector2.zero, Vector2.zero);
+                var lrt = lights.rectTransform;
+                lrt.anchorMin = new Vector2(0f, 1f); lrt.anchorMax = new Vector2(1f, 1f);
+                lrt.pivot = new Vector2(.5f, 1f);
+                lrt.offsetMin = new Vector2(212f, -300f); lrt.offsetMax = new Vector2(-212f, -158f);   // x: clear of the 150-wide side buttons + labels; y: under the coin pill
+                lights.preserveAspect = true;
+                lights.gameObject.SetActive(false);
+                ui.homeDecor[i] = lights;
+            }
             ui.homeSettings = Button(ImgW("Settings", safe, S("UI/Buttons/btn_settings.png"), 112, new Vector2(92, -106), new Vector2(0, 1), true));
             var coinPill = Sliced("CoinPill", safe, hud, new Vector2(250, 78), new Vector2(-180, -100), new Vector2(1, 1));
             ui.homeCoinText = Text("Text", coinPill.transform, "250", 44, Brown, new Vector2(170, 78), new Vector2(18, 2), _matPlain);
@@ -1245,18 +1284,24 @@ namespace GrillSort.EditorTools
             ui.homeDaily = SideButton(safe, "Daily", MetaDir + "icon_daily.png", "Daily", new Vector2(112, -300), new Vector2(0, 1), out ui.homeDailyDot, out _);
             ui.homeDecorate = SideButton(safe, "Decorate", MetaDir + "icon_decorate.png", "Decorate", new Vector2(-112, -300), new Vector2(1, 1), out ui.homeDecorateDot, out ui.homeDecorCount);
 
-            // stall progress card + Play
-            var card = Sliced("WorldCard", safe, hud, new Vector2(800, 222), new Vector2(0, 500), bottom);
-            ui.homeWorldName = Text("Name", card.transform, theme.displayName, 46, Brown, new Vector2(640, 56), new Vector2(0, 66), _matPlain);
+            // stall progress card + Play. A rounded card (not the HUD pill: its round ends and thick rim left no room, so the
+            // name and the "Next stall" line touched the rim, user 2026-11-23): name, bar and next line with equal gaps.
+            const float cardW = 820f, cardH = 310f, cardPad = 22f + 26f;   // rim + inner padding
+            var card = Sliced("WorldCard", safe, S("Generated/card_cream.png"), new Vector2(cardW, cardH), new Vector2(0, 530), bottom);
+            card.pixelsPerUnitMultiplier = 1f;
+            float inTop = cardH / 2 - cardPad, inBottom = -cardH / 2 + cardPad;
+            const float nameH = 50f, nextH = 36f;
+            ui.homeWorldName = Text("Name", card.transform, theme.displayName, 44, Brown, new Vector2(cardW - 2 * cardPad, nameH), new Vector2(0, inTop - nameH / 2), _matPlain);
             ui.homeWorldName.textWrappingMode = TextWrappingModes.NoWrap;
-            float barW = 380f, bk = barW / 842f;
-            var track = Img("Bar", card.transform, S("Generated/bar_track_clean.png"), new Vector2(barW, 185 * bk), new Vector2(0, -8));
+            float barW = 520f, bk = barW / 842f;
+            float barY = ((inTop - nameH) + (inBottom + nextH)) / 2;   // centred between the name and the next line
+            var track = Img("Bar", card.transform, S("Generated/bar_track_clean.png"), new Vector2(barW, 185 * bk), new Vector2(0, barY));
             var fill = Sliced("Fill", track.transform, S("Generated/" + BarFill), new Vector2(200, 106 * bk), Vector2.zero);
             var frt = fill.rectTransform;
             frt.anchorMin = frt.anchorMax = new Vector2(0, .5f); frt.pivot = new Vector2(0, .5f);
             frt.anchoredPosition = new Vector2(43 * bk, (92.5f - 91.5f) * bk);
             ui.homeWorldFill = frt; ui.homeWorldFillMax = (842 - 86) * bk;
-            ui.homeWorldNext = Text("Next", card.transform, "Next stall", 28, new Color32(96, 50, 18, 255), new Vector2(700, 40), new Vector2(0, -66), _matPlain);
+            ui.homeWorldNext = Text("Next", card.transform, "Next stall", 30, new Color32(96, 50, 18, 255), new Vector2(cardW - 2 * cardPad, nextH), new Vector2(0, inBottom + nextH / 2), _matPlain);
             ui.homeWorldNext.textWrappingMode = TextWrappingModes.NoWrap;
 
             var play = Sliced("Play", safe, S("UI/Buttons/btn_green.png"), new Vector2(600, 190), new Vector2(0, 250), bottom, true);
@@ -1295,66 +1340,96 @@ namespace GrillSort.EditorTools
             return Button(bg);
         }
 
-        // Daily reward: 7 days (4 + 3 tiles), today glows and pulses, claimed days get a check. Grid on popup_panel at
-        // 900 wide: cream x -347..344, y +302..-351.
+        // Meta popups (user 2026-11-23: "a little space from the top ... box size same in all the items ... proper spacing
+        // top, bottom, left and right"): the panel is 9-sliced taller than the art so the content gets the same padding
+        // (MetaPad) on every side of the cream area, and every tile / row is the same size.
+        const float MetaPopupW = 960f, MetaPad = 36f;
+
+        static (CanvasGroup, RectTransform) MetaPopup(string name, string title, float content, Transform parent)
+        {
+            float sc = MetaPopupW / 946f;
+            var (cg, panel) = Popup(name, parent, MetaPopupW, title, out _, content + 2 * MetaPad + (254 + 154) * sc);
+            return (cg, panel);
+        }
+
+        static UnityEngine.UI.Button PopupClose(RectTransform panel) =>
+            Button(ImgW("Close", panel, S("UI/Icons/btn_close.png"), 108, new Vector2(panel.sizeDelta.x / 2 - 46, panel.sizeDelta.y / 2 - 72), null, true));
+
+        // Daily reward: 7 equal tiles (4 + 3, centred), today glows and pulses, claimed days get a check, Claim below.
         static void BuildDailyPopup(GameUi ui, Transform parent)
         {
-            var (cg, panel) = Popup("DailyPopup", parent, 900, "Daily Reward", out _);
+            var tileSize = new Vector2(160, 206);
+            const float gapX = 14f, gapY = 16f, gapButton = 48f, buttonH = 120f;
+            var (cg, panel) = MetaPopup("DailyPopup", "Daily Reward", tileSize.y * 2 + gapY + gapButton + buttonH, parent);
             ui.dailyPopup = cg; ui.dailyPanel = panel;
-            float h = panel.sizeDelta.y;
-            ui.dailyClose = Button(ImgW("Close", panel, S("UI/Icons/btn_close.png"), 108, new Vector2(406, h / 2 - 72), null, true));
+            ui.dailyClose = PopupClose(panel);
+            var (top, _, _) = PopupInner(panel);
             string[] icons = { "reward_coins_small", "reward_coins_small", "reward_gift", "reward_coins_big", "reward_gift", "reward_coins_big", "reward_chest" };
             int n = icons.Length;
             ui.dailyTiles = new Image[n]; ui.dailyIcons = new Image[n]; ui.dailyChecks = new Image[n];
             ui.dailyAmounts = new TMP_Text[n]; ui.dailyDays = new TMP_Text[n];
             var check = S("UI/Icons/icon_check.png");
+            float stepX = tileSize.x + gapX;
+            float row1Y = top - MetaPad - tileSize.y / 2, row2Y = row1Y - tileSize.y - gapY;
             for (int i = 0; i < n; i++)
             {
                 bool row1 = i < 4;
-                bool big = i == n - 1;
-                float x = row1 ? -246 + i * 164 : new[] { -195f, -31f, 164f }[i - 4];
-                float y = row1 ? 168 : -48;
-                var size = big ? new Vector2(210, 196) : new Vector2(148, 196);
-                var tile = Sliced($"Day{i + 1}", panel, S("Generated/rounded.png"), size, new Vector2(x - 1, y));
+                float x = row1 ? (i - 1.5f) * stepX : (i - 5) * stepX;
+                var tile = Sliced($"Day{i + 1}", panel, S("Generated/rounded.png"), tileSize, new Vector2(x, row1 ? row1Y : row2Y));
                 tile.color = new Color32(246, 232, 204, 255);
                 ui.dailyTiles[i] = tile;
-                ui.dailyDays[i] = Text("Day", tile.transform, $"Day {i + 1}", 30, Brown, new Vector2(size.x, 40), new Vector2(0, 70), _matPlain);
+                float ty = tileSize.y / 2;
+                ui.dailyDays[i] = Text("Day", tile.transform, $"Day {i + 1}", 30, Brown, new Vector2(tileSize.x - 16, 38), new Vector2(0, ty - 16 - 19), _matPlain);
                 ui.dailyDays[i].textWrappingMode = TextWrappingModes.NoWrap;
-                ui.dailyIcons[i] = ImgW("Icon", tile.transform, S(MetaDir + icons[i] + ".png"), big ? 112 : 96, new Vector2(0, big ? 2 : 8));
-                ui.dailyAmounts[i] = Text("Amount", tile.transform, GameController.DailyLabel(i), i == 2 || i == 4 ? 26 : 36, Color.white, new Vector2(size.x - 8, 44), new Vector2(0, -68), _matBrownOutline);
-                ui.dailyAmounts[i].textWrappingMode = TextWrappingModes.NoWrap;
-                ui.dailyChecks[i] = ImgW("Check", tile.transform, check, 74, new Vector2(size.x / 2 - 22, -size.y / 2 + 26));
+                ui.dailyIcons[i] = Img("Icon", tile.transform, S(MetaDir + icons[i] + ".png"), new Vector2(112, 92), new Vector2(0, 2));
+                ui.dailyIcons[i].preserveAspect = true;
+                var amt = Text("Amount", tile.transform, GameController.DailyTileLabel(i), 32, Color.white, new Vector2(tileSize.x - 16, 42), new Vector2(0, -ty + 16 + 21), _matBrownOutline);
+                amt.textWrappingMode = TextWrappingModes.NoWrap;
+                amt.enableAutoSizing = true; amt.fontSizeMin = 22; amt.fontSizeMax = 32;
+                ui.dailyAmounts[i] = amt;
+                ui.dailyChecks[i] = ImgW("Check", tile.transform, check, 64, new Vector2(tileSize.x / 2 - 20, -ty + 24));
                 ui.dailyChecks[i].gameObject.SetActive(false);
             }
-            ui.dailyClaim = WideButton("Claim", panel, "btn_green", "Claim!", new Vector2(520, 120), new Vector2(-1, -250), out var ct);
+            float buttonY = row2Y - tileSize.y / 2 - gapButton - buttonH / 2;
+            ui.dailyClaim = WideButton("Claim", panel, "btn_green", "Claim!", new Vector2(520, buttonH), new Vector2(0, buttonY), out var ct);
             ui.dailyClaimText = ct;
         }
 
-        // Decorate ("My Stall"): one row per decoration: picture | name | [coin price] or a check when built.
+        // Decorate ("My Stall"): one equal row per decoration: picture on a round plate | name | [coin price] or a check.
         static void BuildDecorPopup(GameUi ui, Transform parent)
         {
-            var (cg, panel) = Popup("DecorPopup", parent, 900, "My Stall", out _);
-            ui.decorPopup = cg; ui.decorPanel = panel;
-            float h = panel.sizeDelta.y;
-            ui.decorClose = Button(ImgW("Close", panel, S("UI/Icons/btn_close.png"), 108, new Vector2(406, h / 2 - 72), null, true));
             int n = HomeDecor.Length;
+            const float rowH = 104f, gap = 12f, headH = 40f, headGap = 20f;
+            var (cg, panel) = MetaPopup("DecorPopup", "My Stall", headH + headGap + n * rowH + (n - 1) * gap, parent);
+            ui.decorPopup = cg; ui.decorPanel = panel;
+            ui.decorClose = PopupClose(panel);
+            var (top, _, half) = PopupInner(panel);
+            float rowW = 2 * (half - MetaPad), inset = 16f;
+            ui.decorProgress = Text("Progress", panel, "Stall built: 0 / 6", 34, new Color32(120, 64, 26, 255), new Vector2(rowW, headH), new Vector2(0, top - MetaPad - headH / 2), _matPlain);
+            ui.decorProgress.textWrappingMode = TextWrappingModes.NoWrap;
+            float rowsTop = top - MetaPad - headH - headGap;
             ui.decorBuy = new UnityEngine.UI.Button[n]; ui.decorPrice = new TMP_Text[n]; ui.decorBuilt = new Image[n];
-            const float rowH = 96f, y0 = 246f;
             for (int i = 0; i < n; i++)
             {
-                float y = y0 - i * (rowH + 6);
-                var row = Sliced($"Row{i}", panel, S("Generated/rounded.png"), new Vector2(660, rowH), new Vector2(-1, y));
+                float y = rowsTop - rowH / 2 - i * (rowH + gap);
+                var row = Sliced($"Row{i}", panel, S("Generated/rounded.png"), new Vector2(rowW, rowH), new Vector2(0, y));
                 row.color = new Color32(246, 232, 204, 255);
-                var pic = Img("Pic", row.transform, S(MetaDir + HomeDecor[i].file + ".png"), new Vector2(84, 84), new Vector2(-270, 0));
+                float plateX = -rowW / 2 + inset + 40;
+                var plate = Img("Plate", row.transform, S("Generated/disc.png"), new Vector2(80, 80), new Vector2(plateX, 0));
+                plate.color = new Color32(255, 250, 238, 255);
+                var pic = Img("Pic", row.transform, S(MetaDir + HomeDecor[i].file + ".png"), new Vector2(66, 66), new Vector2(plateX, 0));
                 pic.preserveAspect = true;
-                var name = Text("Name", row.transform, GameController.DecorNames[i], 38, Brown, new Vector2(300, rowH), new Vector2(-50, 2), _matPlain);
+                const float buyW = 200f;
+                float buyX = rowW / 2 - inset - buyW / 2;
+                float nameL = plateX + 40 + 22, nameR = buyX - buyW / 2 - 16;
+                var name = Text("Name", row.transform, GameController.DecorNames[i], 38, Brown, new Vector2(nameR - nameL, rowH), new Vector2((nameL + nameR) / 2, 2), _matPlain);
                 name.alignment = TextAlignmentOptions.Left; name.textWrappingMode = TextWrappingModes.NoWrap;
-                var buy = Sliced("Buy", row.transform, S("UI/Buttons/btn_green.png"), new Vector2(190, 80), new Vector2(222, 2), null, true);
-                ImgW("Coin", buy.transform, S("UI/Icons/icon_coin.png"), 48, new Vector2(-50, 3));
+                var buy = Sliced("Buy", row.transform, S("UI/Buttons/btn_green.png"), new Vector2(buyW, 82), new Vector2(buyX, 0), null, true);
+                ImgW("Coin", buy.transform, S("UI/Icons/icon_coin.png"), 50, new Vector2(-52, 3));
                 ui.decorPrice[i] = Text("Price", buy.transform, GameController.DecorCost[i].ToString(), 40, Color.white, new Vector2(110, 60), new Vector2(26, 4), _matBrownOutline);
                 ui.decorPrice[i].textWrappingMode = TextWrappingModes.NoWrap;
                 ui.decorBuy[i] = Button(buy);
-                ui.decorBuilt[i] = ImgW("Built", row.transform, S("UI/Icons/icon_check.png"), 70, new Vector2(222, 2));
+                ui.decorBuilt[i] = ImgW("Built", row.transform, S("UI/Icons/icon_check.png"), 66, new Vector2(buyX, 0));
                 ui.decorBuilt[i].gameObject.SetActive(false);
             }
         }
