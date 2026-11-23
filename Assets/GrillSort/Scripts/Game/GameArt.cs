@@ -34,7 +34,12 @@ namespace GrillSort
         }
 
         public FoodArt[] foods;
+        /// <summary>Customer faces (waiting), and the same people delighted / impatient (CustomersPeople_v3, one drawing per person).</summary>
         public Sprite[] customers;
+        public Sprite[] customersHappy, customersAngry;
+        [Header("Customer emotes")]
+        public Sprite emoteHeart;
+        public Sprite emoteSweat, emoteAngry, emoteYummy;
         public ThemeDef[] themes;
 
         [Header("Board")]

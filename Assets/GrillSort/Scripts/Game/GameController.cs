@@ -9,7 +9,7 @@ namespace GrillSort
     /// Runs the game on the scene the builder authored. Nothing is instantiated or loaded at runtime:
     /// it only toggles, re-skins and tweens objects that already exist in the Canvas.
     /// </summary>
-    public sealed class GameController : MonoBehaviour
+    public sealed partial class GameController : MonoBehaviour
     {
         [Header("Data")]
         public GameArt art;
@@ -20,8 +20,8 @@ namespace GrillSort
         [Header("Rules")]
         [Tooltip("AnyWithAbove (default, client decision 2026-11-18): grab any piece, everything above comes along. TopGroup = classic Water Sort: the whole top run of the same food moves. SingleTop = only the top piece moves.")]
         public MoveRule moveRule = MoveRule.AnyWithAbove;
-        [Tooltip("Pieces show Raw while sorting and cook Raw > Medium > Grilled when a skewer completes.")]
-        public bool cookOnComplete = false;
+        [Tooltip("Cooking stages (2026-11-23): pieces are RAW while sorting; a finished tray flares up and the pieces turn GRILLED before they are served. Off = grilled food all the time (the client-approved look).")]
+        public bool cookOnComplete = true;
         [Tooltip("Demo / review builds: only levels 1-10 can be played.")]
         public bool limitToTenLevels = false;
         [Tooltip("Free idle hint on levels <= 10 after this many seconds.")]
@@ -75,6 +75,9 @@ namespace GrillSort
         readonly Stack<(Board board, int moves)> _history = new Stack<(Board, int)>();
         int _shownCoins;
         int _activeCustomers;
+
+        /// <summary>The loading screen or the home screen covers the game: the level intro, customers and tips wait.</summary>
+        bool Covered => _loadingScreen || _homeUp;
 
         public int LevelNumber => _levelNumber;
         public bool Busy => _busy;
@@ -144,8 +147,10 @@ namespace GrillSort
                 Services.Ads.ShowRewarded("win_double", ok => CollectWin(ok ? m : 1, ui.winDouble.transform));
             });
             ui.messageOk.onClick.AddListener(() => { Click(); ClosePopup(ui.messagePopup); });
+            InitMeta();
 
             foreach (var p in new[] { ui.winPopup, ui.pausePopup, ui.stuckPopup, ui.messagePopup }) HidePopupNow(p);
+            foreach (var p in MetaPopups) HidePopupNow(p);
             ui.tip.alpha = 0f; ui.toast.alpha = 0f;
             _shownCoins = SaveData.Coins;
             ui.coinText.text = _shownCoins.ToString("N0");
@@ -156,6 +161,8 @@ namespace GrillSort
             _loadedTestLevel = useTestLevel ? start : -1;
             ui.hand.gameObject.SetActive(false);
             _loadingScreen = ui.loading != null;
+            if (UseHome(start)) ShowHomeNow();   // the loading screen lifts onto the home screen (the level waits behind it)
+            else HideHomeNow();
             LoadLevel(start);   // set up behind the loading screen; the intro plays when it lifts
             if (_loadingScreen) StartCoroutine(LoadingScreen());
             else audioManager.SetAmbience(art.sizzleLoop, true);
@@ -173,7 +180,7 @@ namespace GrillSort
         /// </summary>
         IEnumerator AfterLoading(float delay, System.Action then)
         {
-            while (_loadingScreen) yield return null;
+            while (Covered) yield return null;
             yield return new WaitForSeconds(delay);
             then();
         }
@@ -409,7 +416,7 @@ namespace GrillSort
                 var g = ui.grills[i];
                 for (int s = 0; s < g.slots.Length; s++) g.slots[s].localScale = Vector3.zero;
             }
-            while (_loadingScreen) yield return null;
+            while (Covered) yield return null;
             for (int i = 0; i < _skewers; i++)
             {
                 var g = ui.grills[i];
@@ -463,7 +470,11 @@ namespace GrillSort
                 if (!on) { c.food = -1; continue; }
                 var t = _vis[c.tray];
                 c.food = t.target;
-                c.animal.sprite = art.customers[Mathf.Max(0, t.face) % art.customers.Length];
+                c.face = Mathf.Max(0, t.face) % art.customers.Length;
+                c.waited = 0f; c.anim = false;
+                if (c.moodCo != null) { StopCoroutine(c.moodCo); c.moodCo = null; }
+                if (c.emote != null) c.emote.gameObject.SetActive(false);
+                SetMood(c, Mood.Wait);
                 SetOrder(c);
                 c.check.gameObject.SetActive(false);
                 c.body.localScale = Vector3.one;
@@ -536,7 +547,7 @@ namespace GrillSort
             c.body.anchoredPosition = new Vector2(0f, CustomerView.BodyY - 330f);
             c.bubble.localScale = Vector3.zero;
             c.group.alpha = 1f;
-            while (_loadingScreen) yield return null;
+            while (Covered) yield return null;
             yield return new WaitForSeconds(delay);
             yield return Tween.Move(c.body, new Vector2(0f, CustomerView.BodyY), .35f, t => Ease.OutBack(t, 1.2f));
             yield return Tween.Scale(c.bubble, Vector3.one, .3f, t => Ease.OutBack(t));
@@ -580,7 +591,7 @@ namespace GrillSort
         // ------------------------------------------------------------------ input
         void Update()
         {
-            if (_busy || _won || _dragging || AnyPopupOpen() || _autoPlay) { _idle = 0f; return; }
+            if (_busy || _won || _dragging || AnyPopupOpen() || _autoPlay || Covered) { _idle = 0f; return; }
             _idle += Time.deltaTime;
             bool tutorial = _levelNumber <= tutorialLevels;
             float wait = tutorial ? .9f : idleHintSeconds;
@@ -597,6 +608,7 @@ namespace GrillSort
         void LateUpdate()
         {
             if (_board == null) return;
+            CustomersLive();
             float t = Time.time, dt = Time.deltaTime;
             for (int i = 0; i < _board.SkewerCount && i < ui.grills.Length; i++)
             {
@@ -686,6 +698,7 @@ namespace GrillSort
                 audioManager.Play(art.invalid, .7f);
                 Haptics.Light();
                 StartCoroutine(Tween.Shake(ui.grills[g].rect));
+                Annoy(g);
                 Toast(WhyInvalid(_selected, idx, g));
                 Deselect();
             }
@@ -902,6 +915,7 @@ namespace GrillSort
                 audioManager.Play(art.invalid, .7f);
                 Haptics.Light();
                 StartCoroutine(Tween.Shake(ui.grills[to].rect));
+                Annoy(to);
                 Toast(WhyInvalid(_dragFrom, _dragStart, to));
             }
             StartCoroutine(ReturnDrag(_dragFrom, _dragStart, _dragCount));
@@ -996,6 +1010,7 @@ namespace GrillSort
             src.Show(preSrc, art, cookOnComplete);
             dst.Show(preDst, art, cookOnComplete);
             SetVis(m.From, preSrc); SetVis(m.To, preDst);
+            if (served.Count == 0) Progress(m.To);
 
             // serve whatever the move completed, one after the other (both ends can fill up in one move); each serve
             // removes the tray, slides the rest left and brings in the next queued tray
@@ -1101,17 +1116,7 @@ namespace GrillSort
             StartCoroutine(PopWord(v.perfect));
             for (int i = 0; i < pieces; i++) StartCoroutine(Sizzle(v.slots[i], i * .05f));
 
-            if (cookOnComplete)
-            {
-                yield return new WaitForSeconds(.25f);
-                foreach (var stage in new[] { fa.medium, fa.grilled })
-                {
-                    for (int i = 0; i < pieces; i++) StartCoroutine(Puff(v.slots[i]));
-                    yield return new WaitForSeconds(.12f);
-                    for (int i = 0; i < pieces; i++) { v.foods[i].sprite = stage; v.foodShadows[i].sprite = fa.shadow; }
-                    yield return new WaitForSeconds(.23f);
-                }
-            }
+            if (cookOnComplete) yield return CookTray(v, fa, pieces);
             else yield return new WaitForSeconds(.55f);
 
             // the customer standing above this tray ordered it
@@ -1261,6 +1266,9 @@ namespace GrillSort
 
         IEnumerator Cheer(CustomerView c, bool leave = true)
         {
+            c.anim = true;
+            SetMood(c, Mood.Happy);
+            ShowEmote(c, art.emoteHeart, 1.1f);
             c.check.gameObject.SetActive(true);
             c.check.rectTransform.localScale = Vector3.zero;
             StartCoroutine(Tween.Scale(c.check.rectTransform, Vector3.one, .35f, Ease.OutElastic));
@@ -1274,6 +1282,7 @@ namespace GrillSort
                 b.localScale = new Vector3(1f + sq, 1f - sq, 1f);
             });
             b.localScale = Vector3.one;
+            c.anim = false;
             if (leave) StartCoroutine(Leave(c));
         }
 
@@ -1523,6 +1532,7 @@ namespace GrillSort
                 yield break;
             }
             if (!useTestLevel) SaveData.Level = next;
+            if (UseHome(next) && !_autoPlay) { ui.StartCoroutine(HomeBetween(next)); yield break; }
             if (loadingBetweenLevels && ui.loading != null && !_autoPlay) ui.StartCoroutine(LoadingBetween(next));
             else StartCoroutine(Tween.Delay(.3f, () => LoadLevel(next)));
         }
@@ -1690,6 +1700,7 @@ namespace GrillSort
             ui.stuckCaption.text = tray ? "Add 1 Tray and Continue" : "Shuffle the Grill and Continue";
             ui.stuckPrice.text = StuckPriceFor.ToString();
             ShowStuckPage(true);
+            AllWorried();
             audioManager.Play(art.fail, .8f);
             OpenPopup(ui.stuckPopup, ui.stuckPanel);
         }
@@ -1810,7 +1821,7 @@ namespace GrillSort
                 int land = Mathf.Min(_board.Count(m.To), GrillView.Capacity - 1);
                 Vector2 p1 = HandPoint(to.slots[land]);
                 var fa = art.foods[_board.Get(m.From, m.Index)];
-                ghost.sprite = fa.grilled;
+                ghost.sprite = cookOnComplete && fa.raw != null ? fa.raw : fa.grilled;
                 float gs = from.slots[m.Index].lossyScale.x / ui.handLayer.lossyScale.x;
                 float gw = fa.width * GrillView.FoodScale;
                 grt.sizeDelta = new Vector2(gw, gw);
@@ -1904,6 +1915,7 @@ namespace GrillSort
         {
             "Drag food to fill each tray!",
             "Drop food onto the same food!",
+            "Fill a tray to grill it for the customer!",
             "Serve orders to bring in new ones!",
         };
 
@@ -1923,7 +1935,7 @@ namespace GrillSort
 
         IEnumerator TipAnim()
         {
-            while (_loadingScreen) yield return null;
+            while (Covered) yield return null;
             yield return new WaitForSeconds(.6f);
             var rt = (RectTransform)ui.tip.transform;
             rt.localScale = Vector3.one * .7f;
@@ -1977,7 +1989,7 @@ namespace GrillSort
         }
 
         // ------------------------------------------------------------------ popups
-        bool AnyPopupOpen() => IsOpen(ui.winPopup) || IsOpen(ui.pausePopup) || IsOpen(ui.stuckPopup) || IsOpen(ui.messagePopup);
+        bool AnyPopupOpen() => IsOpen(ui.winPopup) || IsOpen(ui.pausePopup) || IsOpen(ui.stuckPopup) || IsOpen(ui.messagePopup) || MetaPopupOpen();
         static bool IsOpen(CanvasGroup p) => p.gameObject.activeSelf && p.blocksRaycasts;
 
         void OpenPopup(CanvasGroup p, RectTransform panel)
@@ -2019,6 +2031,7 @@ namespace GrillSort
             ui.sfxValue.text = $"{Mathf.RoundToInt(ui.sfxSlider.value * 100)}%";
             ui.pauseHapticsText.text = SaveData.Haptic ? "ON" : "OFF";
             ui.pauseHapticsImage.sprite = SaveData.Haptic ? ui.hapticsOnSprite : ui.hapticsOffSprite;
+            ui.pauseRestart.gameObject.SetActive(!_homeUp);
         }
 
         AudioClip CurrentTrack()
@@ -2044,6 +2057,7 @@ namespace GrillSort
         IEnumerator AutoPlay(int levels)
         {
             _autoPlay = true;
+            if (_homeUp) HideHomeNow();
             for (int n = 0; n < levels; n++)
             {
                 int lvl = _levelNumber;

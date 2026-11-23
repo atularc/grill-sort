@@ -14,6 +14,8 @@ namespace GrillSort
         public SkewerStack order;
         public Image check;
         public CanvasGroup group;
+        /// <summary>A small icon that pops above the head (heart, sweat drop, anger mark, yummy face).</summary>
+        public Image emote;
 
         // CustomersPeople_v2 put every eye line at the same height (284 of 512), lower than the old set: body raised to match
         public const float BodyY = 118f, BubbleY = 302f;
@@ -21,10 +23,19 @@ namespace GrillSort
         public const float BubbleW = 224f, OrderBoxW = 172f, OrderBoxH = 90f, OrderBoxY = 12f;
         /// <summary>Tilt of the order skewer in the bubble: nearly flat, handle on the right.</summary>
         public const float OrderTilt = -80f;
+        /// <summary>Where the emote pops: next to the head, on the right, under the bubble (customer-slot px).</summary>
+        public static readonly Vector2 EmotePos = new Vector2(98f, 212f);
 
         [System.NonSerialized] public int food = -1;
         [System.NonSerialized] public bool busy;
         /// <summary>Tray this customer's order is sorted into.</summary>
         [System.NonSerialized] public int tray = -1;
+        /// <summary>Which person (index into GameArt.customers / customersHappy / customersAngry).</summary>
+        [System.NonSerialized] public int face;
+        /// <summary>Seconds since this customer last had something happen (served piece, arrival): drives impatience.</summary>
+        [System.NonSerialized] public float waited;
+        /// <summary>True while a hop / cheer animates the body (the idle breathing leaves it alone).</summary>
+        [System.NonSerialized] public bool anim;
+        [System.NonSerialized] public Coroutine moodCo;
     }
 }

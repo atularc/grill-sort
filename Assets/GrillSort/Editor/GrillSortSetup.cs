@@ -149,17 +149,29 @@ namespace GrillSort.EditorTools
         // (Tools/ArtPipeline/soften_marks.py). FoodFinal_v2 is the backup.
         // CustomersPeople_v2 (2026-11-21, Aaron: characters' style off from the rest, head sizes vary): redrawn in the food's
         // style and normalised to one face size / eye line (Tools/ArtPipeline/cut_people_v2.py). CustomersPeople = backup.
-        const string FoodDir = "FoodFinal_v3/Grilled/", ShadowDir = "Generated/ShadowsFinal/", CustomerDir = "CustomersPeople_v2/";
+        // CustomersPeople_v3 (2026-11-23): the same 8 people with three moods each, drawn as one picture per person
+        // (<name>.png waiting, <name>_happy.png, <name>_angry.png; Tools/ArtPipeline/cut_people_v3.py). v2 = backup.
+        const string FoodDir = "FoodFinal_v3/Grilled/", ShadowDir = "Generated/ShadowsFinal/", CustomerDir = "CustomersPeople_v3/";
+        // Raw stage (2026-11-23, cooking stages as the hook): FoodRaw_v1 in the game food's style (Tools/ArtPipeline/cut_food_v5.py).
+        // The old stylized-realistic Food/Raw + Food/Medium stay on disk, unused (no Medium in the cartoon set: raw -> grilled).
+        const string RawDir = "FoodRaw_v1/Raw/", RawShadowDir = "Generated/ShadowsRaw_v1/", MetaDir = "Meta/";
         // per-food replacements (2026-11-21, Aaron: tomato "too juicy, not quite like a grilled tomato yet"): a food found
         // here is used instead of the FoodDir one, with its shadow from FoodOverrideShadowDir (Tools/ArtPipeline/cut_tomato_v4.py)
-        const string FoodOverrideDir = "FoodFinal_v4/Grilled/", FoodOverrideShadowDir = "Generated/ShadowsFinal_v4/";
+        // FoodFinal_v5 (2026-11-23, review: squid, bacon and beef read as uncooked in play): clearly cooked redraws,
+        // softened marks (cut_food_v5.py). Checked first, then v4 (tomato).
+        static readonly (string food, string shadow)[] FoodOverrides =
+        {
+            ("FoodFinal_v5/Grilled/", "Generated/ShadowsFinal_v5/"),
+            ("FoodFinal_v4/Grilled/", "Generated/ShadowsFinal_v4/"),
+        };
         static readonly string[] CustomerNames = { "grandpa", "ponytail", "redhead", "curly", "dad", "grandma", "pigtails", "quiff" };
 
         // UI_Soft (2026-11-21): Aaron asked for a softer, less glossy UI ("still 3D cartoon"): the glare is toned down
         // by Tools/ArtPipeline/soften_ui.py. Art/UI/ (and Generated/bar_fill.png) stay as the glossy backups.
         const string UiDir = "UI_Soft/", BarFill = "bar_fill_soft.png";
 
-        static readonly string[] AtlasFolders = { Art + UiDir, Art + CustomerDir, Art + "VFX/", Art + FoodDir, Art + ShadowDir, Art + FoodOverrideDir, Art + FoodOverrideShadowDir };
+        static readonly string[] AtlasFolders = { Art + UiDir, Art + CustomerDir, Art + "VFX/", Art + FoodDir, Art + ShadowDir, Art + RawDir, Art + RawShadowDir, Art + MetaDir,
+            Art + FoodOverrides[0].food, Art + FoodOverrides[0].shadow, Art + FoodOverrides[1].food, Art + FoodOverrides[1].shadow };
         static readonly string[] AtlasFiles = { "badge.png", "disc.png", "rounded.png", BarFill, "bar_track.png", "glow.png", "soft_rect.png", "rays.png", "bar_track_clean.png", "glow_hd.png", "rays_hd.png" };
 
         static bool IsAtlased(string path)
@@ -236,15 +248,19 @@ namespace GrillSort.EditorTools
                 {
                     name = n,
                     grilled = Load<Sprite>($"{Art}{FoodFile(n)}"),
-                    medium = Load<Sprite>($"{Art}Food/Medium/{n}.png"),
-                    raw = Load<Sprite>($"{Art}Food/Raw/{n}.png"),
-                    shadow = Load<Sprite>($"{Art}{(File.Exists($"{Art}{FoodOverrideDir}{n}.png") ? FoodOverrideShadowDir : ShadowDir)}{n}.png"),
-                    shadowRaw = Load<Sprite>($"{Art}Generated/Shadows/{n}_raw.png"),
+                    medium = null,
+                    raw = Load<Sprite>($"{Art}{RawDir}{n}.png"),
+                    shadow = Load<Sprite>($"{Art}{ShadowFile(n)}"),
+                    shadowRaw = Load<Sprite>($"{Art}{RawShadowDir}{n}.png"),
                     width = FoodWidth[n],
                 });
             }
             a.foods = foods.ToArray();
             a.customers = CustomerNames.Select(n => Load<Sprite>($"{Art}{CustomerDir}{n}.png"));
+            a.customersHappy = CustomerNames.Select(n => Load<Sprite>($"{Art}{CustomerDir}{n}_happy.png"));
+            a.customersAngry = CustomerNames.Select(n => Load<Sprite>($"{Art}{CustomerDir}{n}_angry.png"));
+            a.emoteHeart = S(MetaDir + "emote_heart.png"); a.emoteSweat = S(MetaDir + "emote_sweat.png");
+            a.emoteAngry = S(MetaDir + "emote_angry.png"); a.emoteYummy = S(MetaDir + "emote_yummy.png");
             a.themes = new[]
             {
                 // Aaron 2026-11-18: bright backgrounds for normal levels, darker ones saved for later levels.
@@ -297,7 +313,17 @@ namespace GrillSort.EditorTools
             return a;
         }
 
-        static string FoodFile(string n) => File.Exists($"{Art}{FoodOverrideDir}{n}.png") ? $"{FoodOverrideDir}{n}.png" : $"{FoodDir}{n}.png";
+        static string FoodFile(string n)
+        {
+            foreach (var o in FoodOverrides) if (File.Exists($"{Art}{o.food}{n}.png")) return $"{o.food}{n}.png";
+            return $"{FoodDir}{n}.png";
+        }
+
+        static string ShadowFile(string n)
+        {
+            foreach (var o in FoodOverrides) if (File.Exists($"{Art}{o.food}{n}.png")) return $"{o.shadow}{n}.png";
+            return $"{ShadowDir}{n}.png";
+        }
 
         static T[] Select<T>(this string[] names, System.Func<string, T> f)
         {
@@ -343,8 +369,13 @@ namespace GrillSort.EditorTools
         static void MakeAtlases()
         {
             Directory.CreateDirectory(Root + "Atlases");
-            Atlas("UI", new[] { Art + UiDir.TrimEnd('/'), Art + CustomerDir.TrimEnd('/'), Art + "VFX" }, 2048, new[] { Art + "Generated/badge.png", Art + "Generated/disc.png", Art + "Generated/rounded.png", Art + "Generated/" + BarFill, Art + "Generated/bar_track.png", Art + "Generated/glow.png", Art + "Generated/soft_rect.png", Art + "Generated/rays.png", Art + "Generated/bar_track_clean.png", Art + "Generated/glow_hd.png", Art + "Generated/rays_hd.png" });
-            Atlas("Food", new[] { Art + FoodDir.TrimEnd('/'), Art + ShadowDir.TrimEnd('/'), Art + FoodOverrideDir.TrimEnd('/'), Art + FoodOverrideShadowDir.TrimEnd('/') }, 2048, null);
+            // customers (24 faces) and the meta art get their own atlases: together with the UI they no longer fit one page
+            Atlas("Customers", new[] { Art + CustomerDir.TrimEnd('/') }, 2048, null);
+            Atlas("Meta", new[] { Art + MetaDir.TrimEnd('/') }, 2048, null);
+            Atlas("UI", new[] { Art + UiDir.TrimEnd('/'), Art + "VFX" }, 2048, new[] { Art + "Generated/badge.png", Art + "Generated/disc.png", Art + "Generated/rounded.png", Art + "Generated/" + BarFill, Art + "Generated/bar_track.png", Art + "Generated/glow.png", Art + "Generated/soft_rect.png", Art + "Generated/rays.png", Art + "Generated/bar_track_clean.png", Art + "Generated/glow_hd.png", Art + "Generated/rays_hd.png" });
+            var food = new List<string> { Art + FoodDir.TrimEnd('/'), Art + ShadowDir.TrimEnd('/'), Art + RawDir.TrimEnd('/'), Art + RawShadowDir.TrimEnd('/') };
+            foreach (var o in FoodOverrides) { food.Add(Art + o.food.TrimEnd('/')); food.Add(Art + o.shadow.TrimEnd('/')); }
+            Atlas("Food", food.ToArray(), 2048, null);
         }
 
         static void Atlas(string name, string[] folders, int max, string[] files)
@@ -519,6 +550,9 @@ namespace GrillSort.EditorTools
                 cv.order.rect.localScale = new Vector3(k, k, 1f);
                 cv.check = ImgW("Check", cv.bubble, check, 62 * bk, new Vector2(80, 46) * bk);
                 cv.check.gameObject.SetActive(false);
+                // mood emote (heart / sweat / anger / yummy) next to the head, above everything in the slot
+                cv.emote = ImgW("Emote", slot, _art.emoteHeart, 84, CustomerView.EmotePos);
+                cv.emote.gameObject.SetActive(false);
                 ui.customers[i] = cv;
                 layout.customerSlots[i] = slot;
             }
@@ -648,6 +682,8 @@ namespace GrillSort.EditorTools
             int[] counts = { 3, 2, 1, 1 };
             ui.boosters = new UnityEngine.UI.Button[4]; ui.boosterCounts = new TMP_Text[4];
             var bottom = new Vector2(.5f, 0f);
+            // a wooden shelf the booster tiles stand on (2026-11-23, review: the strip under the trays looked empty)
+            ui.boosterShelf = ImgW("BoosterShelf", safe, S(MetaDir + "shelf.png"), 1010, new Vector2(0, 46), bottom);
             for (int i = 0; i < 4; i++)
             {
                 float x = -300 + i * 200;
@@ -687,12 +723,17 @@ namespace GrillSort.EditorTools
             // ---------------- tutorial hand (above the board and HUD, under the popups)
             BuildHand(ui, croot);
 
+            // ---------------- home screen (meta): over the game, under the popups and the loading screen
+            BuildHome(ui, croot);
+
             // ---------------- popups
             var popups = Stretch("Popups", croot);
             BuildWinPopup(ui, popups);
             BuildPausePopup(ui, popups);
             BuildStuckPopup(ui, popups);
             BuildMessagePopup(ui, popups);
+            BuildDailyPopup(ui, popups);
+            BuildDecorPopup(ui, popups);
 
             // ---------------- loading screen (on top of everything, visible from the first frame)
             BuildLoading(ui, croot);
@@ -1113,6 +1154,209 @@ namespace GrillSort.EditorTools
             ui.stuckRetry = WideButton("Retry", quit, "btn_red", "Retry", new Vector2(bw, 116), new Vector2(cx - bw / 2 - 12, -112), out _);
             ui.stuckKeep = WideButton("Keep", quit, "btn_green", "Resume", new Vector2(bw, 116), new Vector2(cx + bw / 2 + 12, -112), out _);
             quit.gameObject.SetActive(false);
+        }
+
+        // ------------------------------------------------------------------ home screen (meta, 2026-11-23)
+        // YOUR stall between levels (review: no reason to come back): the current theme's stall (background + counter,
+        // cover-fit exactly like the game), two customers behind the counter, the sausage mascot on it, and the
+        // decorations bought in "Decorate" placed in the art's own coordinates (px of the 1024x1536 source, y from the
+        // top) so they stay on the stall on every aspect. Bottom: progress to the next stall + Play. Top: settings, coins,
+        // Daily (left) and Decorate (right) with red dots when something is waiting.
+        /// <summary>Decorations in the art's px (x, y of the bottom centre from the top, height), order = GameController.DecorNames.</summary>
+        static readonly (string file, float x, float y, float h, bool hang)[] HomeDecor =
+        {
+            ("deco_lights", 512, 168, 108, true),    // string lights across the top of the stall (between Daily and Decorate)
+            ("deco_plant", 205, 850, 250, false),    // left, on the sand
+            ("deco_menu", 330, 990, 205, false),     // left front
+            ("deco_torch", 842, 800, 370, false),    // right, tall
+            ("deco_smoker", 690, 1000, 225, false),  // right front
+            ("deco_sign", 512, 566, 124, true),      // the stall's badge on the middle of the counter front
+        };
+
+        static void BuildHome(GameUi ui, Transform croot)
+        {
+            var root = Stretch("Home", croot);
+            ui.home = root.gameObject.AddComponent<CanvasGroup>();
+            var back = Img("Back", root, null, Vector2.zero, Vector2.zero, null, true);   // blocks touches to the game
+            var brt = back.rectTransform; brt.anchorMin = Vector2.zero; brt.anchorMax = Vector2.one; brt.offsetMin = brt.offsetMax = Vector2.zero;
+            back.color = new Color32(38, 20, 10, 255);
+
+            var theme = _art.themes[0];
+            var stall = Rect("Stall", root, new Vector2(1024, 1536), Vector2.zero);
+            var fit = stall.gameObject.AddComponent<AspectRatioFitter>();
+            fit.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent; fit.aspectRatio = 1024f / 1536f;
+            Image Full(string name, Sprite sp)
+            {
+                var im = Img(name, stall, sp, Vector2.zero, Vector2.zero);
+                var rt = im.rectTransform; rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.offsetMin = rt.offsetMax = Vector2.zero;
+                return im;
+            }
+            // the stall is drawn at 1.25x of the art (1280x1920 at 1080x1920): sizes below are in art px * 1.25
+            const float k = 1.25f;
+            Vector2 At(float x, float y) => new Vector2(x / 1024f, 1f - y / 1536f);
+            ui.homeBg = Full("Background", theme.Back);
+            ui.homeDecor = new Image[HomeDecor.Length];
+            // hanging decorations go behind the customers? no: lights + sign hang above their heads, drawn first
+            for (int i = 0; i < HomeDecor.Length; i++)
+            {
+                var d = HomeDecor[i];
+                if (!d.hang || d.y > theme.counterTop) continue;   // low items (the counter badge) go in front of the counter
+                ui.homeDecor[i] = DecorImg(stall, d, At(d.x, d.y), k);
+            }
+            ui.homeCustomers = new Image[2];
+            float counterY = theme.counterTop;
+            for (int i = 0; i < 2; i++)
+            {
+                var c = Img($"Customer{i}", stall, _art.customers[i * 3], new Vector2(270, 270), Vector2.zero, At(i == 0 ? 352 : 672, counterY));
+                c.rectTransform.pivot = new Vector2(.5f, .04f);   // like the game: the bust's cut edge just behind the counter top
+                ui.homeCustomers[i] = c;
+            }
+            ui.homeFront = Full("Front", theme.front);
+            var mascot = Img("Mascot", stall, _art.mascot, new Vector2(150, 247), new Vector2(0, -6), At(512, counterY));
+            mascot.rectTransform.pivot = new Vector2(.5f, 0f);
+            ui.homeMascot = mascot.rectTransform;
+            for (int i = 0; i < HomeDecor.Length; i++)
+            {
+                var d = HomeDecor[i];
+                if (d.hang && d.y <= theme.counterTop) continue;
+                ui.homeDecor[i] = DecorImg(stall, d, At(d.x, d.y), k);
+            }
+            var spark = S("VFX/fx_sparkle.png");
+            var spots = new (float x, float y)[] { (250, 610), (820, 560), (420, 930), (600, 880), (160, 420), (880, 420), (512, 690), (300, 300) };
+            ui.homeSparkles = new Image[spots.Length];
+            for (int i = 0; i < spots.Length; i++)
+            {
+                ui.homeSparkles[i] = ImgW($"Sparkle{i}", stall, spark, i % 2 == 0 ? 64 : 46, Vector2.zero, At(spots[i].x, spots[i].y));
+                ui.homeSparkles[i].color = new Color(1, 1, 1, 0);
+            }
+
+            // ---- UI in the safe area
+            var safe = Stretch("Safe", root);
+            safe.gameObject.AddComponent<SafeArea>();
+            var top = new Vector2(.5f, 1f); var bottom = new Vector2(.5f, 0f);
+            var hud = S("UI/Panels/bar_hud.png");
+            ui.homeSettings = Button(ImgW("Settings", safe, S("UI/Buttons/btn_settings.png"), 112, new Vector2(92, -106), new Vector2(0, 1), true));
+            var coinPill = Sliced("CoinPill", safe, hud, new Vector2(250, 78), new Vector2(-180, -100), new Vector2(1, 1));
+            ui.homeCoinText = Text("Text", coinPill.transform, "250", 44, Brown, new Vector2(170, 78), new Vector2(18, 2), _matPlain);
+            ui.homeCoinText.textWrappingMode = TextWrappingModes.NoWrap;
+            ui.homeCoinIcon = ImgW("Coin", coinPill.transform, S("UI/Icons/icon_coin.png"), 86, new Vector2(-110, 2)).rectTransform;
+
+            // side buttons under the HUD: Daily (left), Decorate (right), each a round tile with a label and a red dot
+            ui.homeDaily = SideButton(safe, "Daily", MetaDir + "icon_daily.png", "Daily", new Vector2(112, -300), new Vector2(0, 1), out ui.homeDailyDot, out _);
+            ui.homeDecorate = SideButton(safe, "Decorate", MetaDir + "icon_decorate.png", "Decorate", new Vector2(-112, -300), new Vector2(1, 1), out ui.homeDecorateDot, out ui.homeDecorCount);
+
+            // stall progress card + Play
+            var card = Sliced("WorldCard", safe, hud, new Vector2(800, 222), new Vector2(0, 500), bottom);
+            ui.homeWorldName = Text("Name", card.transform, theme.displayName, 46, Brown, new Vector2(640, 56), new Vector2(0, 66), _matPlain);
+            ui.homeWorldName.textWrappingMode = TextWrappingModes.NoWrap;
+            float barW = 380f, bk = barW / 842f;
+            var track = Img("Bar", card.transform, S("Generated/bar_track_clean.png"), new Vector2(barW, 185 * bk), new Vector2(0, -8));
+            var fill = Sliced("Fill", track.transform, S("Generated/" + BarFill), new Vector2(200, 106 * bk), Vector2.zero);
+            var frt = fill.rectTransform;
+            frt.anchorMin = frt.anchorMax = new Vector2(0, .5f); frt.pivot = new Vector2(0, .5f);
+            frt.anchoredPosition = new Vector2(43 * bk, (92.5f - 91.5f) * bk);
+            ui.homeWorldFill = frt; ui.homeWorldFillMax = (842 - 86) * bk;
+            ui.homeWorldNext = Text("Next", card.transform, "Next stall", 28, new Color32(96, 50, 18, 255), new Vector2(700, 40), new Vector2(0, -66), _matPlain);
+            ui.homeWorldNext.textWrappingMode = TextWrappingModes.NoWrap;
+
+            var play = Sliced("Play", safe, S("UI/Buttons/btn_green.png"), new Vector2(600, 190), new Vector2(0, 250), bottom, true);
+            ui.homePlayText = Text("Label", play.transform, "Level 1", 76, Color.white, new Vector2(540, 150), new Vector2(0, 8), _matBrownOutline);
+            ui.homePlayText.textWrappingMode = TextWrappingModes.NoWrap;
+            ui.homePlay = Button(play);
+            root.gameObject.SetActive(false);
+        }
+
+        static Image DecorImg(RectTransform stall, (string file, float x, float y, float h, bool hang) d, Vector2 anchor, float k)
+        {
+            var im = ImgH(d.file, stall, S(MetaDir + d.file + ".png"), d.h * k, Vector2.zero, anchor);
+            im.rectTransform.pivot = d.hang ? new Vector2(.5f, .5f) : new Vector2(.5f, 0f);
+            im.gameObject.SetActive(false);
+            return im;
+        }
+
+        static UnityEngine.UI.Button SideButton(Transform parent, string name, string icon, string label, Vector2 pos, Vector2 anchor, out Image dot, out TMP_Text count)
+        {
+            var bg = Img(name, parent, S("Generated/disc.png"), new Vector2(150, 150), pos, anchor, true);
+            bg.color = new Color32(255, 246, 225, 255);
+            var ring = Img("Ring", bg.transform, S("Generated/disc.png"), new Vector2(136, 136), Vector2.zero);
+            ring.color = new Color32(255, 214, 120, 255);
+            ImgW("Icon", bg.transform, S(icon), 112, new Vector2(0, 4));
+            var lab = Text("Label", bg.transform, label, 34, Color.white, new Vector2(220, 50), new Vector2(0, -92), _matBrownOutline);
+            lab.textWrappingMode = TextWrappingModes.NoWrap;
+            dot = Img("Dot", bg.transform, S("Generated/badge.png"), new Vector2(46, 46), new Vector2(52, 52));
+            count = null;
+            if (name == "Decorate")
+            {
+                var pill = Sliced("Count", bg.transform, S("Generated/rounded.png"), new Vector2(84, 40), new Vector2(0, -136));
+                pill.color = new Color32(92, 46, 18, 220);
+                count = Text("Text", pill.transform, "0/6", 28, Color.white, new Vector2(84, 40), new Vector2(0, 1), _matPlain);
+                count.textWrappingMode = TextWrappingModes.NoWrap;
+            }
+            return Button(bg);
+        }
+
+        // Daily reward: 7 days (4 + 3 tiles), today glows and pulses, claimed days get a check. Grid on popup_panel at
+        // 900 wide: cream x -347..344, y +302..-351.
+        static void BuildDailyPopup(GameUi ui, Transform parent)
+        {
+            var (cg, panel) = Popup("DailyPopup", parent, 900, "Daily Reward", out _);
+            ui.dailyPopup = cg; ui.dailyPanel = panel;
+            float h = panel.sizeDelta.y;
+            ui.dailyClose = Button(ImgW("Close", panel, S("UI/Icons/btn_close.png"), 108, new Vector2(406, h / 2 - 72), null, true));
+            string[] icons = { "reward_coins_small", "reward_coins_small", "reward_gift", "reward_coins_big", "reward_gift", "reward_coins_big", "reward_chest" };
+            int n = icons.Length;
+            ui.dailyTiles = new Image[n]; ui.dailyIcons = new Image[n]; ui.dailyChecks = new Image[n];
+            ui.dailyAmounts = new TMP_Text[n]; ui.dailyDays = new TMP_Text[n];
+            var check = S("UI/Icons/icon_check.png");
+            for (int i = 0; i < n; i++)
+            {
+                bool row1 = i < 4;
+                bool big = i == n - 1;
+                float x = row1 ? -246 + i * 164 : new[] { -195f, -31f, 164f }[i - 4];
+                float y = row1 ? 168 : -48;
+                var size = big ? new Vector2(210, 196) : new Vector2(148, 196);
+                var tile = Sliced($"Day{i + 1}", panel, S("Generated/rounded.png"), size, new Vector2(x - 1, y));
+                tile.color = new Color32(246, 232, 204, 255);
+                ui.dailyTiles[i] = tile;
+                ui.dailyDays[i] = Text("Day", tile.transform, $"Day {i + 1}", 30, Brown, new Vector2(size.x, 40), new Vector2(0, 70), _matPlain);
+                ui.dailyDays[i].textWrappingMode = TextWrappingModes.NoWrap;
+                ui.dailyIcons[i] = ImgW("Icon", tile.transform, S(MetaDir + icons[i] + ".png"), big ? 112 : 96, new Vector2(0, big ? 2 : 8));
+                ui.dailyAmounts[i] = Text("Amount", tile.transform, GameController.DailyLabel(i), i == 2 || i == 4 ? 26 : 36, Color.white, new Vector2(size.x - 8, 44), new Vector2(0, -68), _matBrownOutline);
+                ui.dailyAmounts[i].textWrappingMode = TextWrappingModes.NoWrap;
+                ui.dailyChecks[i] = ImgW("Check", tile.transform, check, 74, new Vector2(size.x / 2 - 22, -size.y / 2 + 26));
+                ui.dailyChecks[i].gameObject.SetActive(false);
+            }
+            ui.dailyClaim = WideButton("Claim", panel, "btn_green", "Claim!", new Vector2(520, 120), new Vector2(-1, -250), out var ct);
+            ui.dailyClaimText = ct;
+        }
+
+        // Decorate ("My Stall"): one row per decoration: picture | name | [coin price] or a check when built.
+        static void BuildDecorPopup(GameUi ui, Transform parent)
+        {
+            var (cg, panel) = Popup("DecorPopup", parent, 900, "My Stall", out _);
+            ui.decorPopup = cg; ui.decorPanel = panel;
+            float h = panel.sizeDelta.y;
+            ui.decorClose = Button(ImgW("Close", panel, S("UI/Icons/btn_close.png"), 108, new Vector2(406, h / 2 - 72), null, true));
+            int n = HomeDecor.Length;
+            ui.decorBuy = new UnityEngine.UI.Button[n]; ui.decorPrice = new TMP_Text[n]; ui.decorBuilt = new Image[n];
+            const float rowH = 96f, y0 = 246f;
+            for (int i = 0; i < n; i++)
+            {
+                float y = y0 - i * (rowH + 6);
+                var row = Sliced($"Row{i}", panel, S("Generated/rounded.png"), new Vector2(660, rowH), new Vector2(-1, y));
+                row.color = new Color32(246, 232, 204, 255);
+                var pic = Img("Pic", row.transform, S(MetaDir + HomeDecor[i].file + ".png"), new Vector2(84, 84), new Vector2(-270, 0));
+                pic.preserveAspect = true;
+                var name = Text("Name", row.transform, GameController.DecorNames[i], 38, Brown, new Vector2(300, rowH), new Vector2(-50, 2), _matPlain);
+                name.alignment = TextAlignmentOptions.Left; name.textWrappingMode = TextWrappingModes.NoWrap;
+                var buy = Sliced("Buy", row.transform, S("UI/Buttons/btn_green.png"), new Vector2(190, 80), new Vector2(222, 2), null, true);
+                ImgW("Coin", buy.transform, S("UI/Icons/icon_coin.png"), 48, new Vector2(-50, 3));
+                ui.decorPrice[i] = Text("Price", buy.transform, GameController.DecorCost[i].ToString(), 40, Color.white, new Vector2(110, 60), new Vector2(26, 4), _matBrownOutline);
+                ui.decorPrice[i].textWrappingMode = TextWrappingModes.NoWrap;
+                ui.decorBuy[i] = Button(buy);
+                ui.decorBuilt[i] = ImgW("Built", row.transform, S("UI/Icons/icon_check.png"), 70, new Vector2(222, 2));
+                ui.decorBuilt[i].gameObject.SetActive(false);
+            }
         }
 
         static void BuildMessagePopup(GameUi ui, Transform parent)

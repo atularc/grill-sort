@@ -92,6 +92,39 @@ namespace GrillSort
         /// <summary>A see-through copy of the piece the hand drags, so the move is obvious.</summary>
         public Image handGhost;
 
+        [Header("Home screen (meta, 2026-11-23)")]
+        public CanvasGroup home;
+        /// <summary>The stall: theme background + counter front, cover-fit like the game; decorations sit in its normalised coordinates.</summary>
+        public Image homeBg, homeFront;
+        public Image[] homeDecor;
+        public Image[] homeCustomers;
+        public RectTransform homeMascot;
+        public Image[] homeSparkles;
+        public Button homePlay, homeDaily, homeDecorate, homeSettings;
+        public TMP_Text homePlayText, homeWorldName, homeWorldNext, homeCoinText, homeDecorCount;
+        public RectTransform homeCoinIcon, homeWorldFill;
+        public float homeWorldFillMax = 400f;
+        public Image homeDailyDot, homeDecorateDot;
+
+        [Header("Daily reward popup")]
+        public CanvasGroup dailyPopup;
+        public RectTransform dailyPanel;
+        public Image[] dailyTiles, dailyIcons, dailyChecks;
+        public TMP_Text[] dailyAmounts, dailyDays;
+        public Button dailyClaim, dailyClose;
+        public TMP_Text dailyClaimText;
+
+        [Header("Decorate popup")]
+        public CanvasGroup decorPopup;
+        public RectTransform decorPanel;
+        public Button[] decorBuy;
+        public TMP_Text[] decorPrice;
+        public Image[] decorBuilt;
+        public Button decorClose;
+
+        /// <summary>The wooden shelf the booster tiles stand on.</summary>
+        public Image boosterShelf;
+
         [Header("Message popup")]
         public CanvasGroup messagePopup;
         public RectTransform messagePanel;
