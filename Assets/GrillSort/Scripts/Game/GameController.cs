@@ -1135,10 +1135,23 @@ namespace GrillSort
                 fl.localScale = Vector3.one * Mathf.Lerp(s0, 1f, k);
             }, Ease.InOutCubic);
             fl.localScale = Vector3.one;
+            // a wrapped piece lands still wrapped: the foil moves from the flyer to the slot in the same frame
+            // (user 2026-11-26: the food showed for a moment on landing)
+            bool wrapped = ui.flyerFoils != null && flyer < ui.flyerFoils.Length && ui.flyerFoils[flyer].gameObject.activeSelf;
             fl.gameObject.SetActive(false);
             fl.localRotation = Quaternion.identity;
             dst.SetFood(ti, fa, cookOnComplete);
             dst.ResetSlot(ti);
+            if (dst.foils != null && ti < dst.foils.Length)
+            {
+                var foil = dst.foils[ti];
+                foil.gameObject.SetActive(wrapped);
+                if (wrapped)
+                {
+                    foil.rectTransform.sizeDelta = dst.foods[ti].rectTransform.sizeDelta * 1.12f;
+                    foil.rectTransform.localScale = Vector3.one; foil.color = Color.white;
+                }
+            }
             StartCoroutine(Tween.Bounce(dst.slots[ti], .16f, .26f));
             // like Skewer Jam: every landing piece gives its own wooden tock, ~0.12 s apart and stepping up a little,
             // so a dragged stack lands as a satisfying "tock-tock-tock" cascade (user 2026-11-22)
