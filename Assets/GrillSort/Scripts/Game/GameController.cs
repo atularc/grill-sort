@@ -403,7 +403,8 @@ namespace GrillSort
             foreach (var f in ui.flyers) f.gameObject.SetActive(false);
 
             SetupCustomers();
-            ui.levelText.text = LevelTitle();
+            ui.levelText.text = $"Level {_levelNumber}";
+            ShowTierTag();
             UpdateOrders(false);
             RefreshBoosters();
             ShowTip();
@@ -2244,14 +2245,18 @@ namespace GrillSort
 
         // tips (levels 1-3): shown once per level ever, in the message strip above the boosters, and gone after the
         // first move (or a few seconds) so they never sit on top of play
-        /// <summary>"Level N", plus the tier (demo) or "Hard" in red underneath (Sort Streak: Hard every 5th level).</summary>
-        string LevelTitle()
+        /// <summary>The tier (demo) or "HARD" tag under the level pill: red on Hard levels, green otherwise (Sort Streak: Hard every 5th level).</summary>
+        void ShowTierTag()
         {
+            if (ui.tierTag == null) return;
             string tag = !string.IsNullOrEmpty(_level.tier) && DemoOn ? _level.tier : _level.hard ? "Hard" : "";
-            if (string.IsNullOrEmpty(tag)) return $"Level {_levelNumber}";
-            string col = _level.hard ? "#D7263D" : "#1E8A4C";
-            tag = tag.ToUpperInvariant();
-            return $"Level {_levelNumber}\n<size=64%><b><color={col}>{tag}</color></b></size>";
+            ui.tierTag.gameObject.SetActive(!string.IsNullOrEmpty(tag));
+            if (string.IsNullOrEmpty(tag)) return;
+            ui.tierTagText.text = tag.ToUpperInvariant();
+            ui.tierTag.color = _level.hard ? new Color32(215, 38, 61, 255) : new Color32(46, 160, 87, 255);
+            float w = Mathf.Max(120f, ui.tierTagText.GetPreferredValues(ui.tierTagText.text).x + 40f);
+            ui.tierTag.rectTransform.sizeDelta = new Vector2(w, ui.tierTag.rectTransform.sizeDelta.y);
+            ui.tierTagText.rectTransform.sizeDelta = new Vector2(w, ui.tierTagText.rectTransform.sizeDelta.y);
         }
 
         /// <summary>Opening line for a demo tier / a Hard level (honest wording, no made-up player stats).</summary>

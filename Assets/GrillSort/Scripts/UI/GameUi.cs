@@ -16,6 +16,9 @@ namespace GrillSort
         public RectTransform flyLayer;
         public RectTransform[] flyers;
         public Image[] flyerFoods;
+        /// <summary>Difficulty tag under the level pill (EASY ... SUPER HARD, or HARD on Hard levels).</summary>
+        public Image tierTag;
+        public TMPro.TextMeshProUGUI tierTagText;
         /// <summary>Foil over a flying piece that is still wrapped.</summary>
         public Image[] flyerFoils;
         public Image[] flyerShadows;

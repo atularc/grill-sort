@@ -683,6 +683,15 @@ namespace GrillSort.EditorTools
             var lvlPill = Sliced("LevelPill", safe, hud, new Vector2(300, 93), new Vector2(0, -100), top);
             ui.levelText = Text("Text", lvlPill.transform, "Level 1", 52, Brown, new Vector2(300, 93), new Vector2(0, 2), _matPlain);
             ui.levelText.textWrappingMode = TextWrappingModes.NoWrap;
+            // difficulty tag (EASY ... SUPER HARD / HARD): a small tilted badge on the level pill's top-right corner
+            ui.tierTag = Sliced("TierTag", lvlPill.transform, S("Generated/rounded.png"), new Vector2(176, 44), new Vector2(122, 40));
+            ui.tierTag.rectTransform.localRotation = Quaternion.Euler(0f, 0f, -8f);   // a badge on the pill's top-right corner
+            ui.tierTag.pixelsPerUnitMultiplier = 2.4f;
+            ui.tierTag.color = new Color32(215, 38, 61, 255);
+            ui.tierTagText = Text("Text", ui.tierTag.transform, "HARD", 28, Color.white, new Vector2(176, 44), new Vector2(0, 1), _matPlain);
+            ui.tierTagText.fontStyle = FontStyles.Bold;
+            ui.tierTagText.textWrappingMode = TextWrappingModes.NoWrap;
+            ui.tierTag.gameObject.SetActive(false);
 
             var coinPill = Sliced("CoinPill", safe, hud, new Vector2(250, 78), new Vector2(-180, -100), new Vector2(1, 1));
             ui.coinText = Text("Text", coinPill.transform, "250", 44, Brown, new Vector2(170, 78), new Vector2(18, 2), _matPlain);
