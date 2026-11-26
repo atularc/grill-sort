@@ -13882,7 +13882,7 @@ MonoBehaviour:
   impatientNagSeconds: 14
   art: {fileID: 11400000, guid: ab20bfd81e3eb8f47a886bb99d27e96c, type: 2}
   bank: {fileID: 11400000, guid: 62384e06ff39c1640a0e065a8c25f34b, type: 2}
-  tierDemo: 0
+  tierDemo: 1
   demoBank: {fileID: 11400000, guid: 1a6045c82e15d104d8f35d7224598945, type: 2}
   ui: {fileID: 1396228520}
   audioManager: {fileID: 827639276}
