@@ -372,6 +372,18 @@ etc", 2026-11-25, on `Grill Sort - polish-cook-meta.apk`).** His last notes, all
   - Recording real-speed videos: a `script eval` coroutine with `Time.captureFramerate = 30` saving
     `ScreenCapture.CaptureScreenshotAsTexture` frames; the colours come out double-sRGB-encoded (linear project),
     so encode with an ffmpeg `lutrgb` sRGB->linear decode.
+- **Sort Streak research (2026-11-26): `Research/SortStreak/Report.md`** (read it before any level / mechanic /
+  meta work). It's based on 80 YouTube videos, levels 1-59, analysed frame by frame. Per-level write-ups are in
+  `levels/`, and the data is in `LevelTable.csv` / `.md`. The videos and frames stay local (git-ignored).
+  Key facts:
+  - Hard every 5 levels: teased on the previous win button with x2 coins, opens with a "% fail" card, followed by
+    a breather.
+  - New mechanics come on the breather after a Hard: "?" at L6, locked vines at L11, countdown vines at L21,
+    piggy coin rope at L23/33/43/53.
+  - A rope can only be filled to the top with ONE colour; mystery pieces can only go on empty ropes.
+  - Rope length 3 -> 4 -> 5, then 4/5/6 as a difficulty knob (6 on Hard); 10-13 orders per level.
+  - Meta: win streak, IQ bar, combo praise, leaderboard, collection cart and jigsaw scene, Daily Challenge at L21,
+    Daily Streak calendar.
 - **User 2026-11-26: design decisions are now OURS.** Aaron said what he had to; don't park questions for him.
   Decide, write it in the "Decisions (made by us)" list of `Docs/LevelDesignPlan.md`, and move on.
 - **Levels 1-50 are designed from recipes and patterns, never rolled at random** (plan 3.5b). The 5-tier demo is

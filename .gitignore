@@ -143,3 +143,10 @@ crashlytics-build.properties
 # reference videos from the client (keep local, never commit)
 *.mp4
 *.mov
+
+# Research media (large, local only)
+/Research/SortStreak/vid/
+/Research/SortStreak/frames/
+/Research/SortStreak/work/
+/Tools/SortStreakBot/runs/
+/Tools/SortStreakBot/run_console.txt
