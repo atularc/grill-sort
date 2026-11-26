@@ -630,6 +630,7 @@ namespace GrillSort
         void Update()
         {
             if (_busy || _won || _dragging || AnyPopupOpen() || _autoPlay || Covered) { _idle = 0f; return; }
+            if (DemoOn) { _idle = 0f; return; }   // the tier demo is for playing freely: no tutorial hand, no free idle hint (Hint button still works)
             _idle += Time.deltaTime;
             bool tutorial = _levelNumber <= tutorialLevels;
             float wait = tutorial ? .9f : idleHintSeconds;
@@ -2284,7 +2285,7 @@ namespace GrillSort
             if (_tipCo != null) StopCoroutine(_tipCo);
             ui.tip.alpha = 0f;
             string special = SpecialTip();
-            _tipSticky = special == null && _levelNumber <= tutorialLevels;
+            _tipSticky = special == null && _levelNumber <= tutorialLevels && !DemoOn;
             if (special != null)
             {
                 ui.tipText.text = special;
