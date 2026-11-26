@@ -59,7 +59,7 @@ namespace GrillSort.EditorTools
 
         const int Candidates = 200, Playouts = 200;
         /// <summary>Tiers before this index are kept from the existing DemoLevelBank (re-design only the rest).</summary>
-        public static int KeepFirst = 4;
+        public static int KeepFirst = 5;
 
         [MenuItem("Grill Sort/Design Demo Levels (5 tiers)")]
         public static void Design()
@@ -79,6 +79,11 @@ namespace GrillSort.EditorTools
                 if (i < KeepFirst && prev != null && i < prev.levels.Count && prev.levels[i].tier == r.Tier)
                 {
                     lv = prev.levels[i]; win = WinRate(lv, Playouts, 1);   // keep an already designed tier
+                    if (lv.solution == null || lv.solution.Length == 0)
+                    {
+                        var rs = Solver.Solve(lv.ToBoard(), lv.rule, 300000, 1500000);
+                        if (rs.Solvable) lv.solution = PackAll(rs.Moves);
+                    }
                 }
                 else lv = Pick(i + 1, r, out win, out tried, out solvable);
                 if (lv == null) { Debug.LogError($"[Demo] {r.Tier}: no solvable candidate out of {tried}"); continue; }
@@ -104,6 +109,13 @@ namespace GrillSort.EditorTools
         }
 
         static int Food(string name) => Array.IndexOf(FoodCatalog.Names, name);
+
+        static int[] PackAll(List<Move> moves)
+        {
+            var a = new int[moves.Count];
+            for (int i = 0; i < a.Length; i++) a[i] = LevelData.Pack(moves[i]);
+            return a;
+        }
 
         static LevelData Pick(int number, Recipe r, out float bestWin, out int tried, out int solvable)
         {
@@ -132,6 +144,7 @@ namespace GrillSort.EditorTools
                 if (res == null || !res.Solvable) continue;
                 solvable++;
                 lv.par = res.Par; lv.parOptimal = res.Optimal;
+                lv.solution = PackAll(res.Moves);
                 float win = WinRate(lv, Playouts, (uint)(c + 1));
                 bool inBand = win >= r.WinLo && win <= r.WinHi && lv.par >= r.ParLo && lv.par <= r.ParHi;
                 float score = Mathf.Abs(win - target) + (inBand ? 0f : 1f);

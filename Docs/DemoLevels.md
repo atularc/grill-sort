@@ -8,7 +8,7 @@ Built by `Grill Sort > Design Demo Levels (5 tiers)` (Editor/DemoLevels.cs). Eac
 | 2 | Medium | 5 | 5 | 9 | corn, tomato, sausage, mushroom, shrimp, onion | 9 | none | 28~ | 73% |
 | 3 | Hard (Hard label, x2 coins) | 5 | 6 | 10 | corn, tomato, sausage, beef, mushroom, shrimp, onion | 17 | spare tray opens on mushroom | 27~ | 10% |
 | 4 | Very Hard (Hard label, x2 coins) | 5 | 6 | 11 | corn, pineapple, sausage, beef, mushroom, shrimp, tomato | 18 | customer tray opens on tomato | 34~ | 1% |
-| 5 | Super Hard (Hard label, x2 coins) | 6 | 6 | 10 | corn, pineapple, sausage, beef, pepper, zucchini, tomato | 16 | customer tray opens on sausage | 34~ | 4% |
+| 5 | Super Hard (Hard label, x2 coins) | 6 | 6 | 10 | corn, pineapple, sausage, beef, pepper, zucchini, tomato | 16 | customer tray opens on sausage | 34~ | 2% |
 
 `~` = a solution found by the fallback search (not proven shortest).
 

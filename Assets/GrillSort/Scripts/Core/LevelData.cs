@@ -33,6 +33,11 @@ namespace GrillSort
         public int[] queueLocks = new int[0];
         /// <summary>"Hard" level (Sort Streak: every 5th level): label, start card, x2 coins.</summary>
         public bool hard;
+        /// <summary>A proven solution (packed moves: from | to &lt;&lt; 4 | index &lt;&lt; 8 | count &lt;&lt; 12), saved at design
+        /// time so Hint and autoplay follow it instantly instead of searching on the phone.</summary>
+        public int[] solution = new int[0];
+        public static int Pack(Move m) => m.From | (m.To << 4) | (m.Index << 8) | (m.Count << 12);
+        public static Move Unpack(int v) => new Move(v & 0xF, (v >> 4) & 0xF, (v >> 8) & 0xF, (v >> 12) & 0xF);
         /// <summary>Tier name shown in the 5-level demo build ("Easy" ... "Super Hard"), empty otherwise.</summary>
         public string tier = "";
         public int foodTypes;

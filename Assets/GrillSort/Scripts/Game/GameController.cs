@@ -1850,7 +1850,7 @@ namespace GrillSort
         static Dictionary<string, Move> BuildPlan(Board start, MoveRule rule)
         {
             var map = new Dictionary<string, Move>();
-            var r = Solver.Solve(start.Clone(), rule, 150000, 700000);
+            var r = Solver.Solve(start.Clone(), rule, 300000, 1500000);
             if (!r.Solvable) return map;
             var b = start.Clone();
             foreach (var m in r.Moves)
@@ -1880,6 +1880,19 @@ namespace GrillSort
         void StartPlan()
         {
             lock (_plan) _plan.Clear();
+            // a designed level carries its proven solution: the plan is ready at once (no search on the phone)
+            if (_level.solution != null && _level.solution.Length > 0)
+            {
+                var b = _board.Clone();
+                foreach (var v in _level.solution)
+                {
+                    var m = LevelData.Unpack(v);
+                    lock (_plan) _plan[PlanKey(b)] = m;
+                    if (!b.TryMakeMove(moveRule, m.From, m.Index, m.To, out var mm)) break;
+                    b.Apply(mm);
+                }
+                return;
+            }
             var snap = _board.Clone(); var rule = moveRule;
             System.Threading.Tasks.Task.Run(() =>
             {
