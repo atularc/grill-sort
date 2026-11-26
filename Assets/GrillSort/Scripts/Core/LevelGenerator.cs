@@ -48,7 +48,11 @@ namespace GrillSort
             public int Spare;
             /// <summary>Free trays (no customer, never leave) in the row, at the ends.</summary>
             public int FreeTrays;
-            public int Pieces => LevelGenerator.Pieces;
+            /// <summary>Order size for this level (0 = the default <see cref="LevelGenerator.Pieces"/>).</summary>
+            public int P;
+            /// <summary>Exact foods to use (designed levels); null = pick by the tier's rules.</summary>
+            public int[] Foods;
+            public int Pieces => P > 0 ? P : LevelGenerator.Pieces;
             public override string ToString() => $"{Row} on screen, {Orders} orders, {Types} foods, look-alikes/group {MaxPerLookAlikeGroup}, extra room {ExtraRoom}, target par {TargetPar}";
         }
 
@@ -177,9 +181,11 @@ namespace GrillSort
 
         public static LevelData Candidate(int level, Tier tier, Mulberry32 rng, MoveRule rule)
         {
-            int K = tier.Row - tier.FreeTrays, T = tier.Orders, P = Pieces, C = Pieces + tier.Spare, H = tier.FreeTrays;
+            int P = tier.Pieces;
+            int K = tier.Row - tier.FreeTrays, T = tier.Orders, C = P + tier.Spare, H = tier.FreeTrays;
             if (K < 1 || T < K) return null;
-            var foods = PickFoods(tier, rng, out int pairs);
+            int pairs = 0;
+            var foods = tier.Foods != null ? new List<int>(tier.Foods) : PickFoods(tier, rng, out pairs);
             if (foods == null) return null;
 
             // order sequence: every food at least once, never the same food twice among the K orders on screen together

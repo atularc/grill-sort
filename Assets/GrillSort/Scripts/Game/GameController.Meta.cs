@@ -44,7 +44,7 @@ namespace GrillSort
         CanvasGroup[] MetaPopups => ui.dailyPopup != null ? new[] { ui.dailyPopup, ui.decorPopup } : new CanvasGroup[0];
         bool MetaPopupOpen() { foreach (var p in MetaPopups) if (IsOpen(p)) return true; return false; }
 
-        bool UseHome(int level) => homeScreen && ui.home != null && !useTestLevel && level >= homeFromLevel;
+        bool UseHome(int level) => homeScreen && !tierDemo && ui.home != null && !useTestLevel && level >= homeFromLevel;
 
         void InitMeta()
         {

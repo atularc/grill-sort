@@ -35,6 +35,12 @@ namespace GrillSort
         public Image[] steam;
         public Image[] sparkles;
         public Image perfect;
+        /// <summary>Foil over each food slot: the piece is wrapped ("?") until it becomes the tray's bottom piece.</summary>
+        public Image[] foils;
+        /// <summary>Locked tray: chains over the tray, a dim layer and a sign showing the food whose order opens it.</summary>
+        public RectTransform lockRoot;
+        public Image lockChains, lockDim, lockSign, lockFood, lockIcon;
+        [NonSerialized] public int lockShown = -1;
 
         /// <summary>
         /// Slot centers in grill-local design px for the current tray size (<see cref="SetCapacity"/>). Sort Streak
@@ -99,7 +105,7 @@ namespace GrillSort
         {
             if (_tall == null)
             {
-                var t = new System.Collections.Generic.List<Graphic> { shadow, ember, glow, highlight, grill, coalGlow, coalHotA, coalHotB, skewer };
+                var t = new System.Collections.Generic.List<Graphic> { shadow, ember, glow, highlight, grill, coalGlow, coalHotA, coalHotB, skewer, lockChains, lockDim };
                 t.RemoveAll(g => g == null);
                 _tall = t.ToArray();
                 _tallH = new float[_tall.Length]; _tallY = new float[_tall.Length];
@@ -108,6 +114,7 @@ namespace GrillSort
                 foreach (var g in steam) m.Add(g.rectTransform);
                 foreach (var g in sparkles) m.Add(g.rectTransform);
                 if (perfect != null) m.Add(perfect.rectTransform);
+                if (lockSign != null) m.Add(lockSign.rectTransform);
                 _moved = m.ToArray(); _movedY = new float[_moved.Length];
                 for (int i = 0; i < _moved.Length; i++) _movedY[i] = _moved[i].anchoredPosition.y;
                 _rootH = rect.sizeDelta.y;
@@ -196,7 +203,40 @@ namespace GrillSort
             slots[i].localRotation = Quaternion.identity;
         }
 
-        public void HideSlot(int i) { foods[i].enabled = false; foodShadows[i].enabled = false; }
+        public void HideSlot(int i)
+        {
+            foods[i].enabled = false; foodShadows[i].enabled = false;
+            if (foils != null && i < foils.Length) foils[i].gameObject.SetActive(false);
+        }
+
+        /// <summary>Shows the foil on every wrapped slot (hid[i] = piece i is wrapped).</summary>
+        public void SetFoils(bool[] hid)
+        {
+            if (foils == null) return;
+            for (int i = 0; i < foils.Length; i++)
+            {
+                bool on = hid != null && i < hid.Length && hid[i] && foods[i].enabled;
+                var f = foils[i];
+                f.gameObject.SetActive(on);
+                if (!on) continue;
+                f.rectTransform.sizeDelta = foods[i].rectTransform.sizeDelta * 1.12f;
+                f.rectTransform.localScale = Vector3.one;
+                f.color = Color.white;
+            }
+        }
+
+        /// <summary>Shows the lock (chains + sign with <paramref name="food"/>), or hides it when food &lt; 0.</summary>
+        public void SetLock(int food, GameArt art)
+        {
+            lockShown = food;
+            if (lockRoot == null) return;
+            lockRoot.gameObject.SetActive(food >= 0);
+            if (food < 0) return;
+            lockRoot.localScale = Vector3.one;
+            lockRoot.anchoredPosition = Vector2.zero;
+            foreach (var g in new Graphic[] { lockChains, lockDim, lockSign, lockFood, lockIcon }) if (g != null) { var c = g.color; c.a = g == lockDim ? .28f : 1f; g.color = c; }
+            if (lockFood != null) lockFood.sprite = art.foods[food].grilled;
+        }
 
         /// <summary>Helper tray (no customer, just for space): steel frame.</summary>
         [NonSerialized] public bool helper;

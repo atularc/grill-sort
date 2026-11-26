@@ -177,7 +177,7 @@ namespace GrillSort.EditorTools
 
         static readonly string[] AtlasFolders = { Art + UiDir, Art + CustomerDir, Art + "VFX/", Art + FoodDir, Art + ShadowDir, Art + RawDir, Art + RawShadowDir, Art + MetaDir,
             Art + FoodOverrides[0].food, Art + FoodOverrides[0].shadow, Art + FoodOverrides[1].food, Art + FoodOverrides[1].shadow };
-        static readonly string[] AtlasFiles = { "badge.png", "disc.png", "rounded.png", BarFill, "bar_track.png", "glow.png", "soft_rect.png", "rays.png", "bar_track_clean.png", "glow_hd.png", "rays_hd.png" };
+        static readonly string[] AtlasFiles = { "foil_wrap.png", "lock_chains.png", "badge.png", "disc.png", "rounded.png", BarFill, "bar_track.png", "glow.png", "soft_rect.png", "rays.png", "bar_track_clean.png", "glow_hd.png", "rays_hd.png" };
 
         static bool IsAtlased(string path)
         {
@@ -297,6 +297,9 @@ namespace GrillSort.EditorTools
             a.logo = Load<Sprite>(Art + "Loading/logo.png");
             a.mascot = Load<Sprite>(Art + "Loading/mascot.png");
             a.skewer = Load<Sprite>(Art + "Board/skewer_cartoon.png");
+            a.foilWrap = Load<Sprite>(Art + "Generated/foil_wrap.png");
+            a.lockChains = Load<Sprite>(Art + "Generated/lock_chains.png");
+            a.iconLock = S("UI/Icons/icon_lock.png");
             a.starOn = S("UI/Icons/icon_star.png");
             a.iconAddTray = S("UI/Icons/icon_add_skewer.png"); a.iconShuffle = S("UI/Icons/icon_shuffle.png");
             a.starOff = a.starOn;
@@ -377,7 +380,7 @@ namespace GrillSort.EditorTools
             // customers (24 faces) and the meta art get their own atlases: together with the UI they no longer fit one page
             Atlas("Customers", new[] { Art + CustomerDir.TrimEnd('/') }, 2048, null);
             Atlas("Meta", new[] { Art + MetaDir.TrimEnd('/') }, 2048, null);
-            Atlas("UI", new[] { Art + UiDir.TrimEnd('/'), Art + "VFX" }, 2048, new[] { Art + "Generated/badge.png", Art + "Generated/disc.png", Art + "Generated/rounded.png", Art + "Generated/" + BarFill, Art + "Generated/bar_track.png", Art + "Generated/glow.png", Art + "Generated/soft_rect.png", Art + "Generated/rays.png", Art + "Generated/bar_track_clean.png", Art + "Generated/glow_hd.png", Art + "Generated/rays_hd.png", Art + "Generated/card_cream.png" });
+            Atlas("UI", new[] { Art + UiDir.TrimEnd('/'), Art + "VFX" }, 2048, new[] { Art + "Generated/badge.png", Art + "Generated/disc.png", Art + "Generated/rounded.png", Art + "Generated/" + BarFill, Art + "Generated/bar_track.png", Art + "Generated/glow.png", Art + "Generated/soft_rect.png", Art + "Generated/rays.png", Art + "Generated/bar_track_clean.png", Art + "Generated/glow_hd.png", Art + "Generated/rays_hd.png", Art + "Generated/card_cream.png", Art + "Generated/foil_wrap.png", Art + "Generated/lock_chains.png" });
             var food = new List<string> { Art + FoodDir.TrimEnd('/'), Art + ShadowDir.TrimEnd('/'), Art + RawDir.TrimEnd('/'), Art + RawShadowDir.TrimEnd('/') };
             foreach (var o in FoodOverrides) { food.Add(Art + o.food.TrimEnd('/')); food.Add(Art + o.shadow.TrimEnd('/')); }
             Atlas("Food", food.ToArray(), 2048, null);
@@ -594,6 +597,7 @@ namespace GrillSort.EditorTools
                 gv.skewer = Img("Skewer", root, _art.skewer, new Vector2(skW, skH), new Vector2(0, 6));
                 int slotCount = LevelGenerator.MaxCapacity;
                 gv.slots = new RectTransform[slotCount]; gv.foods = new Image[slotCount]; gv.foodShadows = new Image[slotCount];
+                gv.foils = new Image[slotCount];
                 GrillView.SetCapacity(slotCount);
                 for (int s = 0; s < slotCount; s++)
                 {
@@ -602,8 +606,21 @@ namespace GrillSort.EditorTools
                     float w = fa.width * GrillView.FoodScale;
                     gv.foodShadows[s] = Img("Shadow", slot, fa.shadow, new Vector2(w, w) * GrillView.ShadowRatio, GrillView.ShadowOffset);
                     gv.foods[s] = Img("Food", slot, fa.grilled, new Vector2(w, w), Vector2.zero);
+                    gv.foils[s] = Img("Foil", slot, _art.foilWrap, new Vector2(w, w) * 1.12f, Vector2.zero);
+                    gv.foils[s].gameObject.SetActive(false);
                     gv.slots[s] = slot;
                 }
+                // locked tray (Sort Streak's locked flowers): dim layer + chains over the whole tray, a sign with the food
+                var lockRoot = Rect("Lock", root, new Vector2(GrillView.GrillW, GrillView.GrillH), Vector2.zero);
+                gv.lockRoot = lockRoot;
+                gv.lockDim = Img("Dim", lockRoot, S("Generated/soft_rect.png"), new Vector2(GrillView.GrillW - 10, GrillView.GrillH - 10), Vector2.zero);
+                gv.lockDim.color = new Color(.05f, .03f, .08f, .28f);
+                gv.lockChains = Img("Chains", lockRoot, _art.lockChains, new Vector2(GrillView.GrillW, GrillView.GrillH), Vector2.zero);
+                gv.lockSign = Img("Sign", lockRoot, S("Generated/disc.png"), new Vector2(132, 132), new Vector2(0, 40));
+                gv.lockSign.color = new Color(1f, .97f, .9f, 1f);
+                gv.lockFood = Img("Food", gv.lockSign.rectTransform, _art.foods[0].grilled, new Vector2(96, 96), new Vector2(0, 4));
+                gv.lockIcon = ImgW("Padlock", gv.lockSign.rectTransform, _art.iconLock, 62, new Vector2(46, -44));
+                lockRoot.gameObject.SetActive(false);
                 gv.steam = new[]
                 {
                     ImgH("Steam0", root, steam, 150, new Vector2(-34, 317)),
@@ -635,6 +652,7 @@ namespace GrillSort.EditorTools
             ui.flyLayer = fly;
             int flyerCount = LevelGenerator.MaxCapacity;
             ui.flyers = new RectTransform[flyerCount]; ui.flyerFoods = new Image[flyerCount]; ui.flyerShadows = new Image[flyerCount];
+            ui.flyerFoils = new Image[flyerCount];
             for (int f = 0; f < flyerCount; f++)
             {
                 var fr = Rect($"Flyer{f}", fly, new Vector2(180, 160), Vector2.zero);
@@ -642,6 +660,8 @@ namespace GrillSort.EditorTools
                 float w = fa.width * GrillView.FoodScale;
                 ui.flyerShadows[f] = Img("Shadow", fr, fa.shadow, new Vector2(w, w) * GrillView.ShadowRatio, GrillView.ShadowOffset);
                 ui.flyerFoods[f] = Img("Food", fr, fa.grilled, new Vector2(w, w), Vector2.zero);
+                ui.flyerFoils[f] = Img("Foil", fr, _art.foilWrap, new Vector2(w, w) * 1.12f, Vector2.zero);
+                ui.flyerFoils[f].gameObject.SetActive(false);
                 ui.flyers[f] = fr;
                 fr.gameObject.SetActive(false);
             }
@@ -747,6 +767,7 @@ namespace GrillSort.EditorTools
             var gameGo = new GameObject("Game");
             var gc = gameGo.AddComponent<GameController>();
             gc.art = _art; gc.bank = bank; gc.ui = ui; gc.audioManager = am;
+            gc.demoBank = AssetDatabase.LoadAssetAtPath<LevelBank>("Assets/GrillSort/Data/DemoLevelBank.asset");
 
             layout.activeGrills = 5;
             layout.Apply();

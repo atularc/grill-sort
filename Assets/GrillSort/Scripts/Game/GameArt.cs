@@ -57,6 +57,8 @@ namespace GrillSort
         /// <summary>Helper tray (no customer): steel frame instead of red enamel, drawn over <see cref="grillDarkGlow"/>.</summary>
         public Sprite grillHelper;
         public Sprite skewer;
+        /// <summary>Wrapped "?" food (foil) and the chains over a locked tray (demo mechanics 2026-11-26).</summary>
+        public Sprite foilWrap, lockChains, iconLock;
 
         [Header("UI swaps")]
         public Sprite iconAddTray, iconShuffle;

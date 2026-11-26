@@ -16,6 +16,8 @@ namespace GrillSort
         public RectTransform flyLayer;
         public RectTransform[] flyers;
         public Image[] flyerFoods;
+        /// <summary>Foil over a flying piece that is still wrapped.</summary>
+        public Image[] flyerFoils;
         public Image[] flyerShadows;
         /// <summary>The small skewer a finished order flies up to its customer on (same layout as the bubble skewers).</summary>
         public SkewerStack serveSkewer;

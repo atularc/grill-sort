@@ -14,6 +14,11 @@ namespace GrillSort
         [Header("Data")]
         public GameArt art;
         public LevelBank bank;
+        [Header("5-tier demo build (Aaron 2026-11-25)")]
+        [Tooltip("Plays the 5 designed tier levels (Data/DemoLevelBank) as Level 1-5: Easy, Medium, Hard, Very Hard, Super Hard. Home and Daily Rewards are off; after level 5 it loops.")]
+        public bool tierDemo = false;
+        public LevelBank demoBank;
+        bool DemoOn => tierDemo && demoBank != null && demoBank.levels.Count > 0;
         public GameUi ui;
         public AudioManager audioManager;
 
@@ -63,7 +68,8 @@ namespace GrillSort
         /// catches up one serve at a time (tray + customer leave, the rest slide left, the next tray slides in), so this
         /// keeps the faces with their trays while they slide.
         /// </summary>
-        struct VisTray { public int[] stack; public int target; public int face; public int who; }   // who: this customer's id (their mood + waiting time, GameController.Moods)
+        // hid: wrapped pieces (same length as stack); lockPlus1: food that unlocks this tray + 1 (0 = not locked)
+        struct VisTray { public int[] stack; public int target; public int face; public int who; public bool[] hid; public int lockPlus1; }   // who: this customer's id (their mood + waiting time, GameController.Moods)
         readonly List<VisTray> _vis = new List<VisTray>();
         int NextFace() => _nextAnimal++ % art.customers.Length;
         int _selected = -1, _selStart;
@@ -353,10 +359,15 @@ namespace GrillSort
             foreach (var t in new Transform[] { ui.winWord, ui.winBubble, ui.winMultBar, ui.winDouble.transform, ui.winNext.transform }) t.localScale = Vector3.one;
             _pointerRun = false; _claiming = false;
             _levelNumber = Mathf.Max(1, number);
-            _level = bank.Get(_levelNumber, moveRule);
-            bank.Prefetch(_levelNumber + 1, moveRule); // past the baked levels: generate the next one in the background
+            if (DemoOn) _level = demoBank.levels[(_levelNumber - 1) % demoBank.levels.Count];
+            else
+            {
+                _level = bank.Get(_levelNumber, moveRule);
+                bank.Prefetch(_levelNumber + 1, moveRule); // past the baked levels: generate the next one in the background
+            }
             _board = _level.ToBoard();
             _skewers = _board.SkewerCount;
+            StartPlan();
             GrillView.SetCapacity(_board.Capacity);
             _dragging = false;
             _moves = 0; _served = 0; _selected = -1; _busy = false; _extraUsed = false; _won = false; _idle = 0f;
@@ -370,7 +381,7 @@ namespace GrillSort
             {
                 int t0 = _board.Target(s);
                 // the first customers don't all lose patience at the same moment: each one starts a few seconds later
-                _vis.Add(new VisTray { stack = _board.Stack(s), target = t0, face = t0 >= 0 ? NextFace() : -1, who = t0 >= 0 ? NewCustomer(-patienceStagger * firstRow++) : 0 });
+                _vis.Add(new VisTray { stack = _board.Stack(s), target = t0, face = t0 >= 0 ? NextFace() : -1, who = t0 >= 0 ? NewCustomer(-patienceStagger * firstRow++) : 0, hid = _board.HiddenStack(s), lockPlus1 = _board.Lock(s) + 1 });
             }
 
             ApplyTheme();
@@ -385,14 +396,14 @@ namespace GrillSort
                 g.rect.localScale = Vector3.one;   // trays that left last level were shrunk to 0
                 g.helper = _board.Target(i) < 0;   // free tray (Extra tray booster): no customer, steel frame
                 g.SetLit(false, art);
-                g.Show(_board.Stack(i), art, cookOnComplete);
+                g.Show(_board.Stack(i), art, cookOnComplete); g.SetFoils(_board.HiddenStack(i)); g.SetLock(_board.Lock(i), art);
             }
             ui.layout.activeGrills = _skewers;
             ui.layout.Apply();
             foreach (var f in ui.flyers) f.gameObject.SetActive(false);
 
             SetupCustomers();
-            ui.levelText.text = $"Level {_levelNumber}";
+            ui.levelText.text = LevelTitle();
             UpdateOrders(false);
             RefreshBoosters();
             ShowTip();
@@ -517,6 +528,8 @@ namespace GrillSort
                 g.helper = _vis[i].target < 0;
                 g.SetLit(false, art);
                 g.Show(_vis[i].stack, art, cookOnComplete);
+                g.SetFoils(_vis[i].hid);
+                g.SetLock(_vis[i].lockPlus1 - 1, art);
                 g.rect.localScale = Vector3.one;
             }
             ui.layout.activeGrills = n;
@@ -535,7 +548,7 @@ namespace GrillSort
                 bool same = s < old.Count && old[s].target == t;
                 int face = same ? old[s].face : (t >= 0 ? NextFace() : -1);
                 int who = same ? old[s].who : (t >= 0 ? NewCustomer(0f) : 0);
-                _vis.Add(new VisTray { stack = _board.Stack(s), target = t, face = face, who = who });
+                _vis.Add(new VisTray { stack = _board.Stack(s), target = t, face = face, who = who, hid = _board.HiddenStack(s), lockPlus1 = _board.Lock(s) + 1 });
             }
         }
 
@@ -703,6 +716,7 @@ namespace GrillSort
             if (_selected < 0)
             {
                 if (_board.IsEmpty(g)) { StartCoroutine(Tween.Shake(ui.grills[g].rect, 8f, .2f)); return; }
+                if (_board.IsLocked(g)) { StartCoroutine(Tween.Shake(ui.grills[g].rect, 8f, .2f)); audioManager.Play(art.invalid, .6f); Toast(LockedMsg); return; }
                 int start = _board.MoveStart(moveRule, g, moveRule == MoveRule.AnyWithAbove ? slot : -1);
                 Select(g, start);
                 return;
@@ -857,6 +871,7 @@ namespace GrillSort
             StopHint();
             if (_selected >= 0) Deselect();
             if (_board.IsEmpty(g)) { StartCoroutine(Tween.Shake(ui.grills[g].rect, 8f, .2f)); return; }
+            if (_board.IsLocked(g)) { StartCoroutine(Tween.Shake(ui.grills[g].rect, 8f, .2f)); audioManager.Play(art.invalid, .6f); Toast(LockedMsg); return; }
             int start = _board.MoveStart(moveRule, g, moveRule == MoveRule.AnyWithAbove ? Mathf.Min(slot, _board.Count(g) - 1) : -1);
             var v = ui.grills[g];
             _dragging = true; _dragFrom = g; _dragStart = start; _dragCount = _board.Count(g) - start; _dragHover = -1;
@@ -865,6 +880,7 @@ namespace GrillSort
             {
                 int si = start + k;
                 PrepareFlyer(k, art.foods[_board.Get(g, si)], cookOnComplete);
+                SetFlyerFoil(k, _board.IsHidden(g, si));
                 var fl = ui.flyers[k];
                 fl.anchoredPosition = (Vector2)ui.flyLayer.InverseTransformPoint(v.slots[si].position);
                 fl.localScale = Vector3.one; fl.localRotation = Quaternion.identity;
@@ -950,8 +966,10 @@ namespace GrillSort
             int group = _board.Count(from) - s0;
             bool matches = _board.IsEmpty(to) || _board.Top(to) == _board.Get(from, s0);
             if (!matches) return "Match the bottom food to drop here!";
+            if (_board.IsLocked(to)) return LockedMsg;
             if (_board.Capacity - _board.Count(to) < group) return "This tray can't hold that many!";
             if (!_board.FillsUniform(from, s0, group, to)) return "Fill a tray to the top with one food only!";
+            if (!_board.IsEmpty(to) && _board.HasHidden(from, s0, group)) return "Wrapped food can only go on an empty tray!";
             return "Can't drop there!";
         }
 
@@ -967,7 +985,7 @@ namespace GrillSort
                 StartCoroutine(FlyFrom(k, ui.flyers[k].anchoredPosition, ui.flyers[k].localScale.x, v, start + k, food, k * .03f, () => flying--));
             }
             while (flying > 0) yield return null;
-            v.Show(_board.Stack(g), art, cookOnComplete);
+            v.Show(_board.Stack(g), art, cookOnComplete); v.SetFoils(_board.HiddenStack(g)); v.SetLock(_board.Lock(g), art);
             _busy = false;
         }
 
@@ -994,6 +1012,15 @@ namespace GrillSort
             var preDst = new int[dstN + m.Count];
             for (int i = 0; i < dstN; i++) preDst[i] = _board.Get(m.To, i);
             for (int k = 0; k < m.Count; k++) preDst[dstN + k] = moved[k];
+            var hidSrc = new bool[m.Index];
+            for (int i = 0; i < m.Index; i++) hidSrc[i] = _board.IsHidden(m.From, i);
+            var hidDst = new bool[dstN + m.Count];
+            for (int i = 0; i < dstN; i++) hidDst[i] = _board.IsHidden(m.To, i);
+            for (int k = 0; k < m.Count; k++) hidDst[dstN + k] = _board.IsHidden(m.From, m.Index + k);
+            bool revSrc = m.Index > 0 && hidSrc[m.Index - 1];
+            if (revSrc) hidSrc[m.Index - 1] = false;
+            bool revDst = hidDst.Length > 0 && hidDst[hidDst.Length - 1];
+            if (revDst) hidDst[hidDst.Length - 1] = false;
             var served = _board.Apply(m);
             if (verboseLog) Debug.Log($"[Grill Sort] move {m} -> {_board} served {served.Count}");
             _moves++;
@@ -1032,7 +1059,10 @@ namespace GrillSort
 
             src.Show(preSrc, art, cookOnComplete);
             dst.Show(preDst, art, cookOnComplete);
-            SetVis(m.From, preSrc); SetVis(m.To, preDst);
+            src.SetFoils(hidSrc); dst.SetFoils(hidDst);
+            if (revSrc) StartCoroutine(RevealPop(src, m.Index - 1));
+            if (revDst) StartCoroutine(RevealPop(dst, hidDst.Length - 1));
+            SetVis(m.From, preSrc, hidSrc); SetVis(m.To, preDst, hidDst);
             if (served.Count == 0) Progress(m.To);
 
             // serve whatever the move completed, one after the other (both ends can fill up in one move); each serve
@@ -1063,6 +1093,7 @@ namespace GrillSort
             var p0 = (Vector2)ui.flyLayer.InverseTransformPoint(src.slots[si].position);
             float s0 = src.slots[si].localScale.x;
             PrepareFlyer(flyer, art.foods[food], cookOnComplete);
+            SetFlyerFoil(flyer, src.foils != null && si < src.foils.Length && src.foils[si].gameObject.activeSelf);
             src.HideSlot(si);
             yield return FlyFrom(flyer, p0, s0, dst, ti, food, 0f, done);
         }
@@ -1110,10 +1141,73 @@ namespace GrillSort
             ui.flyerShadows[i].rectTransform.sizeDelta = new Vector2(w, w) * GrillView.ShadowRatio;
             ui.flyerShadows[i].rectTransform.anchoredPosition = GrillView.ShadowOffset * 1.6f;
             ui.flyerFoods[i].color = Color.white; ui.flyerShadows[i].color = Color.white;
+            SetFlyerFoil(i, false);
         }
 
         // ------------------------------------------------------------------ completion & serving
         void SetVis(int s, int[] stack) { var t = _vis[s]; t.stack = stack; _vis[s] = t; }
+        void SetVis(int s, int[] stack, bool[] hid) { var t = _vis[s]; t.stack = stack; t.hid = hid; _vis[s] = t; }
+
+        const string LockedMsg = "This tray is locked. Serve the food on its sign first!";
+
+        /// <summary>A wrapped piece just became the bottom one: the foil pops off.</summary>
+        IEnumerator RevealPop(GrillView v, int i)
+        {
+            if (v.foils == null || i < 0 || i >= v.foils.Length) yield break;
+            var f = v.foils[i];
+            f.rectTransform.sizeDelta = v.foods[i].rectTransform.sizeDelta * 1.12f;
+            f.gameObject.SetActive(true);
+            audioManager.Play(art.pop, .6f, 1.25f);
+            Haptics.Light();
+            StartCoroutine(Tween.Bounce(v.slots[i], .16f, .3f));
+            yield return Tween.Run(.32f, k =>
+            {
+                f.rectTransform.localScale = Vector3.one * (1f + .45f * k);
+                f.color = new Color(1f, 1f, 1f, 1f - k);
+            }, Ease.OutCubic);
+            f.gameObject.SetActive(false);
+            f.color = Color.white; f.rectTransform.localScale = Vector3.one;
+        }
+
+        /// <summary>Serving <paramref name="food"/> opens every tray locked by it: the chains drop away.</summary>
+        void UnlockFor(int food)
+        {
+            for (int j = 0; j < _vis.Count; j++)
+            {
+                if (_vis[j].lockPlus1 - 1 != food) continue;
+                var t = _vis[j]; t.lockPlus1 = 0; _vis[j] = t;
+                if (j < ui.grills.Length) StartCoroutine(UnlockAnim(ui.grills[j]));
+            }
+        }
+
+        IEnumerator UnlockAnim(GrillView v)
+        {
+            if (v.lockRoot == null || !v.lockRoot.gameObject.activeSelf) { v.SetLock(-1, art); yield break; }
+            audioManager.Play(art.whoosh, .5f, .9f);
+            Haptics.Medium();
+            StartCoroutine(Tween.Bounce(v.lockSign.rectTransform, .25f, .3f));
+            yield return new WaitForSeconds(.25f);
+            var gs = new Graphic[] { v.lockChains, v.lockDim, v.lockSign, v.lockFood, v.lockIcon };
+            var a0 = new float[gs.Length];
+            for (int i = 0; i < gs.Length; i++) a0[i] = gs[i].color.a;
+            yield return Tween.Run(.45f, k =>
+            {
+                v.lockRoot.anchoredPosition = new Vector2(0f, -160f * k * k);
+                for (int i = 0; i < gs.Length; i++) { var c = gs[i].color; c.a = a0[i] * (1f - k); gs[i].color = c; }
+            });
+            v.SetLock(-1, art);
+            audioManager.Play(art.pop, .5f, 1.1f);
+        }
+
+        void SetFlyerFoil(int i, bool on)
+        {
+            if (ui.flyerFoils == null || i >= ui.flyerFoils.Length) return;
+            var f = ui.flyerFoils[i];
+            f.gameObject.SetActive(on);
+            if (!on) return;
+            f.rectTransform.sizeDelta = ui.flyerFoods[i].rectTransform.sizeDelta * 1.12f;
+            f.rectTransform.localScale = Vector3.one; f.color = Color.white;
+        }
 
         /// <summary>
         /// One order served (Sort Streak style): the finished tray glows, the pieces fly up to the customer on a small
@@ -1166,6 +1260,7 @@ namespace GrillSort
                 yield break;
             }
             yield return ShiftRow(g, e.Arrived, queueIndex, c);
+            UnlockFor(e.Food);
         }
 
         /// <summary>The served tray shrinks away and its customer sinks behind the counter.</summary>
@@ -1194,7 +1289,9 @@ namespace GrillSort
             if (arrived && queueIndex >= 0)
             {
                 int t = _board.QueueTarget(queueIndex);
-                _vis.Add(new VisTray { stack = _board.QueueStack(queueIndex), target = t, face = t >= 0 ? NextFace() : -1, who = t >= 0 ? NewCustomer(0f) : 0 });
+                var qh = _board.QueueHidden(queueIndex);
+                if (qh.Length > 0) qh[qh.Length - 1] = false;   // the bottom piece is always visible
+                _vis.Add(new VisTray { stack = _board.QueueStack(queueIndex), target = t, face = t >= 0 ? NextFace() : -1, who = t >= 0 ? NewCustomer(0f) : 0, hid = qh, lockPlus1 = _board.QueueLock(queueIndex) + 1 });
             }
             int nAfter = _vis.Count;
 
@@ -1453,7 +1550,7 @@ namespace GrillSort
             int par = Mathf.Max(1, _level.par);
             if (moveRule == MoveRule.SingleTop && _level.rule != MoveRule.SingleTop) par = par * 3 / 2; // single moves take longer
             int stars = _moves <= par + 2 ? 3 : _moves <= par * 3 / 2 + 2 ? 2 : 1;
-            _winReward = 10 + stars * 5;
+            _winReward = (10 + stars * 5) * (_level.hard ? 2 : 1);   // Hard levels pay double (Sort Streak)
             ui.winCoins.text = _winReward.ToString();
             ui.winCoinPillText.text = _shownCoins.ToString("N0");
             UpdateWinMult(0);
@@ -1590,6 +1687,16 @@ namespace GrillSort
             ui.coinText.text = coinsTo.ToString("N0");
             ClosePopup(ui.winPopup);
             int next = _levelNumber + 1;
+            if (DemoOn && next > demoBank.levels.Count)
+            {
+                SaveData.Level = 1;
+                StartCoroutine(Tween.Delay(.3f, () =>
+                {
+                    LoadLevel(1);
+                    ShowMessage("Demo complete!", "That's all 5 tiers: Easy, Medium, Hard, Very Hard and Super Hard.\nThanks for playing!");
+                }));
+                yield break;
+            }
             if (limitToTenLevels && !useTestLevel && next > 10)
             {
                 SaveData.Level = 1;
@@ -1699,6 +1806,53 @@ namespace GrillSort
         /// budget says so instead (it used to open "Out of Moves!" on winnable boards, user 2026-11-23).
         /// Returns false: UseBooster must not charge it; HintWhenReady does.
         /// </summary>
+        // ---- hints and autoplay follow one proven solution (2026-11-26: on the bigger demo boards the quick NextMove
+        // search could flip a move back and forth). The plan maps each board on the solution path to its next move;
+        // when the player leaves the path, a fresh full solve from there extends the plan.
+        readonly Dictionary<string, Move> _plan = new Dictionary<string, Move>();
+        static string PlanKey(Board b) => b.ToString() + "|" + b.QueueNext;
+
+        static Dictionary<string, Move> BuildPlan(Board start, MoveRule rule)
+        {
+            var map = new Dictionary<string, Move>();
+            var r = Solver.Solve(start.Clone(), rule, 150000, 700000);
+            if (!r.Solvable) return map;
+            var b = start.Clone();
+            foreach (var m in r.Moves)
+            {
+                map[PlanKey(b)] = m;
+                if (!b.TryMakeMove(rule, m.From, m.Index, m.To, out var mm)) break;
+                b.Apply(mm);
+            }
+            return map;
+        }
+
+        /// <summary>The next move of a proven solution from board <paramref name="b"/> (thread-safe).</summary>
+        Move? SmartNext(Board b, MoveRule rule, out bool dead)
+        {
+            dead = false;
+            string k = PlanKey(b);
+            lock (_plan) if (_plan.TryGetValue(k, out var m)) return m;
+            var fresh = BuildPlan(b, rule);
+            if (fresh.TryGetValue(k, out var m2))
+            {
+                lock (_plan) foreach (var kv in fresh) _plan[kv.Key] = kv.Value;
+                return m2;
+            }
+            return Solver.NextMove(b, rule, out dead);
+        }
+
+        void StartPlan()
+        {
+            lock (_plan) _plan.Clear();
+            var snap = _board.Clone(); var rule = moveRule;
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                var map = BuildPlan(snap, rule);
+                lock (_plan) foreach (var kv in map) _plan[kv.Key] = kv.Value;
+            });
+        }
+
         bool DoHint()
         {
             if (_hintSearching) return false;
@@ -1709,7 +1863,7 @@ namespace GrillSort
             var rule = moveRule;
             var task = System.Threading.Tasks.Task.Run(() =>
             {
-                var m = Solver.NextMove(snapshot, rule, out bool dead);
+                var m = SmartNext(snapshot, rule, out bool dead);
                 return (m, dead);
             });
             StartCoroutine(HintWhenReady(task, snapshot.ToString() + "|" + snapshot.QueueNext, _levelNumber));
@@ -1724,7 +1878,7 @@ namespace GrillSort
             string key = snapshot.ToString() + "|" + snapshot.QueueNext;
             int level = _levelNumber;
             var rule = moveRule;
-            var task = System.Threading.Tasks.Task.Run(() => Solver.NextMove(snapshot, rule));
+            var task = System.Threading.Tasks.Task.Run(() => SmartNext(snapshot, rule, out _));
             while (!task.IsCompleted) yield return null;
             _hintSearching = false;
             if (task.IsFaulted || !task.Result.HasValue) yield break;
@@ -1902,10 +2056,10 @@ namespace GrillSort
             Deselect();
             _extraUsed = true;
             int g = _board.AddSkewer();
-            _vis.Add(new VisTray { stack = new int[0], target = -1, face = -1 });
+            _vis.Add(new VisTray { stack = new int[0], target = -1, face = -1, hid = new bool[0] });
             var v = ui.grills[g];
             v.gameObject.SetActive(true);
-            v.ResetFx(); v.helper = true; v.SetLit(false, art); v.Show(_board.Stack(g), art, cookOnComplete);
+            v.ResetFx(); v.helper = true; v.SetLit(false, art); v.Show(_board.Stack(g), art, cookOnComplete); v.SetFoils(_board.HiddenStack(g)); v.SetLock(-1, art);
             ui.layout.activeGrills = _board.SkewerCount;
             ui.layout.Apply();
             v.rect.localScale = Vector3.zero;
@@ -1920,7 +2074,7 @@ namespace GrillSort
             for (int i = 0; i < _board.SkewerCount; i++)
             {
                 var v = ui.grills[i];
-                v.Show(_board.Stack(i), art, cookOnComplete);
+                v.Show(_board.Stack(i), art, cookOnComplete); v.SetFoils(_board.HiddenStack(i)); v.SetLock(_board.Lock(i), art);
                 if (!pop) continue;
                 for (int s = 0; s < v.slots.Length; s++)
                 {
@@ -2090,10 +2244,42 @@ namespace GrillSort
 
         // tips (levels 1-3): shown once per level ever, in the message strip above the boosters, and gone after the
         // first move (or a few seconds) so they never sit on top of play
+        /// <summary>"Level N", plus the tier (demo) or "Hard" in red underneath (Sort Streak: Hard every 5th level).</summary>
+        string LevelTitle()
+        {
+            string tag = !string.IsNullOrEmpty(_level.tier) && DemoOn ? _level.tier : _level.hard ? "Hard" : "";
+            if (string.IsNullOrEmpty(tag)) return $"Level {_levelNumber}";
+            string col = _level.hard ? "#D7263D" : "#1E8A4C";
+            tag = tag.ToUpperInvariant();
+            return $"Level {_levelNumber}\n<size=64%><b><color={col}>{tag}</color></b></size>";
+        }
+
+        /// <summary>Opening line for a demo tier / a Hard level (honest wording, no made-up player stats).</summary>
+        string SpecialTip()
+        {
+            if (DemoOn)
+                switch (_level.tier)
+                {
+                    case "Easy": return "Easy: drag food to fill each customer's tray!";
+                    case "Medium": return "Wrapped food shows what it is when it reaches the bottom!";
+                    case "Hard": return "Hard level! Think before every move. Coins x2!";
+                    case "Very Hard": return "Very Hard! The locked tray opens when you serve the food on its sign. Coins x2!";
+                    case "Super Hard": return "Super Hard! Trays of 6 and look-alike food. Good luck! Coins x2!";
+                }
+            return _level.hard ? "Hard level! Think before every move. Coins x2!" : null;
+        }
+
         void ShowTip()
         {
             if (_tipCo != null) StopCoroutine(_tipCo);
             ui.tip.alpha = 0f;
+            string special = SpecialTip();
+            if (special != null)
+            {
+                ui.tipText.text = special;
+                _tipCo = StartCoroutine(TipAnim());
+                return;
+            }
             if (_levelNumber > Tips.Length) return;
             string key = "tip_seen_" + _levelNumber;
             if (PlayerPrefs.GetInt(key, 0) == 1 && !useTestLevel) return;
@@ -2247,7 +2433,7 @@ namespace GrillSort
                 {
                     while (_busy || AnyPopupOpen()) { if (_won) break; yield return null; }
                     if (_won) break;
-                    var mv = Solver.NextMove(_board, moveRule);
+                    var mv = SmartNext(_board, moveRule, out _);
                     if (!mv.HasValue) { AutoPlayLog += $"L{lvl}: no move found\n"; _autoPlay = false; yield break; }
                     var m = mv.Value;
                     OnGrillTap(m.From, m.Index);
