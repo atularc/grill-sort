@@ -4,9 +4,9 @@ Built by `Grill Sort > Design Demo Levels (5 tiers)` (Editor/DemoLevels.cs). Eac
 
 | Demo level | Tier | Tray size | Trays on screen | Orders | Foods | Wrapped | Lock | Par (min moves) | Bot win |
 |---|---|---|---|---|---|---|---|---|---|
-| 1 | Easy | 4 | 5 | 8 | corn, tomato, sausage, mushroom, pepper | 0 | none | 18 | 78% |
-| 2 | Medium | 5 | 5 | 9 | corn, tomato, sausage, mushroom, shrimp, onion | 9 | none | 28~ | 41% |
-| 3 | Hard (Hard label, x2 coins) | 5 | 6 | 10 | corn, tomato, sausage, beef, mushroom, shrimp, onion | 17 | none | 31~ | 14% |
+| 1 | Easy | 4 | 5 | 8 | corn, tomato, sausage, mushroom, pepper | 0 | none | 18 | 83% |
+| 2 | Medium | 5 | 5 | 9 | corn, tomato, sausage, mushroom, shrimp, onion | 9 | none | 28~ | 45% |
+| 3 | Hard (Hard label, x2 coins) | 5 | 6 | 10 | corn, tomato, sausage, beef, mushroom, shrimp, onion | 17 | none | 31~ | 16% |
 | 4 | Very Hard (Hard label, x2 coins) | 5 | 6 | 11 | corn, pineapple, sausage, beef, mushroom, shrimp, tomato | 18 | spare tray, opens on beef | 37~ | 3% |
 | 5 | Super Hard (Hard label, x2 coins) | 6 | 6 | 10 | corn, pineapple, sausage, beef, pepper, zucchini, tomato | 17 | none | 40~ | 2% |
 

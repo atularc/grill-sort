@@ -53,7 +53,7 @@ namespace GrillSort.EditorTools
 
         const int Candidates = 200, Playouts = 200;
         /// <summary>Tiers before this index are kept from the existing DemoLevelBank (re-design only the rest).</summary>
-        public static int KeepFirst = 3;
+        public static int KeepFirst = 0;
 
         [MenuItem("Grill Sort/Design Demo Levels (5 tiers)")]
         public static void Design()

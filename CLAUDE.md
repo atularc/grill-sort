@@ -380,7 +380,8 @@ etc", 2026-11-25, on `Grill Sort - polish-cook-meta.apk`).** His last notes, all
     a breather.
   - New mechanics come on the breather after a Hard: "?" at L6, locked vines at L11, countdown vines at L21,
     piggy coin rope at L23/33/43/53.
-  - A rope can only be filled to the top with ONE colour; mystery pieces can only go on empty ropes.
+  - Mystery pieces can only go on empty ropes. (A "full rope must be one colour" rule was tried and REMOVED on
+    2026-11-26: a direct phone test showed Sort Streak allows mixed full ropes. Don't re-add it.)
   - Rope length 3 -> 4 -> 5, then 4/5/6 as a difficulty knob (6 on Hard); 10-13 orders per level.
   - Meta: win streak, IQ bar, combo praise, leaderboard, collection cart and jigsaw scene, Daily Challenge at L21,
     Daily Streak calendar.

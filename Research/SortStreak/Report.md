@@ -22,7 +22,7 @@ Written 2026-11-26. **Sort Streak: Color Puzzle** (Oakever Games, `com.oakever.s
 |---|---|
 | Move | Drag any flower; **every flower below it comes along**. Mixed-colour groups are allowed. |
 | Drop | On an **empty rope**, or on a rope whose bottom (free-end) flower is the **same colour as the grabbed flower**, if it fits. |
-| Full rope | **A rope may only be filled to the top with one colour.** This anti-dead-end rule was found by testing on our phone; the game refuses a mixed full rope. |
+| Full rope | **A rope CAN be filled to the top with mixed colours.** Corrected 2026-11-26 by a direct test on the phone: 3 flowers (yellow, purple, light blue) dropped onto a rope holding pink, yellow filled it to 5, mixed, and the game accepted it. An earlier "one colour only" guess, based on 2 refused moves, was wrong. |
 | Mystery "?" | A grey flower that shows its colour when it becomes the bottom flower. **"Mystery flowers can only go on empty ropes."** (L24) |
 | Serve | A rope full of its own pot's colour is served. The pot flies to the top shelf ("x/N"), the row slides left, and a new rope and pot slide in from the right. |
 | Arrivals | New ropes always arrive **full**, often with "?" pieces, so the free space never grows during a level. |
@@ -143,7 +143,7 @@ Build A: a bouquet win screen with "Perfect!" and coins, then Next.
 ## 10. What this means for Grill Sort (recommendations)
 
 **Rules to add (cheap, high value)**
-1. **"A tray may only be filled to the top with one food."** This is Sort Streak's anti-dead-end rule. Add it to `Board.CanMove`, the solver and the generator. Toast: "Fill a tray to the top with one food only!"
+1. *(Withdrawn: a "fill to the top with one food only" rule was tested and Sort Streak does NOT have it. Don't add it.)*
 2. **Mystery pieces can only be moved onto an empty tray.** Toast: "Wrapped food can only go on an empty tray!"
 3. Keep our rejection toasts and add the stuck banner style: a non-blocking banner plus a pulsing Undo, as we already do. **Never tie the stuck state to an interstitial** (it's their top complaint).
 

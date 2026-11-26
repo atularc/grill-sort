@@ -987,7 +987,6 @@ namespace GrillSort
             if (!matches) return "Match the bottom food to drop here!";
             if (_board.IsLocked(to)) return LockedMsg;
             if (_board.Capacity - _board.Count(to) < group) return "This tray can't hold that many!";
-            if (!_board.FillsUniform(from, s0, group, to)) return "Fill a tray to the top with one food only!";
             if (!_board.IsEmpty(to) && _board.HasHidden(from, s0, group)) return "Wrapped food can only go on an empty tray!";
             return "Can't drop there!";
         }

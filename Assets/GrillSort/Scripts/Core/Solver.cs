@@ -437,7 +437,6 @@ namespace GrillSort
                                 if (to == from || _lock[to] != 0) continue;
                                 int count = Count(from, start, n, food, group, to, ref triedFree);
                                 if (count <= 0) continue;
-                                if (!FillsUniform(fb, n - count, count, to)) continue;   // full tray = one food (Sort Streak)
                                 if (_cnt[to] > 0 && HiddenIn(fb + n - count, count)) continue;   // wrapped food only onto an empty tray
                                 // apply on the working row (it holds the base row here)
                                 int ct = _cnt[to], tb = to * MaxCapacity;
@@ -602,7 +601,6 @@ namespace GrillSort
                             int room = _cap - ct;
                             int count = _rule == MoveRule.SingleTop ? 1 : _rule == MoveRule.TopGroup ? Math.Min(group, room) : group;
                             if (count > room || count <= 0) continue;
-                            if (!FillsUniform(fb, n - count, count, to)) continue;
                             if (_rule == MoveRule.TopGroup && count < group) continue;
                             if (_rule == MoveRule.SingleTop && group > 1 && _cells[fb + n - 2] == food) continue;
                             if (ct == 0) { if (_tgt[to] == food) return true; continue; }

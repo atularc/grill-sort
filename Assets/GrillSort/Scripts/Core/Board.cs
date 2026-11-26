@@ -219,7 +219,8 @@ namespace GrillSort
             if (rule == MoveRule.SingleTop) count = 1;
             else if (rule == MoveRule.TopGroup) count = Math.Min(group, room);   // as many as fit
             else { if (group > room) return false; count = group; }        // the whole stack above must fit
-            if (!FillsUniform(from, n - count, count, to)) return false;
+            // (2026-11-26: a "full tray must be one food" rule was tried here and REMOVED: tested on Sort Streak, it
+            // does let a rope be filled to the top with mixed colours)
             if (_count[to] > 0 && HasHidden(from, n - count, count)) return false;   // wrapped food only onto an empty tray
             move = new Move(from, to, n - count, count);
             return true;
