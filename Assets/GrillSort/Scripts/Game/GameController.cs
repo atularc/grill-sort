@@ -22,6 +22,8 @@ namespace GrillSort
         public MoveRule moveRule = MoveRule.AnyWithAbove;
         [Tooltip("Cooking stages (2026-11-23): pieces are RAW while sorting; a finished tray flares up and the pieces turn GRILLED before they are served. Off = grilled food all the time (the client-approved look). OFF since the user's 2026-11-23 call: the food should look the same as before.")]
         public bool cookOnComplete = false;
+        [Tooltip("Debug: play every serve flight at this time scale (e.g. 0.05) to look at it frame by frame. 0 = normal speed.")]
+        public float serveSlowMotion = 0f;
         [Tooltip("Demo / review builds: only levels 1-10 can be played.")]
         public bool limitToTenLevels = false;
         [Tooltip("Free idle hint on levels <= 10 after this many seconds.")]
@@ -466,6 +468,17 @@ namespace GrillSort
             ui.layout.activeCustomers = _activeCustomers;
             ui.layout.MarkDirty();
             ui.layout.Apply();
+            // bubbles shrink when customers stand close, so neighbouring bubbles never touch (Aaron 2026-11-25)
+            float bubbleScale = 1f;
+            for (int i = 1; i < _activeCustomers; i++)
+            {
+                var a = ui.customers[i - 1].rect; var b = ui.customers[i].rect;
+                // centre distance in the customer slot's own units (the slot itself is scaled by the layout)
+                float d = Mathf.Abs(b.anchoredPosition.x - a.anchoredPosition.x) / Mathf.Max(.01f, b.localScale.x);
+                bubbleScale = Mathf.Min(bubbleScale, (d - CustomerView.BubbleGap) / CustomerView.BubbleW);
+            }
+            bubbleScale = Mathf.Clamp(bubbleScale, .6f, 1f);
+            foreach (var cv in ui.customers) cv.bubbleScale = bubbleScale;
             for (int i = 0; i < ui.customers.Length; i++)
             {
                 var c = ui.customers[i];
@@ -485,7 +498,7 @@ namespace GrillSort
                 c.check.gameObject.SetActive(false);
                 c.body.localScale = Vector3.one;
                 c.body.anchoredPosition = new Vector2(0f, CustomerView.BodyY);
-                c.bubble.localScale = Vector3.one;
+                c.bubble.localScale = c.BubbleSize;
                 c.group.alpha = 1f;
             }
         }
@@ -545,8 +558,10 @@ namespace GrillSort
             o.gameObject.SetActive(true);
             o.Set(fa, _board.Pieces, fa.width * GrillView.FoodScale);   // same layout the finished tray merges into
             o.SetTilt(CustomerView.OrderTilt);
-            float k = o.FitScale(CustomerView.OrderTilt, CustomerView.OrderBoxW, CustomerView.OrderBoxH);
+            // the whole skewer (stick ends too) fits inside the bubble, centred (Aaron 2026-11-25: they overlapped)
+            float k = o.FitBoxWithStick(CustomerView.OrderTilt, CustomerView.OrderFitW, CustomerView.OrderFitH, out var mid);
             o.rect.localScale = new Vector3(k, k, 1f);
+            o.rect.anchoredPosition = new Vector2(0f, CustomerView.OrderBoxY) - mid * k;
         }
 
         IEnumerator Arrive(CustomerView c, float delay)
@@ -558,7 +573,7 @@ namespace GrillSort
             while (Covered) yield return null;
             yield return new WaitForSeconds(delay);
             yield return Tween.Move(c.body, new Vector2(0f, CustomerView.BodyY), .35f, t => Ease.OutBack(t, 1.2f));
-            yield return Tween.Scale(c.bubble, Vector3.one, .3f, t => Ease.OutBack(t));
+            yield return Tween.Scale(c.bubble, c.BubbleSize, .3f, t => Ease.OutBack(t));
             c.busy = false;
         }
 
@@ -1140,17 +1155,22 @@ namespace GrillSort
             UpdateOrders(true);
             // (the serve chime already played when the skewer landed)
             Haptics.Medium();
-            // the level's last order: no row shuffle (the user only saw the leftover helper tray for seconds), go to Well Done
-            if (_served >= _totalOrders) yield break;
+            // the level's last order: no row shuffle (the user only saw the leftover helper tray for seconds), but the
+            // tray and customer still leave the same way as every other serve before Well Done (Aaron 2026-11-26: "on
+            // the last grill, the disappearing part of the animation seems to be cut off")
+            if (_served >= _totalOrders)
+            {
+                yield return LeaveTray(g, c);
+                _vis.RemoveAt(g);   // the view now matches the board, so nothing re-lays the row out (the helper used to jump)
+                yield break;
+            }
             yield return ShiftRow(g, e.Arrived, queueIndex, c);
         }
 
-        /// <summary>Tray g and its customer leave; trays after it slide left; the next queued tray slides in from the right.</summary>
-        IEnumerator ShiftRow(int g, bool arrived, int queueIndex, CustomerView leaving)
+        /// <summary>The served tray shrinks away and its customer sinks behind the counter.</summary>
+        IEnumerator LeaveTray(int g, CustomerView leaving)
         {
-            int nBefore = _vis.Count;
             var gone = ui.grills[g];
-            // 1) the served tray shrinks away, its customer sinks behind the counter
             if (leaving != null)
             {
                 StartCoroutine(Tween.Scale(leaving.bubble, Vector3.zero, .2f, Ease.InCubic));
@@ -1159,6 +1179,15 @@ namespace GrillSort
             StartCoroutine(Tween.Fade(gone.glow, 0f, .2f));
             yield return Tween.Run(.26f, k => { float sc = 1f - Ease.InCubic(k); gone.rect.localScale = new Vector3(sc, sc, 1f); });
             gone.gameObject.SetActive(false);
+            yield return new WaitForSeconds(.04f);   // let the customer finish sinking (.28 s) before anything else moves
+        }
+
+        /// <summary>Tray g and its customer leave; trays after it slide left; the next queued tray slides in from the right.</summary>
+        IEnumerator ShiftRow(int g, bool arrived, int queueIndex, CustomerView leaving)
+        {
+            int nBefore = _vis.Count;
+            // 1) the served tray shrinks away, its customer sinks behind the counter
+            yield return LeaveTray(g, leaving);
 
             _vis.RemoveAt(g);
             if (arrived && queueIndex >= 0)
@@ -1212,63 +1241,95 @@ namespace GrillSort
         }
 
         /// <summary>
-        /// Aaron 2026-11-21: "When the pieces are merged, they combine into one small skewer that flies up." The finished
-        /// pieces slide together on the tray, pop onto one small skewer (<see cref="GameUi.serveSkewer"/>, same layout as
-        /// the bubble's order skewer), and it flies up to the customer, turning and shrinking until it sits exactly on
-        /// the order skewer in their bubble.
+        /// Aaron 2026-11-25: "once a skewer is completed, it would look cleaner if it detached fully from the grill, then
+        /// used that same skewer for the fly-up animation." The flying skewer (<see cref="GameUi.serveSkewer"/>) takes the
+        /// exact pose of the tray's own long skewer and food, and the tray's skewer is hidden in the same frame, so the
+        /// player sees the real skewer: it dips, pulls straight up until its tip clears the grill (the food slides
+        /// together on the way and the stick shortens to the order skewer's layout), then flies in an arc to the
+        /// customer, tilting and shrinking until it sits exactly on the order skewer in their bubble.
         /// </summary>
         IEnumerator ServeSkewer(GrillView v, GameArt.FoodArt fa, int pieces, CustomerView c)
         {
             var sk = ui.serveSkewer;
-            sk.Set(fa, pieces, fa.width * GrillView.FoodScale);
-
-            // 1) merge: the pieces slide together around the middle of the row
-            float mid = 0f;
-            for (int i = 0; i < pieces; i++) mid += GrillView.SlotY[i];
-            mid /= pieces;
-            var from = new float[pieces];
-            for (int i = 0; i < pieces; i++) from[i] = v.slots[i].anchoredPosition.y;
-            yield return Tween.Run(.26f, k =>
-            {
-                for (int i = 0; i < pieces; i++)
-                    v.slots[i].anchoredPosition = new Vector2(0f, Mathf.LerpUnclamped(from[i], mid + sk.PieceY(i), k));
-            }, t => Ease.OutBack(t, 1.3f));
-
-            // 2) they combine onto one small skewer: same spot, same layout, with a little pop
             var fly = ui.flyLayer;
-            Vector2 p0 = fly.InverseTransformPoint(v.rect.TransformPoint(new Vector3(0f, mid, 0f)));
+            sk.Set(fa, pieces, fa.width * GrillView.FoodScale);   // compact layout = the bubble's order skewer
+
+            // 1) hand-off: the flying skewer copies the tray's skewer and food exactly (tray-local units; scale s0 maps
+            //    them to the fly layer), then the tray's own skewer and food are hidden in the same frame
+            var ysA = new float[pieces]; var wA = new float[pieces];
+            for (int i = 0; i < pieces; i++)
+            {
+                var f = v.foods[i].rectTransform;
+                ysA[i] = v.rect.InverseTransformPoint(f.position).y;
+                wA[i] = f.rect.width * f.lossyScale.x / v.rect.lossyScale.x;
+            }
+            var skr = v.skewer.rectTransform;
+            float topA = skr.anchoredPosition.y + skr.rect.height * .5f, botA = skr.anchoredPosition.y - skr.rect.height * .5f;
+            var ysB = new float[pieces]; var wB = new float[pieces];
+            for (int i = 0; i < pieces; i++) { ysB[i] = sk.PieceY(i); wB[i] = sk.PieceWidth; }
+            float topB = sk.CompactTop, botB = sk.CompactBottom;
+            var ys = new float[pieces]; var ws = new float[pieces];
+            void Morph(float t)
+            {
+                for (int i = 0; i < pieces; i++) { ys[i] = Mathf.LerpUnclamped(ysA[i], ysB[i], t); ws[i] = Mathf.Lerp(wA[i], wB[i], t); }
+                sk.Pose(ys, ws, Mathf.LerpUnclamped(topA, topB, t), Mathf.LerpUnclamped(botA, botB, t));
+            }
+
+            Vector2 p0 = fly.InverseTransformPoint(v.rect.position);
             float s0 = v.rect.lossyScale.x / fly.lossyScale.x;
             sk.SetTilt(0f);
+            Morph(0f);
             sk.rect.anchoredPosition = p0;
             sk.rect.localScale = new Vector3(s0, s0, 1f);
             sk.rect.SetAsLastSibling();
             sk.gameObject.SetActive(true);
+            v.skewer.enabled = false;
             for (int i = 0; i < pieces; i++) v.HideSlot(i);
-            audioManager.Play(art.pop, .45f, 1.1f);
-            Haptics.Light();
-            yield return Tween.Run(.16f, k =>
-            {
-                float b = s0 * (1f + Mathf.Sin(k * Mathf.PI) * .12f);
-                sk.rect.localScale = new Vector3(b, b, 1f);
-            });
 
-            // 3) it flies up in an arc, tilting and shrinking into the order skewer in the customer's bubble
+            float oldTimeScale = Time.timeScale;
+            if (serveSlowMotion > 0f) Time.timeScale = serveSlowMotion;
+
+            // 2) a small dip (getting a grip), then the skewer comes out of the grill (the food slides together and the
+            //    stick shortens on the way), then it flies to the customer and lands on the order skewer in their bubble
+            float grillTop = v.grill.rectTransform.anchoredPosition.y + v.grill.rectTransform.rect.height * .5f;
             var target = c.order.rect;
             Vector2 p2 = fly.InverseTransformPoint(target.position);
             float s2 = target.lossyScale.x / fly.lossyScale.x;
-            var p1 = new Vector2((p0.x + p2.x) * .5f + (p2.x >= p0.x ? -90f : 90f), Mathf.Max(p0.y, p2.y) + 170f);
-            audioManager.Play(art.whoosh, .35f, 1.05f);
-            yield return Tween.Run(.55f, k =>
+            float tilt2 = CustomerView.OrderTilt;
+            void Place(Vector2 p, float scale, float tilt)
             {
-                float u = 1f - k;
-                sk.rect.anchoredPosition = u * u * p0 + 2f * u * k * p1 + k * k * p2;
-                float sc = Mathf.Lerp(s0, s2, k);
-                sk.rect.localScale = new Vector3(sc, sc, 1f);
-                sk.SetTilt(Mathf.Lerp(0f, CustomerView.OrderTilt, k));
-            }, Ease.InOutCubic);
+                sk.rect.anchoredPosition = p;
+                sk.rect.localScale = new Vector3(scale, scale, 1f);
+                sk.SetTilt(tilt);
+            }
+            Vector2 Bez(Vector2 a, Vector2 b, Vector2 cc, float k) { float u = 1f - k; return u * u * a + 2f * u * k * b + k * k * cc; }
+
+            yield return Tween.Run(.07f, k => sk.rect.anchoredPosition = p0 + new Vector2(0f, -14f * s0 * Mathf.Sin(k * Mathf.PI * .5f)));
+            audioManager.Play(art.pop, .45f, 1.1f);
+            Haptics.Light();
+            Vector2 pDip = sk.rect.anchoredPosition;
+
+            // Aaron 2026-11-26 picked "Lift and Turn" from 4 options (straight lift, lift and turn, quick zip, side swing;
+            // videos in Build/ServeStyles): it comes out while turning to lie flat (the bubble's angle) and shrinking, so
+            // it clears the grill as a short horizontal skewer just above the grill (below the faces), then hops up into
+            // the bubble. The straight lift covered the customer's face.
+            float sMid = Mathf.Lerp(s0, s2, .45f);
+            var pOut = p0 + new Vector2(0f, (grillTop + 40f) * s0);
+            yield return Tween.Run(.34f, k =>
+            {
+                float e = Ease.OutCubic(k);
+                Place(Vector2.LerpUnclamped(pDip, pOut, Ease.OutBack(k, 1.1f)), Mathf.Lerp(s0, sMid, e), Mathf.Lerp(0f, tilt2, e));
+                Morph(e);
+            });
+            Morph(1f);
+            var p1 = new Vector2((pOut.x + p2.x) * .5f, Mathf.Max(pOut.y, p2.y) + 90f);
+            audioManager.Play(art.whoosh, .35f, 1.05f);
+            yield return Tween.Run(.36f, k => Place(Bez(pOut, p1, p2, k), Mathf.Lerp(sMid, s2, k), tilt2), Ease.InOutCubic);
+            Place(p2, s2, tilt2);
+            if (serveSlowMotion > 0f) Time.timeScale = oldTimeScale;
             sk.gameObject.SetActive(false);
             audioManager.Play(art.serve, 1f);   // THE order-served sound (one clean chime)
-            StartCoroutine(Tween.Bounce(c.bubble, .14f, .22f));
+            StartCoroutine(Tween.Bounce(c.bubble, .14f, .22f, c.bubbleScale));
         }
 
         IEnumerator Cheer(CustomerView c, bool leave = true)

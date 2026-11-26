@@ -21,6 +21,16 @@ namespace GrillSort
         public const float BodyY = 102f, BubbleY = 302f;   // 102 (was 118): the bust bottoms sit ~20 px behind the counter, so nobody floats (v4 art)
         /// <summary>Order bubble size and the box its skewer fits in (design px).</summary>
         public const float BubbleW = 224f, OrderBoxW = 172f, OrderBoxH = 90f, OrderBoxY = 12f;
+        /// <summary>
+        /// Box the WHOLE order skewer fits in, stick ends included (Aaron 2026-11-25: the order skewers overlapped each
+        /// other; the stick used to poke out of the bubble). Inside the bubble's rounded body with a margin.
+        /// </summary>
+        public const float OrderFitW = 188f, OrderFitH = 86f;
+        /// <summary>Space kept between neighbouring bubbles (customer-slot px); bubbles shrink to keep it.</summary>
+        public const float BubbleGap = 12f;
+        /// <summary>Bubble scale for the current row (1 = full size); set in GameController.BindCustomers.</summary>
+        [System.NonSerialized] public float bubbleScale = 1f;
+        public Vector3 BubbleSize => new Vector3(bubbleScale, bubbleScale, 1f);
         /// <summary>Tilt of the order skewer in the bubble: nearly flat, handle on the right.</summary>
         public const float OrderTilt = -80f;
         /// <summary>Where the emote pops: next to the head, on the right, under the bubble (customer-slot px).</summary>

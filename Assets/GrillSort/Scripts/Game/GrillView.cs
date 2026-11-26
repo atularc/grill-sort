@@ -217,6 +217,7 @@ namespace GrillSort
             foreach (var s in sparkles) s.gameObject.SetActive(false);
             perfect.gameObject.SetActive(false);
             if (smokes != null) foreach (var s in smokes) s.gameObject.SetActive(false);
+            if (skewer != null) skewer.enabled = true;   // hidden while a served skewer flies off (ServeSkewer)
             for (int i = 0; i < slots.Length; i++) ResetSlot(i);
         }
 

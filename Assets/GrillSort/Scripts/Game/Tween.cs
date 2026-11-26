@@ -58,12 +58,12 @@ namespace GrillSort
         }
 
         /// <summary>Squash-and-stretch landing bounce.</summary>
-        public static IEnumerator Bounce(Transform tr, float amount = .14f, float d = .28f)
+        public static IEnumerator Bounce(Transform tr, float amount = .14f, float d = .28f, float baseScale = 1f)
         {
             return Run(d, k =>
             {
                 float s = Mathf.Sin(k * Mathf.PI) * (1f - k) * amount * 2.2f;
-                tr.localScale = new Vector3(1f + s, 1f - s, 1f);
+                tr.localScale = new Vector3(baseScale * (1f + s), baseScale * (1f - s), 1f);
             });
         }
 

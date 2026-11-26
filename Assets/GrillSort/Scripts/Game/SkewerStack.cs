@@ -20,7 +20,7 @@ namespace GrillSort
         /// <summary>Piece spacing as a fraction of the piece width: the pieces sit pressed together, overlapping a bit.</summary>
         public const float Tight = .58f;
         /// <summary>Stick extra length past the pieces (handle on top, tip below), and its width (= the tray skewer's).</summary>
-        public const float StickExtraTop = 70f, StickExtraBottom = 55f, StickWidth = 39f;
+        public const float StickExtraTop = 38f, StickExtraBottom = 28f, StickWidth = 39f;   // 70 / 55 before 2026-11-26: shorter ends leave more of the order bubble for the food
 
         public int Count { get; private set; }
         public float PieceWidth { get; private set; }
@@ -54,12 +54,57 @@ namespace GrillSort
             s.anchoredPosition = new Vector2(0f, (top + bottom) * .5f);
         }
 
+        /// <summary>
+        /// Free pose (Aaron 2026-11-25: the finished skewer itself leaves the grill): piece i centred at local y
+        /// <paramref name="ys"/>[i] with width <paramref name="widths"/>[i], stick from <paramref name="stickBottom"/> to
+        /// <paramref name="stickTop"/>. Lets this skewer start as an exact copy of a tray's long skewer and morph into
+        /// the compact <see cref="Set"/> layout. Call <see cref="Set"/> first (it fixes Count and the sprites).
+        /// </summary>
+        public void Pose(float[] ys, float[] widths, float stickTop, float stickBottom)
+        {
+            for (int i = 0; i < Count; i++)
+            {
+                var rt = foods[i].rectTransform;
+                rt.sizeDelta = new Vector2(widths[i], widths[i]);
+                rt.anchoredPosition = new Vector2(0f, ys[i]);
+            }
+            var s = stick.rectTransform;
+            s.sizeDelta = new Vector2(StickWidth, stickTop - stickBottom);
+            s.anchoredPosition = new Vector2(0f, (stickTop + stickBottom) * .5f);
+        }
+
+        /// <summary>Stick ends (local y) of the compact <see cref="Set"/> layout.</summary>
+        public float CompactTop => PieceY(0) + PieceWidth * .5f + StickExtraTop;
+        public float CompactBottom => PieceY(Count - 1) - PieceWidth * .5f - StickExtraBottom;
+
         /// <summary>Tilts the stick by <paramref name="degrees"/> (z) and keeps every piece upright.</summary>
         public void SetTilt(float degrees)
         {
             rect.localRotation = Quaternion.Euler(0f, 0f, degrees);
             var up = Quaternion.Euler(0f, 0f, -degrees);
             foreach (var f in foods) f.rectTransform.localRotation = up;
+        }
+
+        /// <summary>
+        /// Like <see cref="FitScale"/> but counts the stick too (handle and tip), so nothing pokes out of the box
+        /// (Aaron 2026-11-25: the order skewers overlapped each other). <paramref name="centre"/> = the unscaled middle
+        /// of the whole skewer in local units: place the skewer at boxCentre - centre * scale to centre it.
+        /// </summary>
+        public float FitBoxWithStick(float degrees, float w, float h, out Vector2 centre)
+        {
+            var rot = Quaternion.Euler(0f, 0f, degrees);
+            float half = PieceWidth * .5f;
+            float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
+            void Add(Vector2 p, float pad)
+            {
+                minX = Mathf.Min(minX, p.x - pad); maxX = Mathf.Max(maxX, p.x + pad);
+                minY = Mathf.Min(minY, p.y - pad); maxY = Mathf.Max(maxY, p.y + pad);
+            }
+            for (int i = 0; i < Count; i++) Add(rot * new Vector3(0f, PieceY(i), 0f), half);   // pieces stay upright
+            Add(rot * new Vector3(0f, CompactTop, 0f), StickWidth * .5f);
+            Add(rot * new Vector3(0f, CompactBottom, 0f), StickWidth * .5f);
+            centre = new Vector2((minX + maxX) * .5f, (minY + maxY) * .5f);
+            return Mathf.Min(w / (maxX - minX), h / (maxY - minY));
         }
 
         /// <summary>

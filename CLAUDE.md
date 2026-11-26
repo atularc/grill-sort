@@ -26,22 +26,32 @@ A casual mobile **BBQ skewer sort puzzle** (Water Sort core) for **Google Play a
 
 **Aaron 2026-11-19 (after our space question + the Sort Streak video in `WhatsApp Video 2026-11-19 at 09.53.46.mp4`):** "follow it closely ... each customer tray holds the number of pieces in that customer's order (e.g. 4 or 5 depending on the level, and later levels can ask for more), plus 2 helper trays without customers, one on each side, used only to move pieces around. The helper trays look clearly different." And: "could we drag from the bottom like in Sort Streak?"
 
+**What the code does now (order queue, since 2026-11-22; checked 2026-11-26).** The 2-helper layout above was
+replaced by Sort Streak's order queue:
 ```
-State: helper | customer trays (2-5) | helper. Each tray holds exactly P pieces (P = order size: 4, later 5).
+State: ROW = 1 helper tray (no customer, never leaves; LevelGenerator.RowHelpers) + up to 5 customer trays
+       (MaxSkewers). QUEUE = more trays waiting (new customer + food). Tray capacity = order size P = 4 for
+       every level today (LevelGenerator.Pieces / Capacity; DefaultSpare 0, so no spare slot).
        Food HANGS from the top of each tray (slot 0 at the top); the bottom piece is the free end.
-       Customer k stands right above the k-th customer tray; helper trays have no customer (steel frame).
 Move:  drag any piece; every piece BELOW it comes along. Valid if the whole group fits and the target tray is
        empty or its bottom piece is the same food ("Match the bottom food to drop here!" /
        "This tray can't hold that many!"). Tap-tap still works.
-Done:  a customer tray holding its P pieces (nothing else) is served; it empties and stays as free space.
-Win:   every order served.
+Done:  a customer tray holding its P pieces of its own food is served: it LEAVES the row, the trays after it
+       shift left, and the next queued tray joins at the right end (Board.cs). No queue left = the row shrinks.
+Win:   every order served (row + queue). "Orders x / y" counts the whole level.
 ```
+The comment at the top of `LevelGenerator.cs` and the header of `Docs/LevelReport.md` still say "order size + 1 /
+no helper trays": that text is stale, the constants above are what runs.
+
+**Next (2026-11-26): the level design rework in `Docs/LevelDesignPlan.md`** (Sort Streak model: order size 5 from
+L6, arrivals come full so slack is fixed, foil-wrapped mystery "?" pieces, sawtooth pacing with Hard / Super Hard
+levels, a difficulty score beyond par). Read that file before touching levels.
 - Logic is unchanged from a normal stack (index 0 = fixed end); only the drawing is flipped (`GrillView.SlotY`).
 - `MoveRule` stays a setting (`AnyWithAbove` default = "the grabbed piece and everything toward the free end").
 
 **Customers & orders:** one customer above each customer tray, all visible at once (2–5). The bubble shows the food for the tray below. "Orders x / y".
 
-**Cooking stages (we have Raw → Medium → Grilled art for all 18 foods). How to use them is OPEN; ask the user.** Default plan:
+**Cooking stages: OFF** (`cookOnComplete = false`; the user turned it off 2026-11-23, see "Current state"). The original plan, kept for reference:
 - During play the food shows **Grilled**. This is what the client approved in the mockup.
 - Optional flag `cookOnComplete`: pieces show **Raw** while sorting. When a skewer completes it cooks Raw → Medium → Grilled (~0.35 s per step, sizzle + steam + sparkle), then it's served.
 
@@ -55,6 +65,8 @@ Win:   every order served.
 
 ## 3. Levels & difficulty (user requirements)
 
+- **User 2026-11-26: "the levels we have right now are just too basic, we do not have any level design logic that makes the game interesting level-wise ... follow Sort Streak accordingly; act as a proper level designer."** The plan, the Sort Streak video analysis (`sort strek.mp4` in the repo root, Level 6) and the task list are in **`Docs/LevelDesignPlan.md`**. Tasks are also meant to go on the user's Trello board.
+- **Today (before the rework):** 50 baked levels (`Data/LevelBank.asset`, `GrillSortLevels.LevelCount` = 50, Aaron's 50-level handover was planned for 14/12). One straight ramp: par 3 -> ~37, tiers in `LevelGenerator.Tiers` (trays on screen 3 -> 5, orders 2 -> 15, foods 2 -> 10, look-alikes from L16). Only L1 is hand-made. No hidden pieces, no new mechanics, no Hard levels.
 - **Endless levels with rising difficulty.** Every level must be **really solvable**: verify with a solver at bake time.
 - Bake ~**2000 levels** to a data file and verify each one. Past level 2000 the deterministic generator keeps going with the same seed scheme.
 - **Every level should make the player think more**: no flat plateau. (In Dangle Pals, difficulty flattened after ~level 126 and the user wanted it raised all the way.)
@@ -184,7 +196,7 @@ Assets/GrillSort/
   Scripts/UI/                 GameUi (scene refs), StageLayout, SafeArea, CanvasAspect, PressScale
   Scripts/Services/           IAdsService / IIapService + placeholders
   Editor/                     GrillSortSetup (Run Full Setup), GrillSortLevels (Bake And Verify), UiKit
-  Data/                       GameArt.asset, LevelBank.asset (30 baked levels)
+  Data/                       GameArt.asset, LevelBank.asset (50 baked levels)
   Atlases/                    UI + Food sprite atlases (ASTC on mobile)
   Scenes/Game.unity           the only build scene
 Assets/Scenes/SampleScene     old template scene (not in the build)
@@ -257,15 +269,16 @@ Full-size originals (white background, uncut) are in `ArtSource/` outside Assets
   - `Themes/<Theme>-mockup-calm.png`, `All-Themes-Calm.png`
   - Polish round: `Home-Stall-All-Decor`, `Home-Stall-New-Player`, `Daily-Reward`, `Decorate-Buy-Sequence`, `Cook-And-Moods-Sequence`, `Customers-v3-Moods`, `Food-Raw-vs-Grilled`, `Food-Grilled-v5-Before-After`, `Level-Raw-Food-Shelf`
 - `Docs/ArtPrompts.md`: the **exact prompt** used for every asset.
+- `Docs/LevelDesignPlan.md`: level design rework (Sort Streak analysis, framework, 50-level curve, task list).
+- `sort strek.mp4` (repo root): Sort Streak Level 6 recording, 83 s, the level design reference.
 
-**Not made yet:**
-- Game name, logo, app icon
-- Home / level-map screen, loading screen
-- Shop art (coin packs, No Ads, bundles)
-- Customer moods (waiting, impatient, happy), more customers
-- Close (X) button, sound/music toggles, tutorial hand, locked-grill look
+**Not made yet** (checked 2026-11-26; Home, loading screen, placeholder logo/icon, customer moods, settings toggles,
+tutorial hand, sounds and music all exist now, see "Current state"):
+- Final game name, and the final logo and app icon that wait on it
+- Level-map screen, shop art (coin packs, No Ads, bundles)
+- Locked-tray look, foil "?" mystery piece, frozen-piece ice (level design plan)
+- **Korean BBQ skewer foods** (Aaron 2026-11-25, see `Docs/LevelDesignPlan.md` 3.7)
 - Store screenshots and feature graphic
-- **All sounds and music** (sizzle, pick, drop, serve, coins, win, BGM)
 
 ## 9. Making more art (same quality)
 
@@ -336,8 +349,43 @@ Goal: a playable portrait prototype that looks like `Docs/Mockups/Grill-Sort-Moc
 
 ## Current state of the prototype
 
+**Update 2026-11-26: Aaron signed off the art phase (Slack thread "another version with a menu, daily rewards
+etc", 2026-11-25, on `Grill Sort - polish-cook-meta.apk`).** His last notes, all open:
+1. **Finished skewer:** it should detach fully from the grill, and that same skewer does the fly-up (today a separate
+   small skewer, `GameUi.serveSkewer`, pops in; `GameController.ServeSkewer`).
+2. **Order UI:** the order skewers in the bubbles overlap a bit; make them smaller.
+3. **UI / buttons:** a few spots are still a bit too glossy; tone them down more.
+4. **Next step: a build with 5 levels, one per difficulty tier.**
+5. **Korean BBQ themes show good market signals:** add Korean-style skewers and use them in the early levels.
+6. **First test: Daily Rewards and the Home screen OFF, behind Remote Config** (don't remove them). The game starts
+   straight in the level, like Sort Streak.
+- **Done 2026-11-26:**
+  - Note 1 (serve): the tray's own skewer leaves the grill (`GameController.ServeSkewer`, `SkewerStack.Pose`). Aaron
+    picked **"Lift and Turn"** from 4 videos (`Build/ServeStyles/`): it turns flat and shrinks while it comes out,
+    so it stays below the faces, then hops into the bubble. The other styles are removed. Also fixed his "last grill
+    is cut off": the last order now plays the same tray-shrink / customer-sink (`LeaveTray`) before Well Done.
+    `serveSlowMotion` (debug field) plays serves in slow motion for frame captures.
+  - Note 2 (order bubbles): the whole order skewer, stick ends included, fits its bubble
+    (`SkewerStack.FitBoxWithStick`, `CustomerView.OrderFitW/H`); stick ends shortened 70/55 -> 38/28; bubbles
+    shrink only when customers stand close (`CustomerView.bubbleScale`, gap `BubbleGap` 12). Not yet checked on
+    tall / tablet screens.
+  - Recording real-speed videos: a `script eval` coroutine with `Time.captureFramerate = 30` saving
+    `ScreenCapture.CaptureScreenshotAsTexture` frames; the colours come out double-sRGB-encoded (linear project),
+    so encode with an ffmpeg `lutrgb` sRGB->linear decode.
+- **User 2026-11-26: design decisions are now OURS.** Aaron said what he had to; don't park questions for him.
+  Decide, write it in the "Decisions (made by us)" list of `Docs/LevelDesignPlan.md`, and move on.
+- **Levels 1-50 are designed from recipes and patterns, never rolled at random** (plan 3.5b). The 5-tier demo is
+  a `tierDemo` switch on the same branch, not a new branch (plan 3.6).
+- **Task tracking: Trello board "Grill Sort"** (https://trello.com/b/OLkYUJ4V/grill-sort), through the claude.ai
+  Trello connector (it appeared after a VS Code restart). Lists To Do / Doing / Done; 23 task cards in To Do in
+  priority order, named "Build · / Levels · / Mechanic · / Tuning · ...", each with a "Steps" checklist; a
+  "Decisions made" card in Done. Move a card to Doing when work starts, to Done when finished, and tick its steps.
+  Free Trello plan only, no paid features. `Tools/trello_push.py` is a fallback if the connector is missing.
+- The user then asked for a real level design rework modelled on Sort Streak: **`Docs/LevelDesignPlan.md`** holds
+  the video analysis, the diagnosis, the framework, the 50-level curve and the task list (Trello card source).
+
 **Update 2026-11-23, polish round on branch `polish-cook-meta`** (user asked for an honest 1-10 review, then "do all" of its recommendations; ~41 Figma images, prompts at the end of `Docs/ArtPrompts.md`, review images in `Docs/Mockups/` named `Home-*`, `Daily-Reward`, `Decorate-*`, `Cook-And-Moods-*`, `Food-Raw-vs-Grilled`, `Food-Grilled-v5-*`, `Customers-v3-Moods`, `Level-Raw-Food-Shelf`). All new art is NEW files; old sets stay.
-1. **Cooking stages: tried, then turned OFF (user 2026-11-23: "I need the food items same as previous, this system is not looking good")**. `cookOnComplete` defaults to false again; the code and `FoodRaw_v1` stay for later. What was tried (`GameController.cookOnComplete`, default now true; was the OPEN question in §2, still Aaron's call): pieces show **raw** while sorting (`FoodRaw_v1/Raw/`, cartoon, shaped like each grilled piece; old realistic `Food/Raw|Medium` unused, no Medium stage). A finished tray flares orange and the pieces pop to grilled bottom-up (`GameController.Moods.cs` `CookTray`), then the serve continues. Order bubbles still show the grilled skewer. Readability risk: raw chicken (pink) / shrimp (grey) / squid (white) look different from their grilled bubble; turn the flag off if Aaron finds it confusing.
+1. **Cooking stages: tried, then turned OFF (user 2026-11-23: "I need the food items same as previous, this system is not looking good")**. `cookOnComplete` defaults to false again; the code and `FoodRaw_v1` stay for later. What was tried (`GameController.cookOnComplete`, true only during that trial, false now): pieces show **raw** while sorting (`FoodRaw_v1/Raw/`, cartoon, shaped like each grilled piece; old realistic `Food/Raw|Medium` unused, no Medium stage). A finished tray flares orange and the pieces pop to grilled bottom-up (`GameController.Moods.cs` `CookTray`), then the serve continues. Order bubbles still show the grilled skewer. Readability risk: raw chicken (pink) / shrimp (grey) / squid (white) look different from their grilled bubble; turn the flag off if Aaron finds it confusing.
 2. **Clearer cooked food**: `FoodFinal_v5/Grilled/` squid, bacon, beef (v3 ones read as raw); `GrillSortSetup.FoodOverrides` checks v5 then v4 (tomato).
 3. **Moods are sticky (user 2026-11-23):** a face never goes back to normal on its own, only when the customer is served. Each customer has a clock from when their order appears (`VisTray.who` -> `GameController.Moods` `_moods`, so it survives the row re-binding after a serve, which used to reset everyone): normal -> happy when their food lands on their tray (stays) -> impatient after `patienceSeconds` 40 (first row staggered by `patienceStagger` 6 s; a sweat/anger pop every `impatientNagSeconds` 14). A wrong drop on their tray or the stuck popup makes them impatient at once. Clock paused on tutorial levels, popups, Home, autoplay.
    **`CustomersPeople_v4/`** (in use, "people are in the air"): v3 with every bust extended down to the sprite bottom (`extend_people_v4.py`, repeats a row of the clothes; eye line unchanged) + `CustomerView.BodyY` 118 -> 102, so every bust ends ~20 px behind the counter. Home customers: pivot y .04 -> .1.
@@ -409,7 +457,7 @@ Built 2026-11-17. Playable in `Assets/GrillSort/Scenes/Game.unity` (portrait, 10
   - After the rebuild it re-applies them.
   - Never delete `LayoutOverrides.json` or run "Grill Sort > Forget Manual Layout Tweaks" unless the user asks.
   - Renaming or re-parenting a UI object changes its path, which drops that object's tweak, so tell the user when a change does that.
-- **Levels:** "Grill Sort > Bake And Verify Levels" bakes **30 levels** into `Data/LevelBank.asset`, re-solves and replays each, and writes `Docs/LevelReport.md`. Tiers live in `LevelGenerator.TierFor`. Past level 30 the same seeded generator runs on device (smaller solver budget).
+- **Levels:** "Grill Sort > Bake And Verify Levels" bakes **50 levels** (`GrillSortLevels.LevelCount`, was 30 on 2026-11-18) into `Data/LevelBank.asset`, re-solves and replays each, and writes `Docs/LevelReport.md`. Tiers live in `LevelGenerator.TierFor`. Past the bank the same seeded generator runs on device (smaller solver budget). The par notes just below are from the 30-level, pre-queue version.
   - **Solver** (`Solver.cs`): A* on a compact, order-independent state (3 ulongs, own hash table, no per-node allocations). Heuristic = runs of identical pieces − food types left (+1/+2 when no move can merge yet). It is admissible, so par is the true minimum. Works for all three rules. A weighted fallback (`~` par) only runs when the node budget runs out.
   - **Rebaked for `AnyWithAbove` (2026-11-18):** 30 levels in **~44 s**, 0 failures, no `~` pars. Par rises 3, 6, 7, 8 … 27 (+1 per level; a repeat only where the tier drops an empty skewer or adds a food/look-alikes). Target pars live in `LevelGenerator.TargetPars`.
   - True par per food count (AnyWithAbove): 3 foods ≈ 7, 4 ≈ 10, 5 ≈ 14, 6 ≈ 17, 7 ≈ 20, 8 ≈ 24 (max ≈ 29). With 9 grills (8 foods + 1 empty), par tops out near 27, so levels past 30 hover at 24–27. To keep climbing, more grills are needed (two rows).
@@ -418,7 +466,7 @@ Built 2026-11-17. Playable in `Assets/GrillSort/Scenes/Game.unity` (portrait, 10
 - **Cooking stages:** not used yet. Play shows Grilled; `cookOnComplete` (Raw while sorting, Raw → Medium → Grilled on completion) is off. The user will decide how to use Raw/Medium later.
 - **Testing:** tick `Use Test Level` on the `Game` object and type a number in `Test Level` to start there (progress isn't saved). Changing the number during Play mode loads that level at once. Run Full Setup resets it to off.
 - **Other flags on GameController:** `cookOnComplete`, `limitToTenLevels`, `idleHintSeconds`, `verboseLog`.
-- **Gameplay done:** tap to lift/drop with arc flight + bounce, invalid shake, completion glow/steam/sparkles/"Perfect!", serve flight to the customer (✓, cheer, next customer arrives), Orders bar, win popup (stars vs par, coins, x2 rewarded ad), Undo / Hint / Shuffle / Extra skewer boosters (counts saved; at 0 a rewarded ad gives +1), stuck popup, pause (sound/vibration), tips on levels 1–3, free idle hint on levels ≤ 10, theme unlock toast (Wood 1, Beach 11, Food Truck 21, Night Market 31, Winter 41), PlayerPrefs save.
+- **Gameplay done:** tap to lift/drop with arc flight + bounce, invalid shake, completion glow/steam/sparkles/"Perfect!", serve flight to the customer (✓, cheer, next customer arrives), Orders bar, win popup (stars vs par, coins, x2 rewarded ad), Undo / Hint / Shuffle / Extra skewer boosters (counts saved; at 0 a rewarded ad gives +1), stuck popup, pause (sound/vibration), tips on levels 1–3, free idle hint on levels ≤ 10, theme unlock toast (now Beach 1, Food Truck 51, Winter 61, Wood 71, Night Market 81, from `GameArt.asset`), PlayerPrefs save.
 - **Grill look:** cartoon red-enamel grills 180 wide with food at ×1.0 so pieces sit on the grate; dimmed grill (`grill_cartoon_dim`, lighter than v3 per Aaron) + deep food shadows; flickering ember glow behind each grill; faint smoke wisps above the coals. The small flames between the food were removed (Aaron).
 - **Atlases** are deleted and rebuilt on every Run Full Setup, so they always match the art folders in `GrillSortSetup`.
 - **Verify loop:** set Game view to 1080×1920 (`PlayModeWindow.SetCustomRenderingResolution`), enter Play mode, `GameController.StartAutoPlayLevels(n)` plays with solver moves (`AutoPlayLog` holds the results), capture with `unity command capture game_view`. If you're auto-playing while the user clicks in the Game view, the two collide.
