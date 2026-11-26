@@ -169,7 +169,23 @@ namespace GrillSort
             if (rule == MoveRule.SingleTop) count = 1;
             else if (rule == MoveRule.TopGroup) count = Math.Min(group, room);   // as many as fit
             else { if (group > room) return false; count = group; }        // the whole stack above must fit
+            if (!FillsUniform(from, n - count, count, to)) return false;
             move = new Move(from, to, n - count, count);
+            return true;
+        }
+
+        /// <summary>
+        /// Sort Streak rule (research 2026-11-26, Research/SortStreak/Report.md): a tray may only be filled to the top
+        /// with ONE food. A move that would fill the target tray completely is legal only if every piece on it
+        /// afterwards (the ones there and the ones arriving) is the same food. Stops dead ends built from full,
+        /// mixed trays.
+        /// </summary>
+        public bool FillsUniform(int from, int index, int count, int to)
+        {
+            if (_count[to] + count < Capacity) return true;
+            int food = _cells[from][index];
+            for (int k = 0; k < count; k++) if (_cells[from][index + k] != food) return false;
+            for (int k = 0; k < _count[to]; k++) if (_cells[to][k] != food) return false;
             return true;
         }
 

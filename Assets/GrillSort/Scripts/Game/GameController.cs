@@ -951,6 +951,7 @@ namespace GrillSort
             bool matches = _board.IsEmpty(to) || _board.Top(to) == _board.Get(from, s0);
             if (!matches) return "Match the bottom food to drop here!";
             if (_board.Capacity - _board.Count(to) < group) return "This tray can't hold that many!";
+            if (!_board.FillsUniform(from, s0, group, to)) return "Fill a tray to the top with one food only!";
             return "Can't drop there!";
         }
 

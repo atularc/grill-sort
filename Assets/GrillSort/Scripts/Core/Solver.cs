@@ -411,6 +411,7 @@ namespace GrillSort
                                 if (to == from) continue;
                                 int count = Count(from, start, n, food, group, to, ref triedFree);
                                 if (count <= 0) continue;
+                                if (!FillsUniform(fb, n - count, count, to)) continue;   // full tray = one food (Sort Streak)
                                 // apply on the working row (it holds the base row here)
                                 int ct = _cnt[to], tb = to * MaxCapacity;
                                 for (int k = 0; k < count; k++) _cells[tb + ct + k] = _cells[fb + n - count + k];
@@ -450,6 +451,18 @@ namespace GrillSort
                 int fb = from * MaxCapacity, lo = n - 1;
                 while (lo > 0 && _cells[fb + lo - 1] == _cells[fb + n - 1]) lo--;
                 return lo;
+            }
+
+            /// <summary>Board.FillsUniform on the working row: a move that fills the target tray must leave it one food.</summary>
+            bool FillsUniform(int fb, int index, int count, int to)
+            {
+                int ct = _cnt[to];
+                if (ct + count < _cap) return true;
+                int food = _cells[fb + index];
+                for (int k = 0; k < count; k++) if (_cells[fb + index + k] != food) return false;
+                int tb = to * MaxCapacity;
+                for (int k = 0; k < ct; k++) if (_cells[tb + k] != food) return false;
+                return true;
             }
 
             /// <summary>Pieces that move from <paramref name="from"/> (block starting at <paramref name="start"/>) to <paramref name="to"/>, or 0 if illegal / pruned.</summary>
@@ -555,6 +568,7 @@ namespace GrillSort
                             int room = _cap - ct;
                             int count = _rule == MoveRule.SingleTop ? 1 : _rule == MoveRule.TopGroup ? Math.Min(group, room) : group;
                             if (count > room || count <= 0) continue;
+                            if (!FillsUniform(fb, n - count, count, to)) continue;
                             if (_rule == MoveRule.TopGroup && count < group) continue;
                             if (_rule == MoveRule.SingleTop && group > 1 && _cells[fb + n - 2] == food) continue;
                             if (ct == 0) { if (_tgt[to] == food) return true; continue; }
