@@ -80,6 +80,7 @@ namespace GrillSort
         [Tooltip("Levels with the tutorial hand: it shows every move until the player makes it")]
         public int tutorialLevels = 2;
         Coroutine _hintCo, _tipCo, _toastCo;
+        bool _tipSticky;   // the tutorial tip stays all level (demo / Hard tips don't)
         readonly Stack<(Board board, int moves)> _history = new Stack<(Board, int)>();
         int _shownCoins;
         int _activeCustomers;
@@ -1220,6 +1221,9 @@ namespace GrillSort
             int g = e.Slot;
             var v = ui.grills[g];
             var fa = art.foods[e.Food];
+            // the tip / toast strip sits where "Perfect!" pops under the tray: it steps aside for the serve
+            if (ui.tip.alpha > 0f) ui.tip.alpha = 0f;
+            if (ui.toast.alpha > 0f) ui.toast.alpha = 0f;
             int pieces = _board.Pieces;
             audioManager.Play(art.sizzle, .55f);   // softer: the serve chime is the star
             Haptics.Medium();
@@ -1262,6 +1266,7 @@ namespace GrillSort
             }
             yield return ShiftRow(g, e.Arrived, queueIndex, c);
             UnlockFor(e.Food);
+            if (_tipSticky && _tipCo != null && !_won) StartCoroutine(Tween.Fade(ui.tip, 1f, .25f));   // the tutorial tip comes back
         }
 
         /// <summary>The served tray shrinks away and its customer sinks behind the counter.</summary>
@@ -2279,6 +2284,7 @@ namespace GrillSort
             if (_tipCo != null) StopCoroutine(_tipCo);
             ui.tip.alpha = 0f;
             string special = SpecialTip();
+            _tipSticky = special == null && _levelNumber <= tutorialLevels;
             if (special != null)
             {
                 ui.tipText.text = special;
@@ -2301,14 +2307,14 @@ namespace GrillSort
             rt.localScale = Vector3.one * .7f;
             StartCoroutine(Tween.Scale(rt, Vector3.one, .35f, t => Ease.OutBack(t)));
             yield return Tween.Fade(ui.tip, 1f, .3f);
-            if (_levelNumber <= tutorialLevels)
+            if (_tipSticky)
             {
-                while (!_won) yield return null;   // tutorial levels: stays up the whole level
+                while (!_won) yield return null;   // tutorial levels: stays up the whole level (steps aside for serves)
                 yield return Tween.Fade(ui.tip, 0f, .3f);
                 _tipCo = null;
                 yield break;
             }
-            yield return new WaitForSeconds(6f);
+            yield return new WaitForSeconds(4.5f);
             yield return Tween.Fade(ui.tip, 0f, .4f);
             _tipCo = null;
         }
@@ -2325,7 +2331,7 @@ namespace GrillSort
         public void Toast(string msg, float hold)
         {
             // one message at a time in the strip: a tutorial banner steps aside for the toast and comes back after it
-            if (_levelNumber <= tutorialLevels && _tipCo != null) StartCoroutine(TipAside());
+            if (_tipSticky && _tipCo != null) StartCoroutine(TipAside());
             else HideTip();
             if (_toastCo != null) ui.StopCoroutine(_toastCo);
             ui.toastText.text = msg;
