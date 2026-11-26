@@ -236,7 +236,7 @@ namespace GrillSort
             if (food < 0) return;
             lockRoot.localScale = Vector3.one;
             lockRoot.anchoredPosition = Vector2.zero;
-            foreach (var g in new Graphic[] { lockChains, lockDim, lockSign, lockFood, lockIcon }) if (g != null) { var c = g.color; c.a = g == lockDim ? .28f : 1f; g.color = c; }
+            foreach (var g in new Graphic[] { lockChains, lockDim, lockSign, lockFood, lockIcon }) if (g != null) { var c = g.color; c.a = g == lockDim ? .55f : 1f; g.color = c; }
             if (lockFood != null) lockFood.sprite = art.foods[food].grilled;
         }
 

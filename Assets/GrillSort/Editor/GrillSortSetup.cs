@@ -177,7 +177,7 @@ namespace GrillSort.EditorTools
 
         static readonly string[] AtlasFolders = { Art + UiDir, Art + CustomerDir, Art + "VFX/", Art + FoodDir, Art + ShadowDir, Art + RawDir, Art + RawShadowDir, Art + MetaDir,
             Art + FoodOverrides[0].food, Art + FoodOverrides[0].shadow, Art + FoodOverrides[1].food, Art + FoodOverrides[1].shadow };
-        static readonly string[] AtlasFiles = { "foil_wrap.png", "lock_chains.png", "badge.png", "disc.png", "rounded.png", BarFill, "bar_track.png", "glow.png", "soft_rect.png", "rays.png", "bar_track_clean.png", "glow_hd.png", "rays_hd.png" };
+        static readonly string[] AtlasFiles = { "foil_wrap.png", "lock_chains_v2.png", "badge.png", "disc.png", "rounded.png", BarFill, "bar_track.png", "glow.png", "soft_rect.png", "rays.png", "bar_track_clean.png", "glow_hd.png", "rays_hd.png" };
 
         static bool IsAtlased(string path)
         {
@@ -298,7 +298,7 @@ namespace GrillSort.EditorTools
             a.mascot = Load<Sprite>(Art + "Loading/mascot.png");
             a.skewer = Load<Sprite>(Art + "Board/skewer_cartoon.png");
             a.foilWrap = Load<Sprite>(Art + "Generated/foil_wrap.png");
-            a.lockChains = Load<Sprite>(Art + "Generated/lock_chains.png");
+            a.lockChains = Load<Sprite>(Art + "Generated/lock_chains_v2.png");
             a.iconLock = S("UI/Icons/icon_lock.png");
             a.starOn = S("UI/Icons/icon_star.png");
             a.iconAddTray = S("UI/Icons/icon_add_skewer.png"); a.iconShuffle = S("UI/Icons/icon_shuffle.png");
@@ -380,7 +380,7 @@ namespace GrillSort.EditorTools
             // customers (24 faces) and the meta art get their own atlases: together with the UI they no longer fit one page
             Atlas("Customers", new[] { Art + CustomerDir.TrimEnd('/') }, 2048, null);
             Atlas("Meta", new[] { Art + MetaDir.TrimEnd('/') }, 2048, null);
-            Atlas("UI", new[] { Art + UiDir.TrimEnd('/'), Art + "VFX" }, 2048, new[] { Art + "Generated/badge.png", Art + "Generated/disc.png", Art + "Generated/rounded.png", Art + "Generated/" + BarFill, Art + "Generated/bar_track.png", Art + "Generated/glow.png", Art + "Generated/soft_rect.png", Art + "Generated/rays.png", Art + "Generated/bar_track_clean.png", Art + "Generated/glow_hd.png", Art + "Generated/rays_hd.png", Art + "Generated/card_cream.png", Art + "Generated/foil_wrap.png", Art + "Generated/lock_chains.png" });
+            Atlas("UI", new[] { Art + UiDir.TrimEnd('/'), Art + "VFX" }, 2048, new[] { Art + "Generated/badge.png", Art + "Generated/disc.png", Art + "Generated/rounded.png", Art + "Generated/" + BarFill, Art + "Generated/bar_track.png", Art + "Generated/glow.png", Art + "Generated/soft_rect.png", Art + "Generated/rays.png", Art + "Generated/bar_track_clean.png", Art + "Generated/glow_hd.png", Art + "Generated/rays_hd.png", Art + "Generated/card_cream.png", Art + "Generated/foil_wrap.png", Art + "Generated/lock_chains_v2.png" });
             var food = new List<string> { Art + FoodDir.TrimEnd('/'), Art + ShadowDir.TrimEnd('/'), Art + RawDir.TrimEnd('/'), Art + RawShadowDir.TrimEnd('/') };
             foreach (var o in FoodOverrides) { food.Add(Art + o.food.TrimEnd('/')); food.Add(Art + o.shadow.TrimEnd('/')); }
             Atlas("Food", food.ToArray(), 2048, null);
@@ -614,12 +614,12 @@ namespace GrillSort.EditorTools
                 var lockRoot = Rect("Lock", root, new Vector2(GrillView.GrillW, GrillView.GrillH), Vector2.zero);
                 gv.lockRoot = lockRoot;
                 gv.lockDim = Img("Dim", lockRoot, S("Generated/soft_rect.png"), new Vector2(GrillView.GrillW - 10, GrillView.GrillH - 10), Vector2.zero);
-                gv.lockDim.color = new Color(.05f, .03f, .08f, .28f);
+                gv.lockDim.color = new Color(.05f, .03f, .08f, .55f);
                 gv.lockChains = Img("Chains", lockRoot, _art.lockChains, new Vector2(GrillView.GrillW, GrillView.GrillH), Vector2.zero);
-                gv.lockSign = Img("Sign", lockRoot, S("Generated/disc.png"), new Vector2(132, 132), new Vector2(0, 40));
+                gv.lockSign = Img("Sign", lockRoot, S("Generated/disc.png"), new Vector2(168, 168), new Vector2(0, 60));
                 gv.lockSign.color = new Color(1f, .97f, .9f, 1f);
-                gv.lockFood = Img("Food", gv.lockSign.rectTransform, _art.foods[0].grilled, new Vector2(96, 96), new Vector2(0, 4));
-                gv.lockIcon = ImgW("Padlock", gv.lockSign.rectTransform, _art.iconLock, 62, new Vector2(46, -44));
+                gv.lockFood = Img("Food", gv.lockSign.rectTransform, _art.foods[0].grilled, new Vector2(120, 120), new Vector2(0, 6));
+                gv.lockIcon = ImgW("Padlock", gv.lockSign.rectTransform, _art.iconLock, 104, new Vector2(0, -112));
                 lockRoot.gameObject.SetActive(false);
                 gv.steam = new[]
                 {

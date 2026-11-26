@@ -123,18 +123,18 @@ def chains():
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     # three chain bands wrapped across the tray, slightly slanted, alternating direction
-    bands = [(0.24, -14), (0.52, 12), (0.80, -12)]
-    lw, lh = 300, 190
+    bands = [(0.14, -12), (0.38, 12), (0.64, -12), (0.88, 12)]
+    lw, lh = 360, 230
     for fy, ang in bands:
         y0 = H * fy
-        n = 5
+        n = 4
         for i in range(n):
             t = i / (n - 1)
             x = -30 + t * (W + 60)
             y = y0 + (t - .5) * math.tan(math.radians(ang)) * W
             link(d, x, y, lw, lh, ang, i % 2 == 0)
     img = img.resize((373, 1818), Image.LANCZOS)
-    save(img, "lock_chains.png")
+    save(img, "lock_chains_v2.png")
 
 
 if __name__ == "__main__":
