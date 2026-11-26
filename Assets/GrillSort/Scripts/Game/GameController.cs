@@ -19,8 +19,9 @@ namespace GrillSort
         public bool tierDemo = false;
         public LevelBank demoBank;
         bool DemoOn => tierDemo && demoBank != null && demoBank.levels.Count > 0;
-        [Tooltip("Food size on the trays (1 = full tray width). User test 2026-11-26: food felt too big on trays of 5. Changes live in Play mode.")]
+        [Tooltip("Food size on trays of 5 only (1 = full tray width). User test 2026-11-26: food felt too big on trays of 5; trays of 4 stay full size and trays of 6 already shrink to fit. Changes live in Play mode.")]
         [Range(.7f, 1.1f)] public float foodSize = .88f;
+        float FoodMulFor(int capacity) => capacity == 5 ? foodSize : 1f;
         public GameUi ui;
         public AudioManager audioManager;
 
@@ -371,7 +372,7 @@ namespace GrillSort
             _board = _level.ToBoard();
             _skewers = _board.SkewerCount;
             StartPlan();
-            GrillView.SizeMul = foodSize;
+            GrillView.SizeMul = FoodMulFor(_board.Capacity);
             GrillView.SetCapacity(_board.Capacity);
             _dragging = false;
             _moves = 0; _served = 0; _selected = -1; _busy = false; _extraUsed = false; _won = false; _idle = 0f;
@@ -706,12 +707,12 @@ namespace GrillSort
         void OnValidate()
         {
             // food size slider: re-layout the trays live
-            if (Application.isPlaying && _board != null && !Mathf.Approximately(GrillView.SizeMul, foodSize))
+            if (Application.isPlaying && _board != null && !Mathf.Approximately(GrillView.SizeMul, FoodMulFor(_board.Capacity)))
             {
                 UnityEditor.EditorApplication.delayCall += () =>
                 {
                     if (this == null || _board == null || _busy) return;
-                    GrillView.SizeMul = foodSize;
+                    GrillView.SizeMul = FoodMulFor(_board.Capacity);
                     GrillView.SetCapacity(_board.Capacity);
                     foreach (var g in ui.grills) if (g != null) g.ApplyFit();
                     BindRow();
