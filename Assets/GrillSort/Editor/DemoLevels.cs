@@ -24,6 +24,11 @@ namespace GrillSort.EditorTools
             public string[] Foods;
             public int RowHidden, QueueHiddenPerTray;
             public bool LockHelperByQueueFood;
+            /// <summary>Locks to add, in order: "spare-screen" = a spare tray opened by a food already on screen (gentle);
+            /// "customer-queue" = a customer's tray opened by a food that only arrives later (plan ahead).</summary>
+            public string[] Locks = new string[0];
+            /// <summary>Fallback lock setups tried in order when <see cref="Locks"/> makes a board unwinnable.</summary>
+            public string[][] LockFallbacks = new string[0][];
             public float WinLo, WinHi;   // target bot win rate
             public int ParLo, ParHi;
         }
@@ -39,21 +44,22 @@ namespace GrillSort.EditorTools
                 WinLo = .25f, WinHi = .55f, ParLo = 16, ParHi = 40 },
             new Recipe { Tier = "Hard", Hard = true, P = 5, Row = 6, Free = 2, Orders = 10, ExtraRoom = 0,
                 Foods = new[] { "corn", "tomato", "sausage", "beef", "mushroom", "shrimp", "onion" },
-                RowHidden = 5, QueueHiddenPerTray = 2,
+                RowHidden = 5, QueueHiddenPerTray = 2, Locks = new[] { "spare-screen" },
                 WinLo = .08f, WinHi = .25f, ParLo = 22, ParHi = 55 },
             new Recipe { Tier = "Very Hard", Hard = true, P = 5, Row = 6, Free = 2, Orders = 11, ExtraRoom = 0,
                 Foods = new[] { "corn", "pineapple", "sausage", "beef", "mushroom", "shrimp", "tomato" },
-                RowHidden = 4, QueueHiddenPerTray = 2, LockHelperByQueueFood = true,
+                RowHidden = 4, QueueHiddenPerTray = 2, Locks = new[] { "customer-queue" },
                 WinLo = .03f, WinHi = .15f, ParLo = 26, ParHi = 65 },
             new Recipe { Tier = "Super Hard", Hard = true, P = 6, Row = 6, Free = 2, Orders = 10, ExtraRoom = 0,
                 Foods = new[] { "corn", "pineapple", "sausage", "beef", "pepper", "zucchini", "tomato" },
-                RowHidden = 5, QueueHiddenPerTray = 2,
-                WinLo = .01f, WinHi = .08f, ParLo = 28, ParHi = 80 },
+                RowHidden = 4, QueueHiddenPerTray = 2, Locks = new[] { "customer-screen" },
+                LockFallbacks = new[] { new[] { "spare-screen" } },
+                WinLo = .005f, WinHi = .05f, ParLo = 28, ParHi = 90 },
         };
 
         const int Candidates = 200, Playouts = 200;
         /// <summary>Tiers before this index are kept from the existing DemoLevelBank (re-design only the rest).</summary>
-        public static int KeepFirst = 0;
+        public static int KeepFirst = 4;
 
         [MenuItem("Grill Sort/Design Demo Levels (5 tiers)")]
         public static void Design()
@@ -79,7 +85,9 @@ namespace GrillSort.EditorTools
                 bank.levels.Add(lv);
                 int wrapped = 0; foreach (var h in lv.hidden) wrapped += h; foreach (var h in lv.queueHidden) wrapped += h;
                 string lockTxt = "none";
-                foreach (var l in lv.locks) if (l >= 0) lockTxt = "spare tray, opens on " + FoodCatalog.Names[l];
+                var lockParts = new List<string>();
+                for (int s = 0; s < lv.locks.Length; s++) if (lv.locks[s] >= 0) lockParts.Add((lv.orders[s] < 0 ? "spare tray" : "customer tray") + " opens on " + FoodCatalog.Names[lv.locks[s]]);
+                if (lockParts.Count > 0) lockTxt = string.Join("; ", lockParts);
                 report.AppendLine($"| {i + 1} | {r.Tier}{(r.Hard ? " (Hard label, x2 coins)" : "")} | {r.P} | {r.Row} | {lv.TotalOrders} | {string.Join(", ", r.Foods)} | {wrapped} | {lockTxt} | {lv.par}{(lv.parOptimal ? "" : "~")} | {win:P0} |");
                 Debug.Log($"[Demo] {r.Tier}: par {lv.par} win {win:P0} ({solvable}/{tried} candidates solvable)");
             }
@@ -112,15 +120,23 @@ namespace GrillSort.EditorTools
                 if (lv == null) continue;
                 tried++;
                 AddWrapped(lv, r, rng);
-                AddLock(lv, r);
-                var res = Solver.Solve(lv.ToBoard(), lv.rule, 150000, 700000);
-                if (!res.Solvable) continue;
+                var setups = new List<string[]> { r.Locks };
+                setups.AddRange(r.LockFallbacks);
+                Solver.Result res = null;
+                foreach (var setup in setups)
+                {
+                    AddLock(lv, setup);
+                    res = Solver.Solve(lv.ToBoard(), lv.rule, r.P >= 6 ? 300000 : 150000, r.P >= 6 ? 1500000 : 700000);
+                    if (res.Solvable) break;
+                }
+                if (res == null || !res.Solvable) continue;
                 solvable++;
                 lv.par = res.Par; lv.parOptimal = res.Optimal;
                 float win = WinRate(lv, Playouts, (uint)(c + 1));
                 bool inBand = win >= r.WinLo && win <= r.WinHi && lv.par >= r.ParLo && lv.par <= r.ParHi;
                 float score = Mathf.Abs(win - target) + (inBand ? 0f : 1f);
                 if (score < bestScore) { bestScore = score; best = lv; bestWin = win; }
+                if (inBand) break;   // first board inside the target band is good enough (keeps the run short)
             }
             if (best != null)
             {
@@ -157,21 +173,38 @@ namespace GrillSort.EditorTools
         }
 
         /// <summary>Very Hard: the spare (white) tray is locked by a food that is not on screen yet, only in the queue.</summary>
-        static void AddLock(LevelData lv, Recipe r)
+        static void AddLock(LevelData lv, string[] specs)
         {
             lv.locks = new int[lv.skewers];
             for (int s = 0; s < lv.skewers; s++) lv.locks[s] = -1;
             lv.queueLocks = new int[lv.queueOrders.Length];
             for (int q = 0; q < lv.queueLocks.Length; q++) lv.queueLocks[q] = -1;
-            if (!r.LockHelperByQueueFood) return;
-            var onScreen = new HashSet<int>();
+            var onScreen = new List<int>();
             foreach (var o in lv.orders) if (o >= 0) onScreen.Add(o);
-            int lockFood = -1;
-            foreach (var o in lv.queueOrders) if (!onScreen.Contains(o)) { lockFood = o; break; }
-            if (lockFood < 0 && lv.queueOrders.Length > 0) lockFood = lv.queueOrders[0];
-            // Sort Streak's vine: a customer's tray (with its food) stays locked until a food that is still in the
-            // queue gets served, so the player has to plan around it; both spare trays stay free
-            for (int s = lv.skewers - 1; s >= 0; s--) if (lv.orders[s] >= 0) { lv.locks[s] = lockFood; break; }
+            foreach (var spec in specs)
+            {
+                if (spec == "customer-queue")
+                {
+                    // Sort Streak's vine (their L19): a customer's tray (with its food) stays locked until a food that is
+                    // still in the queue gets served, so the player has to plan around it
+                    int lockFood = -1;
+                    foreach (var o in lv.queueOrders) if (!onScreen.Contains(o)) { lockFood = o; break; }
+                    if (lockFood < 0 && lv.queueOrders.Length > 0) lockFood = lv.queueOrders[0];
+                    for (int s = lv.skewers - 1; s >= 0; s--) if (lv.orders[s] >= 0 && lv.locks[s] < 0) { lv.locks[s] = lockFood; break; }
+                }
+                else if (spec == "customer-screen")
+                {
+                    // a customer's tray opened by the FIRST order on screen (served early, gentler)
+                    int lockFood = onScreen.Count > 0 ? onScreen[0] : -1;
+                    for (int s = lv.skewers - 1; s >= 0; s--) if (lv.orders[s] >= 0 && lv.locks[s] < 0 && lv.orders[s] != lockFood) { lv.locks[s] = lockFood; break; }
+                }
+                else if (spec == "spare-screen")
+                {
+                    // gentle lock (their L11): a spare tray opens once a food already on screen is served
+                    int lockFood = onScreen.Count > 1 ? onScreen[1] : onScreen.Count > 0 ? onScreen[0] : -1;
+                    for (int s = 0; s < lv.skewers; s++) if (lv.orders[s] < 0 && lv.locks[s] < 0) { lv.locks[s] = lockFood; break; }
+                }
+            }
         }
 
         /// <summary>
