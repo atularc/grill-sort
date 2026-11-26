@@ -29,6 +29,8 @@ namespace GrillSort
     {
         public int Slot, Food;
         public bool Arrived;
+        /// <summary>How many locked trays this serve opened.</summary>
+        public int Unlocked;
     }
 
     /// <summary>
@@ -53,16 +55,26 @@ namespace GrillSort
         readonly List<int[]> _queueCells = new List<int[]>();
         readonly List<int> _queueTarget = new List<int>();
         int _queueNext;
+        // wrapped "?" food (Sort Streak mystery flowers): hidden until it becomes a tray's bottom (free end) piece
+        readonly List<bool[]> _hid = new List<bool[]>();
+        readonly List<bool[]> _queueHid = new List<bool[]>();
+        // locked trays (Sort Streak locked flowers): unusable until an order of _lock[s] is served; -1 = not locked
+        readonly List<int> _lock = new List<int>();
+        readonly List<int> _queueLock = new List<int>();
 
         public Board(int capacity, int pieces = 4) { Capacity = capacity; Pieces = pieces; }
 
         /// <summary>Adds a tray to the queue (it joins the row when an order is served).</summary>
-        public void AddQueued(IList<int> bottomToTop, int target)
+        public void AddQueued(IList<int> bottomToTop, int target, IList<bool> hidden = null, int lockFood = -1)
         {
             var arr = new int[bottomToTop.Count];
-            for (int i = 0; i < arr.Length; i++) arr[i] = bottomToTop[i];
-            _queueCells.Add(arr); _queueTarget.Add(target);
+            var hid = new bool[bottomToTop.Count];
+            for (int i = 0; i < arr.Length; i++) { arr[i] = bottomToTop[i]; hid[i] = hidden != null && i < hidden.Count && hidden[i]; }
+            _queueCells.Add(arr); _queueTarget.Add(target); _queueHid.Add(hid); _queueLock.Add(lockFood);
         }
+
+        public bool[] QueueHidden(int i) => (bool[])_queueHid[i].Clone();
+        public int QueueLock(int i) => _queueLock[i];
 
         public int QueueCount => _queueCells.Count;
         /// <summary>Index of the next queued tray to arrive.</summary>
@@ -89,24 +101,61 @@ namespace GrillSort
         public bool IsEmpty(int s) => _count[s] == 0;
         /// <summary>Food this tray's customer ordered, or -1 (served / extra tray).</summary>
         public int Target(int s) => _target[s];
+        /// <summary>Piece i of tray s is wrapped (its food is not shown yet).</summary>
+        public bool IsHidden(int s, int i) => _hid[s][i];
+        /// <summary>Food whose served order unlocks tray s, or -1.</summary>
+        public int Lock(int s) => _lock[s];
+        public bool IsLocked(int s) => _lock[s] >= 0;
 
-        public int AddSkewer(IList<int> bottomToTop = null, int target = -1)
+        public int AddSkewer(IList<int> bottomToTop = null, int target = -1, IList<bool> hidden = null, int lockFood = -1)
         {
             var arr = new int[Capacity];
+            var hid = new bool[Capacity];
             for (int i = 0; i < Capacity; i++) arr[i] = -1;
             int n = 0;
-            if (bottomToTop != null) foreach (var f in bottomToTop) arr[n++] = f;
-            _cells.Add(arr); _count.Add(n); _target.Add(target);
+            if (bottomToTop != null) foreach (var f in bottomToTop) { hid[n] = hidden != null && n < hidden.Count && hidden[n]; arr[n++] = f; }
+            _cells.Add(arr); _count.Add(n); _target.Add(target); _hid.Add(hid); _lock.Add(lockFood);
+            RevealBottom(_cells.Count - 1);
             return _cells.Count - 1;
+        }
+
+        /// <summary>The bottom (free-end) piece is always visible: reveals it. Returns true if it was wrapped.</summary>
+        public bool RevealBottom(int s)
+        {
+            int n = _count[s];
+            if (n == 0 || !_hid[s][n - 1]) return false;
+            _hid[s][n - 1] = false;
+            return true;
         }
 
         public Board Clone()
         {
             var b = new Board(Capacity, Pieces);
-            for (int s = 0; s < _cells.Count; s++) { b._cells.Add((int[])_cells[s].Clone()); b._count.Add(_count[s]); b._target.Add(_target[s]); }
-            for (int q = 0; q < _queueCells.Count; q++) { b._queueCells.Add(_queueCells[q]); b._queueTarget.Add(_queueTarget[q]); }
+            for (int s = 0; s < _cells.Count; s++)
+            {
+                b._cells.Add((int[])_cells[s].Clone()); b._count.Add(_count[s]); b._target.Add(_target[s]);
+                b._hid.Add((bool[])_hid[s].Clone()); b._lock.Add(_lock[s]);
+            }
+            for (int q = 0; q < _queueCells.Count; q++) { b._queueCells.Add(_queueCells[q]); b._queueTarget.Add(_queueTarget[q]); b._queueHid.Add(_queueHid[q]); b._queueLock.Add(_queueLock[q]); }
             b._queueNext = _queueNext;
             return b;
+        }
+
+        /// <summary>Hidden flags of tray s, bottom to top (same length as <see cref="Stack"/>).</summary>
+        public bool[] HiddenStack(int s)
+        {
+            var r = new bool[_count[s]];
+            Array.Copy(_hid[s], r, r.Length);
+            return r;
+        }
+
+        /// <summary>A copy of this board without tray <paramref name="r"/> (same queue, hidden pieces and locks).</summary>
+        public Board Without(int r)
+        {
+            var nb = new Board(Capacity, Pieces);
+            for (int q = QueueNext; q < QueueCount; q++) nb.AddQueued(_queueCells[q], _queueTarget[q], _queueHid[q], _queueLock[q]);
+            for (int t = 0; t < SkewerCount; t++) if (t != r) nb.AddSkewer(Stack(t), _target[t], HiddenStack(t), _lock[t]);
+            return nb;
         }
 
         public int[] Stack(int s)
@@ -139,7 +188,7 @@ namespace GrillSort
         public bool IsComplete(int s)
         {
             int t = _target[s];
-            return t >= 0 && _count[s] == Pieces && Settled(s) == Pieces;
+            return t >= 0 && _lock[s] < 0 && _count[s] == Pieces && Settled(s) == Pieces;
         }
 
         public bool IsSolved()
@@ -157,6 +206,7 @@ namespace GrillSort
         {
             move = default;
             if (from == to || from < 0 || to < 0 || from >= _cells.Count || to >= _cells.Count) return false;
+            if (_lock[from] >= 0 || _lock[to] >= 0) return false;   // a locked tray can't be used until its order is served
             int n = _count[from];
             if (n == 0) return false;
             int start = MoveStart(rule, from, index);
@@ -170,6 +220,7 @@ namespace GrillSort
             else if (rule == MoveRule.TopGroup) count = Math.Min(group, room);   // as many as fit
             else { if (group > room) return false; count = group; }        // the whole stack above must fit
             if (!FillsUniform(from, n - count, count, to)) return false;
+            if (_count[to] > 0 && HasHidden(from, n - count, count)) return false;   // wrapped food only onto an empty tray
             move = new Move(from, to, n - count, count);
             return true;
         }
@@ -180,6 +231,13 @@ namespace GrillSort
         /// afterwards (the ones there and the ones arriving) is the same food. Stops dead ends built from full,
         /// mixed trays.
         /// </summary>
+        /// <summary>Any wrapped piece among <paramref name="count"/> pieces of tray s from <paramref name="index"/>.</summary>
+        public bool HasHidden(int s, int index, int count)
+        {
+            for (int k = 0; k < count; k++) if (_hid[s][index + k]) return true;
+            return false;
+        }
+
         public bool FillsUniform(int from, int index, int count, int to)
         {
             if (_count[to] + count < Capacity) return true;
@@ -207,9 +265,11 @@ namespace GrillSort
         public List<Served> Apply(Move m)
         {
             var src = _cells[m.From]; var dst = _cells[m.To];
-            for (int k = 0; k < m.Count; k++) dst[_count[m.To]++] = src[m.Index + k];
-            for (int k = m.Index; k < m.Index + m.Count; k++) src[k] = -1;
+            var sh = _hid[m.From]; var dh = _hid[m.To];
+            for (int k = 0; k < m.Count; k++) { dh[_count[m.To]] = sh[m.Index + k]; dst[_count[m.To]++] = src[m.Index + k]; }
+            for (int k = m.Index; k < m.Index + m.Count; k++) { src[k] = -1; sh[k] = false; }
             _count[m.From] = m.Index;
+            RevealBottom(m.From); RevealBottom(m.To);
             var r = new List<Served>(2);
             int to = m.To;
             if (IsComplete(m.From))
@@ -224,10 +284,12 @@ namespace GrillSort
         Served ServeAt(int s)
         {
             var e = new Served { Slot = s, Food = _target[s] };
-            _cells.RemoveAt(s); _count.RemoveAt(s); _target.RemoveAt(s);
+            _cells.RemoveAt(s); _count.RemoveAt(s); _target.RemoveAt(s); _hid.RemoveAt(s); _lock.RemoveAt(s);
+            // serving an order opens every tray locked by that food
+            for (int t = 0; t < _lock.Count; t++) if (_lock[t] == e.Food) { _lock[t] = -1; e.Unlocked++; }
             if (_queueNext < _queueCells.Count)
             {
-                AddSkewer(_queueCells[_queueNext], _queueTarget[_queueNext]);
+                AddSkewer(_queueCells[_queueNext], _queueTarget[_queueNext], _queueHid[_queueNext], _queueLock[_queueNext]);
                 _queueNext++;
                 e.Arrived = true;
             }
@@ -236,7 +298,7 @@ namespace GrillSort
 
         public void Clear(int s)
         {
-            for (int i = 0; i < Capacity; i++) _cells[s][i] = -1;
+            for (int i = 0; i < Capacity; i++) { _cells[s][i] = -1; _hid[s][i] = false; }
             _count[s] = 0;
         }
 

@@ -1759,7 +1759,8 @@ namespace GrillSort
             StopHint();
             var counts = new int[_board.SkewerCount];
             var pieces = new List<int>();
-            for (int s = 0; s < _board.SkewerCount; s++) { counts[s] = _board.Count(s); pieces.AddRange(_board.Stack(s)); }
+            // locked trays keep their food; everything else is shuffled (and uncovered: a shuffle shows all wrapped food)
+            for (int s = 0; s < _board.SkewerCount; s++) { counts[s] = _board.IsLocked(s) ? 0 : _board.Count(s); if (!_board.IsLocked(s)) pieces.AddRange(_board.Stack(s)); }
             if (pieces.Count == 0) return false;
             var rng = new Mulberry32((uint)(System.DateTime.Now.Ticks & 0xffffffff));
             Board best = null;
@@ -1767,11 +1768,12 @@ namespace GrillSort
             {
                 rng.Shuffle(pieces);
                 var nb = new Board(_board.Capacity, _board.Pieces);
-                for (int qq = _board.QueueNext; qq < _board.QueueCount; qq++) nb.AddQueued(_board.QueueStack(qq), _board.QueueTarget(qq));
+                for (int qq = _board.QueueNext; qq < _board.QueueCount; qq++) nb.AddQueued(_board.QueueStack(qq), _board.QueueTarget(qq), _board.QueueHidden(qq), _board.QueueLock(qq));
                 int p = 0; bool bad = false;
                 for (int s = 0; s < counts.Length; s++)
                 {
-                    nb.AddSkewer(pieces.GetRange(p, counts[s]), _board.Target(s)); // trays keep their customers
+                    if (_board.IsLocked(s)) nb.AddSkewer(_board.Stack(s), _board.Target(s), _board.HiddenStack(s), _board.Lock(s));
+                    else nb.AddSkewer(pieces.GetRange(p, counts[s]), _board.Target(s)); // trays keep their customers
                     p += counts[s];
                     if (nb.IsComplete(s)) bad = true;
                 }
