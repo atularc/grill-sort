@@ -67,6 +67,8 @@ namespace GrillSort
         /// </summary>
         public static float VStretch { get; private set; } = 1f;
         public static float FoodBoost { get; private set; } = 1f;
+        /// <summary>Overall food size on the trays (GameController.foodSize, user test 2026-11-26).</summary>
+        public static float SizeMul = 1f;
 
         public static void SetCapacity(int capacity)
         {
@@ -87,7 +89,7 @@ namespace GrillSort
         static float[] Layout(int capacity, out float scale)
         {
             float step = capacity <= 4 ? 163f : (TopY - BottomY) / (capacity - 1);
-            scale = Mathf.Min(1f, step / 138f) * FoodBoost;
+            scale = Mathf.Min(1f, step / 138f) * FoodBoost * SizeMul;
             // a full tray's stack is centred in the tray (user 2026-11-22: equal gap above the first and below the last
             // piece); food still hangs from the top, slot 0 highest
             float top = StackCenterY + step * (capacity - 1) * .5f;

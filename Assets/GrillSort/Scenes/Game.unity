@@ -7391,6 +7391,7 @@ MonoBehaviour:
   bank: {fileID: 11400000, guid: 62384e06ff39c1640a0e065a8c25f34b, type: 2}
   tierDemo: 1
   demoBank: {fileID: 11400000, guid: 1a6045c82e15d104d8f35d7224598945, type: 2}
+  foodSize: 0.88
   ui: {fileID: 12540980}
   audioManager: {fileID: 1458826644}
   moveRule: 1

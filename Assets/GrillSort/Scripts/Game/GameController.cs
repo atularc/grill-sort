@@ -19,6 +19,8 @@ namespace GrillSort
         public bool tierDemo = false;
         public LevelBank demoBank;
         bool DemoOn => tierDemo && demoBank != null && demoBank.levels.Count > 0;
+        [Tooltip("Food size on the trays (1 = full tray width). User test 2026-11-26: food felt too big on trays of 5. Changes live in Play mode.")]
+        [Range(.7f, 1.1f)] public float foodSize = .88f;
         public GameUi ui;
         public AudioManager audioManager;
 
@@ -369,6 +371,7 @@ namespace GrillSort
             _board = _level.ToBoard();
             _skewers = _board.SkewerCount;
             StartPlan();
+            GrillView.SizeMul = foodSize;
             GrillView.SetCapacity(_board.Capacity);
             _dragging = false;
             _moves = 0; _served = 0; _selected = -1; _busy = false; _extraUsed = false; _won = false; _idle = 0f;
@@ -702,6 +705,18 @@ namespace GrillSort
         // type a new Test Level in the Inspector during Play mode and it loads immediately
         void OnValidate()
         {
+            // food size slider: re-layout the trays live
+            if (Application.isPlaying && _board != null && !Mathf.Approximately(GrillView.SizeMul, foodSize))
+            {
+                UnityEditor.EditorApplication.delayCall += () =>
+                {
+                    if (this == null || _board == null || _busy) return;
+                    GrillView.SizeMul = foodSize;
+                    GrillView.SetCapacity(_board.Capacity);
+                    foreach (var g in ui.grills) if (g != null) g.ApplyFit();
+                    BindRow();
+                };
+            }
             if (!Application.isPlaying || _board == null || !useTestLevel) return;
             int n = Mathf.Max(1, testLevel);
             if (n == _loadedTestLevel) return;
