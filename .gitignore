@@ -150,3 +150,11 @@ crashlytics-build.properties
 /Research/SortStreak/work/
 /Tools/SortStreakBot/runs/
 /Tools/SortStreakBot/run_console.txt
+
+# Test screenshots and previews made while checking the game (local only)
+/Research/DemoCheck/
+/Research/preview_*.png
+
+# Python caches
+__pycache__/
+*.pyc
