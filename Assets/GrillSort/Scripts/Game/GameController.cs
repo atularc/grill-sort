@@ -170,6 +170,8 @@ namespace GrillSort
             int start = SaveData.Level;
             if (useTestLevel) start = Mathf.Max(1, testLevel);
             else if (limitToTenLevels && start > 10) start = 1;
+            // installed over a normal build, the saved level can be far past 5: the demo starts again at Level 1
+            if (!useTestLevel && DemoOn && start > demoBank.levels.Count) start = 1;
             _loadedTestLevel = useTestLevel ? start : -1;
             ui.hand.gameObject.SetActive(false);
             _loadingScreen = ui.loading != null;
@@ -1579,7 +1581,8 @@ namespace GrillSort
             audioManager.SetAmbience(art.sizzleLoop, false);
             // save progress the moment the level is beaten (not only when "Claim" is pressed), so closing the app on
             // the win screen doesn't replay a finished level
-            if (!useTestLevel && !(limitToTenLevels && _levelNumber + 1 > 10) && SaveData.Level <= _levelNumber)
+            if (!useTestLevel && !(limitToTenLevels && _levelNumber + 1 > 10) && !(DemoOn && _levelNumber + 1 > demoBank.levels.Count)
+                && SaveData.Level <= _levelNumber)
                 SaveData.Level = _levelNumber + 1;
             yield return new WaitForSeconds(.35f);   // was 1.1 s: just long enough to see the last customer cheer
             int par = Mathf.Max(1, _level.par);

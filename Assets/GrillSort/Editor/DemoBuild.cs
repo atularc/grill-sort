@@ -25,12 +25,16 @@ namespace GrillSort.EditorTools
             try
             {
                 Directory.CreateDirectory("Build");
+                // stale game data from an earlier build can stay in the Gradle folder and get packed too (2026-11-26:
+                // an old data.unity3d rode along and the APK grew 55 -> 73 MB), so start from an empty data folder
+                const string staleData = "Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/src/main/assets/bin/Data";
+                if (Directory.Exists(staleData)) Directory.Delete(staleData, true);
                 var opts = new BuildPlayerOptions
                 {
                     scenes = new[] { Scene },
                     locationPathName = Out,
                     target = BuildTarget.Android,
-                    options = BuildOptions.None,
+                    options = BuildOptions.CompressWithLz4HC,   // same packed data as the earlier APKs (None left it loose)
                 };
                 var report = BuildPipeline.BuildPlayer(opts);
                 Debug.Log($"[DemoBuild] {report.summary.result}: {Out} ({report.summary.totalSize / (1024 * 1024)} MB, {report.summary.totalErrors} errors)");
