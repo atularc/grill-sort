@@ -17,7 +17,13 @@ namespace GrillSort
         /// <summary>Orders in the whole level (row + queue).</summary>
         public int TotalOrders
         {
-            get { int n = queueOrders != null ? queueOrders.Length : 0; foreach (var o in orders) if (o >= 0) n++; return n; }
+            get
+            {
+                int n = 0;   // a queued helper tray (-1) is not an order
+                if (queueOrders != null) foreach (var o in queueOrders) if (o >= 0) n++;
+                foreach (var o in orders) if (o >= 0) n++;
+                return n;
+            }
         }
         /// <summary>Order of each tray: the food its customer wants (-1 = free tray). One customer stands above each tray.</summary>
         public int[] orders;

@@ -177,6 +177,7 @@ namespace GrillSort
             var img = foods[slot]; var sh = foodShadows[slot];
             if (art == null) { img.enabled = false; sh.enabled = false; return; }
             img.enabled = sh.enabled = true;
+            SetAlpha(img, 1f);   // a slot that held a wrapped piece was see-through (SetWrapped)
             img.sprite = raw ? art.raw : art.grilled;
             _foodW[slot] = art.width;
             sh.sprite = raw && art.shadowRaw != null ? art.shadowRaw : art.shadow;
@@ -216,15 +217,32 @@ namespace GrillSort
         {
             if (foils == null) return;
             for (int i = 0; i < foils.Length; i++)
-            {
-                bool on = hid != null && i < hid.Length && hid[i] && foods[i].enabled;
-                var f = foils[i];
-                f.gameObject.SetActive(on);
-                if (!on) continue;
-                f.rectTransform.sizeDelta = foods[i].rectTransform.sizeDelta * 1.12f;
-                f.rectTransform.localScale = Vector3.one;
-                f.color = Color.white;
-            }
+                SetWrapped(i, hid != null && i < hid.Length && hid[i] && foods[i].enabled);
+        }
+
+        /// <summary>
+        /// Every foil has the same size, whatever is inside (a foil sized to its piece showed the food's edges and gave
+        /// away how wide the food was).
+        /// </summary>
+        public static Vector2 FoilSize => Vector2.one * FoilFoodWidth * FoodScale * 1.12f;
+        public const float FoilFoodWidth = 160f;
+
+        /// <summary>
+        /// Wraps / unwraps slot <paramref name="i"/>. A wrapped piece is not drawn at all under its foil, shadow included
+        /// (Aaron 2026-11-27: "the hidden visual doesn't fully cover the items underneath ... remove the items below
+        /// entirely").
+        /// </summary>
+        public void SetWrapped(int i, bool on)
+        {
+            if (foils == null || i >= foils.Length) return;
+            var f = foils[i];
+            f.gameObject.SetActive(on);
+            SetAlpha(foods[i], on ? 0f : 1f);
+            SetAlpha(foodShadows[i], on ? 0f : 1f);
+            if (!on) return;
+            f.rectTransform.sizeDelta = FoilSize;
+            f.rectTransform.localScale = Vector3.one;
+            f.color = Color.white;
         }
 
         /// <summary>Shows the lock (chains + sign with <paramref name="food"/>), or hides it when food &lt; 0.</summary>

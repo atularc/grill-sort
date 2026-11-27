@@ -72,8 +72,22 @@ namespace GrillSort
         /// keeps the faces with their trays while they slide.
         /// </summary>
         // hid: wrapped pieces (same length as stack); lockPlus1: food that unlocks this tray + 1 (0 = not locked)
-        struct VisTray { public int[] stack; public int target; public int face; public int who; public bool[] hid; public int lockPlus1; }   // who: this customer's id (their mood + waiting time, GameController.Moods)
+        // serving: the tray is complete and waiting for / playing its serve; it stays in the row (and in the Board) until
+        // the row slides, and no move may touch it
+        struct VisTray { public int[] stack; public int target; public int face; public int who; public bool[] hid; public int lockPlus1; public bool serving; }   // who: this customer's id (their mood + waiting time, GameController.Moods)
         readonly List<VisTray> _vis = new List<VisTray>();
+
+        /// <summary>
+        /// Completed trays waiting to be served, as row indexes, oldest first (Aaron 2026-11-27: "while a skewer is
+        /// merging, players can't drag anymore"). A move only completes trays; <see cref="ServeRunner"/> plays the serves
+        /// one by one while the player keeps playing. The Board drops a tray only at the moment its row slides (input is
+        /// held for that ~0.35 s), so row index == Board index at every other moment.
+        /// </summary>
+        readonly List<int> _serveQueue = new List<int>();
+        Coroutine _serveCo;
+        /// <summary>Busy, or serves still to play: the Board is not settled (hints, boosters, stuck checks and autoplay wait).</summary>
+        bool Settling => _busy || _serveCo != null;
+        bool Serving(int g) => g >= 0 && g < _vis.Count && _vis[g].serving;
         int NextFace() => _nextAnimal++ % art.customers.Length;
         int _selected = -1, _selStart;
         bool _busy, _extraUsed, _won, _autoPlay;
@@ -92,7 +106,7 @@ namespace GrillSort
         bool Covered => _loadingScreen || _homeUp;
 
         public int LevelNumber => _levelNumber;
-        public bool Busy => _busy;
+        public bool Busy => Settling;
         public Board CurrentBoard => _board;
 
         // ------------------------------------------------------------------ setup
@@ -353,6 +367,7 @@ namespace GrillSort
         public void LoadLevel(int number)
         {
             StopAllCoroutines();
+            _serveCo = null; _serveQueue.Clear();
             _hintCo = _tipCo = null;
             _selectCo = _selectGlowCo = null;
             _handCo = null; HideHand();
@@ -405,6 +420,7 @@ namespace GrillSort
                 g.SetLit(false, art);
                 g.Show(_board.Stack(i), art, cookOnComplete); g.SetFoils(_board.HiddenStack(i)); g.SetLock(_board.Lock(i), art);
             }
+            ui.layout.ResetFit();   // a new level: fit the size to this level's row (it then stays put as trays leave)
             ui.layout.activeGrills = _skewers;
             ui.layout.Apply();
             foreach (var f in ui.flyers) f.gameObject.SetActive(false);
@@ -635,7 +651,7 @@ namespace GrillSort
         // ------------------------------------------------------------------ input
         void Update()
         {
-            if (_busy || _won || _dragging || AnyPopupOpen() || _autoPlay || Covered) { _idle = 0f; return; }
+            if (Settling || _won || _dragging || AnyPopupOpen() || _autoPlay || Covered) { _idle = 0f; return; }
             if (DemoOn) { _idle = 0f; return; }   // the tier demo is for playing freely: no tutorial hand, no free idle hint (Hint button still works)
             _idle += Time.deltaTime;
             bool tutorial = _levelNumber <= tutorialLevels;
@@ -713,7 +729,7 @@ namespace GrillSort
             {
                 UnityEditor.EditorApplication.delayCall += () =>
                 {
-                    if (this == null || _board == null || _busy) return;
+                    if (this == null || _board == null || Settling) return;
                     GrillView.SizeMul = FoodMulFor(_board.Capacity);
                     GrillView.SetCapacity(_board.Capacity);
                     foreach (var g in ui.grills) if (g != null) g.ApplyFit();
@@ -734,6 +750,7 @@ namespace GrillSort
             _idle = 0f;
             StopHint();
 
+            if (Serving(g)) { if (_selected >= 0) Deselect(); return; }   // that tray is being served: hands off
             if (_selected < 0)
             {
                 if (_board.IsEmpty(g)) { StartCoroutine(Tween.Shake(ui.grills[g].rect, 8f, .2f)); return; }
@@ -891,6 +908,7 @@ namespace GrillSort
             _idle = 0f;
             StopHint();
             if (_selected >= 0) Deselect();
+            if (Serving(g)) return;   // that tray is being served
             if (_board.IsEmpty(g)) { StartCoroutine(Tween.Shake(ui.grills[g].rect, 8f, .2f)); return; }
             if (_board.IsLocked(g)) { StartCoroutine(Tween.Shake(ui.grills[g].rect, 8f, .2f)); audioManager.Play(art.invalid, .6f); Toast(LockedMsg); return; }
             int start = _board.MoveStart(moveRule, g, moveRule == MoveRule.AnyWithAbove ? Mathf.Min(slot, _board.Count(g) - 1) : -1);
@@ -947,6 +965,7 @@ namespace GrillSort
             int best = -1; float bd = float.MaxValue;
             for (int g = 0; g < _board.SkewerCount; g++)
             {
+                if (Serving(g)) continue;   // a tray being served is leaving: never a drop target
                 var r = ui.grills[g].rect;
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(r, screen, null, out var local);
                 if (Mathf.Abs(local.y) > GrillView.GrillH * .5f + 160f) continue;  // well above / below the board
@@ -1041,8 +1060,12 @@ namespace GrillSort
             if (revSrc) hidSrc[m.Index - 1] = false;
             bool revDst = hidDst.Length > 0 && hidDst[hidDst.Length - 1];
             if (revDst) hidDst[hidDst.Length - 1] = false;
-            var served = _board.Apply(m);
-            if (verboseLog) Debug.Log($"[Grill Sort] move {m} -> {_board} served {served.Count}");
+            // the move only completes trays; they stay in the row (and the Board) until their serve slides the row
+            _board.ApplyMove(m);
+            var completed = new List<int>(2);
+            if (_board.IsComplete(m.From)) completed.Add(m.From);   // source first (as Board.Apply serves)
+            if (_board.IsComplete(m.To)) completed.Add(m.To);
+            if (verboseLog) Debug.Log($"[Grill Sort] move {m} -> {_board} completed {completed.Count}");
             _moves++;
 
             int flying = 0;
@@ -1083,18 +1106,29 @@ namespace GrillSort
             if (revSrc) StartCoroutine(RevealPop(src, m.Index - 1));
             if (revDst) StartCoroutine(RevealPop(dst, hidDst.Length - 1));
             SetVis(m.From, preSrc, hidSrc); SetVis(m.To, preDst, hidDst);
-            if (served.Count == 0) Progress(m.To);
+            if (completed.Count == 0) Progress(m.To);
 
-            // serve whatever the move completed, one after the other (both ends can fill up in one move); each serve
-            // removes the tray, slides the rest left and brings in the next queued tray
-            int arrivals = 0;
-            foreach (var e in served) if (e.Arrived) arrivals++;
-            int q = _board.QueueNext - arrivals;
-            foreach (var e in served) yield return ServeOrder(e, e.Arrived ? q++ : -1);
-            if (served.Count > 0 && !VisMatchesBoard()) { SyncVisFromBoard(); BindRow(); BindCustomers(); }
-
-            if (_served >= _totalOrders) { yield return Win(); yield break; }
+            // whatever the move completed is served in the background, one after the other (both ends can fill up in
+            // one move): the player keeps dragging meanwhile (Aaron 2026-11-27)
+            foreach (int s in completed)
+            {
+                var t = _vis[s]; t.serving = true; _vis[s] = t;
+                _serveQueue.Add(s);
+            }
             _busy = false;
+            if (_serveQueue.Count > 0) { if (_serveCo == null) _serveCo = StartCoroutine(ServeRunner()); }
+            else if (_serveCo == null) CheckStuck();   // (with serves running, the runner checks once they are done)
+        }
+
+        /// <summary>Plays the queued serves one by one; then the win, or a stuck check on the settled row.</summary>
+        IEnumerator ServeRunner()
+        {
+            while (_serveQueue.Count > 0) yield return ServeOrder(_serveQueue[0]);
+            _serveCo = null;
+            if (_served >= _totalOrders) { yield return Win(); yield break; }
+            while (_busy || _dragging) yield return null;   // a move still landing updates its own trays
+            if (_serveCo != null || _serveQueue.Count > 0) yield break;   // that move completed a tray: a new runner owns the row
+            if (!VisMatchesBoard()) { SyncVisFromBoard(); BindRow(); BindCustomers(); }
             CheckStuck();
         }
 
@@ -1144,16 +1178,8 @@ namespace GrillSort
             fl.localRotation = Quaternion.identity;
             dst.SetFood(ti, fa, cookOnComplete);
             dst.ResetSlot(ti);
-            if (dst.foils != null && ti < dst.foils.Length)
-            {
-                var foil = dst.foils[ti];
-                foil.gameObject.SetActive(wrapped);
-                if (wrapped)
-                {
-                    foil.rectTransform.sizeDelta = dst.foods[ti].rectTransform.sizeDelta * 1.12f;
-                    foil.rectTransform.localScale = Vector3.one; foil.color = Color.white;
-                }
-            }
+            dst.SetWrapped(ti, wrapped);
+            SetFlyerFoil(flyer, false);   // the flyer is free again (its food shows normally next time)
             StartCoroutine(Tween.Bounce(dst.slots[ti], .16f, .26f));
             // like Skewer Jam: every landing piece gives its own wooden tock, ~0.12 s apart and stepping up a little,
             // so a dragged stack lands as a satisfying "tock-tock-tock" cascade (user 2026-11-22)
@@ -1183,23 +1209,33 @@ namespace GrillSort
 
         const string LockedMsg = "This tray is locked. Serve the food on its sign first!";
 
-        /// <summary>A wrapped piece just became the bottom one: the foil pops off.</summary>
+        /// <summary>
+        /// A wrapped piece just became the bottom one: the foil puffs up and fades off while the food inside grows in
+        /// from nothing with a little overshoot (Aaron 2026-11-27: "an animation to hide and reveal them").
+        /// </summary>
         IEnumerator RevealPop(GrillView v, int i)
         {
             if (v.foils == null || i < 0 || i >= v.foils.Length) yield break;
             var f = v.foils[i];
-            f.rectTransform.sizeDelta = v.foods[i].rectTransform.sizeDelta * 1.12f;
+            var food = v.foods[i].rectTransform; var sh = v.foodShadows[i];
+            f.rectTransform.sizeDelta = GrillView.FoilSize;
             f.gameObject.SetActive(true);
+            food.localScale = Vector3.zero; GrillView.SetAlpha(v.foods[i], 0f); GrillView.SetAlpha(sh, 0f);
             audioManager.Play(art.pop, .6f, 1.25f);
             Haptics.Light();
-            StartCoroutine(Tween.Bounce(v.slots[i], .16f, .3f));
-            yield return Tween.Run(.32f, k =>
+            yield return Tween.Run(.36f, k =>
             {
                 f.rectTransform.localScale = Vector3.one * (1f + .45f * k);
-                f.color = new Color(1f, 1f, 1f, 1f - k);
-            }, Ease.OutCubic);
+                f.color = new Color(1f, 1f, 1f, 1f - Ease.OutCubic(k));
+                float s = Ease.OutBack(Mathf.Clamp01((k - .1f) / .9f), 2.4f);
+                food.localScale = Vector3.one * s;
+                GrillView.SetAlpha(v.foods[i], Mathf.Clamp01(k * 3f));
+                GrillView.SetAlpha(sh, Mathf.Clamp01((k - .3f) * 1.6f));
+            });
             f.gameObject.SetActive(false);
             f.color = Color.white; f.rectTransform.localScale = Vector3.one;
+            food.localScale = Vector3.one;
+            GrillView.SetAlpha(v.foods[i], 1f); GrillView.SetAlpha(sh, 1f);
         }
 
         /// <summary>Serving <paramref name="food"/> opens every tray locked by it: the chains drop away.</summary>
@@ -1237,8 +1273,11 @@ namespace GrillSort
             if (ui.flyerFoils == null || i >= ui.flyerFoils.Length) return;
             var f = ui.flyerFoils[i];
             f.gameObject.SetActive(on);
+            // a wrapped piece in flight is only its foil: the food and its shadow are not drawn (Aaron 2026-11-27)
+            GrillView.SetAlpha(ui.flyerFoods[i], on ? 0f : 1f);
+            GrillView.SetAlpha(ui.flyerShadows[i], on ? 0f : 1f);
             if (!on) return;
-            f.rectTransform.sizeDelta = ui.flyerFoods[i].rectTransform.sizeDelta * 1.12f;
+            f.rectTransform.sizeDelta = GrillView.FoilSize;
             f.rectTransform.localScale = Vector3.one; f.color = Color.white;
         }
 
@@ -1247,11 +1286,11 @@ namespace GrillSort
         /// skewer, the customer cheers, then tray and customer leave, the trays after it slide one slot left and the
         /// next queued tray (new customer + mixed food) slides in from the right.
         /// </summary>
-        IEnumerator ServeOrder(Served e, int queueIndex)
+        IEnumerator ServeOrder(int g)
         {
-            int g = e.Slot;
             var v = ui.grills[g];
-            var fa = art.foods[e.Food];
+            int food = _vis[g].target;
+            var fa = art.foods[food];
             // the tip / toast strip sits where "Perfect!" pops under the tray: it steps aside for the serve
             if (ui.tip.alpha > 0f) ui.tip.alpha = 0f;
             if (ui.toast.alpha > 0f) ui.toast.alpha = 0f;
@@ -1286,17 +1325,13 @@ namespace GrillSort
             UpdateOrders(true);
             // (the serve chime already played when the skewer landed)
             Haptics.Medium();
-            // the level's last order: no row shuffle (the user only saw the leftover helper tray for seconds), but the
-            // tray and customer still leave the same way as every other serve before Well Done (Aaron 2026-11-26: "on
-            // the last grill, the disappearing part of the animation seems to be cut off")
-            if (_served >= _totalOrders)
-            {
-                yield return LeaveTray(g, c);
-                _vis.RemoveAt(g);   // the view now matches the board, so nothing re-lays the row out (the helper used to jump)
-                yield break;
-            }
-            yield return ShiftRow(g, e.Arrived, queueIndex, c);
-            UnlockFor(e.Food);
+            // the level's last order: the tray and customer leave like every other serve (Aaron 2026-11-26: "on the last
+            // grill, the disappearing part of the animation seems to be cut off"), and the grey helper trays left behind
+            // slide back to the centre (Aaron 2026-11-27: "this step seems to be missing"). The layout keeps the level's
+            // size (StageLayout.fitTrays), so the slide lands exactly where the re-bound row sits: no jump.
+            yield return ShiftRow(g, c);
+            if (_served >= _totalOrders) yield break;
+            UnlockFor(food);
             if (_tipSticky && _tipCo != null && !_won) StartCoroutine(Tween.Fade(ui.tip, 1f, .25f));   // the tutorial tip comes back
         }
 
@@ -1316,11 +1351,22 @@ namespace GrillSort
         }
 
         /// <summary>Tray g and its customer leave; trays after it slide left; the next queued tray slides in from the right.</summary>
-        IEnumerator ShiftRow(int g, bool arrived, int queueIndex, CustomerView leaving)
+        IEnumerator ShiftRow(int g, CustomerView leaving)
         {
-            int nBefore = _vis.Count;
-            // 1) the served tray shrinks away, its customer sinks behind the counter
+            // 1) the served tray shrinks away, its customer sinks behind the counter (the player may keep playing)
             yield return LeaveTray(g, leaving);
+
+            // 2) the row changes its tray numbers now: wait for a drag / landing move to finish, then hold input for the
+            //    slide so no move can start against the old numbers
+            while (_busy || _dragging) yield return null;
+            if (_selected >= 0) Deselect();
+            _busy = true;
+            int nBefore = _vis.Count;
+            var e = _board.ServeAt(g);
+            _serveQueue.RemoveAt(0);
+            for (int i = 0; i < _serveQueue.Count; i++) if (_serveQueue[i] > g) _serveQueue[i]--;
+            bool arrived = e.Arrived;
+            int queueIndex = arrived ? _board.QueueNext - 1 : -1;
 
             _vis.RemoveAt(g);
             if (arrived && queueIndex >= 0)
@@ -1355,9 +1401,11 @@ namespace GrillSort
                 foreach (var (rt, from, to) in tweens) rt.anchoredPosition = new Vector2(Mathf.LerpUnclamped(from, to, e2), rt.anchoredPosition.y);
             });
 
-            // 3) the views follow the new row (same picture, now bound to the right trays)
+            // 3) the views follow the new row (same picture, now bound to the right trays); a tray still waiting for its
+            //    serve hasn't started it, so its normal full look is right
             BindRow();
             BindCustomers();
+            _busy = false;
 
             // 4) the new tray slides in from the right, its customer pops up behind the counter
             if (arrived)
@@ -1791,7 +1839,7 @@ namespace GrillSort
 
         void UseBooster(int i)
         {
-            if (_busy || _won || _dragging) return;
+            if (Settling || _won || _dragging) return;   // boosters wait for running serves (Undo / Shuffle need a settled row)
             if (verboseLog) Debug.Log($"[Grill Sort] booster {BoosterName(i)} from {System.Environment.StackTrace}");
             Click();
             if (SaveData.Booster(i) <= 0)
@@ -1933,7 +1981,7 @@ namespace GrillSort
             while (!task.IsCompleted) yield return null;
             _hintSearching = false;
             if (task.IsFaulted || !task.Result.HasValue) yield break;
-            if (level != _levelNumber || _won || _busy || _dragging || _selected >= 0 || _hintCo != null || AnyPopupOpen()) yield break;
+            if (level != _levelNumber || _won || Settling || _dragging || _selected >= 0 || _hintCo != null || AnyPopupOpen()) yield break;
             if (key != _board.ToString() + "|" + _board.QueueNext) yield break;
             _hintCo = StartCoroutine(HintAnim(task.Result.Value, duration));
         }
@@ -1945,7 +1993,7 @@ namespace GrillSort
             if (task.IsFaulted) { Debug.LogException(task.Exception); yield break; }
             // the player moved / undid / changed level while it searched: that hint is for another board
             if (level != _levelNumber || _won || boardKey != _board.ToString() + "|" + _board.QueueNext) yield break;
-            while (_busy || _dragging) yield return null;
+            while (Settling || _dragging) yield return null;
             var (m, dead) = task.Result;
             if (m.HasValue)
             {
@@ -2028,7 +2076,7 @@ namespace GrillSort
             if (task.IsFaulted || id != _stuckCheckId) yield break;   // a newer move superseded it
             if (!task.Result) { _deadMoves = -1; yield break; }       // still winnable (e.g. after Undo)
             yield return new WaitForSeconds(.45f);
-            while (_busy || _dragging) yield return null;
+            while (Settling || _dragging) yield return null;
             if (_won || id != _stuckCheckId || AnyPopupOpen()) yield break;
             bool firstSeen = _deadMoves < 0;
             if (firstSeen) _deadMoves = 0;
@@ -2195,10 +2243,11 @@ namespace GrillSort
                 int land = Mathf.Min(_board.Count(m.To), GrillView.Capacity - 1);
                 Vector2 p1 = HandPoint(to.slots[land]);
                 var fa = art.foods[_board.Get(m.From, m.Index)];
-                ghost.sprite = cookOnComplete && fa.raw != null ? fa.raw : fa.grilled;
+                bool wrapped = _board.IsHidden(m.From, m.Index) && art.foilWrap != null;   // never give a "?" away
+                ghost.sprite = wrapped ? art.foilWrap : cookOnComplete && fa.raw != null ? fa.raw : fa.grilled;
                 float gs = from.slots[m.Index].lossyScale.x / ui.handLayer.lossyScale.x;
                 float gw = fa.width * GrillView.FoodScale;
-                grt.sizeDelta = new Vector2(gw, gw);
+                grt.sizeDelta = wrapped ? GrillView.FoilSize : new Vector2(gw, gw);
                 // come in from the side the glove's body is on (it faces away from the nearest edge)
                 float dir = p0.x + HandSize * (1f - ui.hand.pivot.x) > halfW - 12f ? -1f : 1f;
                 _handSx = dir;
@@ -2483,11 +2532,11 @@ namespace GrillSort
             for (int n = 0; n < levels; n++)
             {
                 int lvl = _levelNumber;
-                while (_busy) yield return null;
+                while (Settling) yield return null;
                 int steps = 0;
                 while (!_won && steps < 400)
                 {
-                    while (_busy || AnyPopupOpen()) { if (_won) break; yield return null; }
+                    while (Settling || AnyPopupOpen()) { if (_won) break; yield return null; }
                     if (_won) break;
                     var mv = SmartNext(_board, moveRule, out _);
                     if (!mv.HasValue) { AutoPlayLog += $"L{lvl}: no move found\n"; _autoPlay = false; yield break; }

@@ -31,31 +31,57 @@ namespace GrillSort.EditorTools
             public string[][] LockFallbacks = new string[0][];
             public float WinLo, WinHi;   // target bot win rate
             public int ParLo, ParHi;
+            /// <summary>Extra free room tried on top of ExtraRoom (candidate c uses ExtraRoom + c % (RoomSpread + 1)).</summary>
+            public int RoomSpread = 3;
         }
 
+        /// <summary>
+        /// Sort Streak (Aaron 2026-11-27: "the 2 empty grills show up a bit early"): only ONE empty helper is on screen at
+        /// the start; the second joins through the order queue, halfway through it. Boards are generated with Free = 2,
+        /// then one empty unlocked helper moves into the queue at this fraction of its length.
+        /// OFF for the 5-tier demo (decided 2026-11-27): tried, and with full trays (no spare slot) the generator can't add
+        /// room to make up for the missing helper. Easy fell from a 99.7% bot win rate to 2-35%, and Hard / Very Hard had
+        /// no winnable board in 50 tries. Aaron approved the demo difficulty, so the demo keeps 2 helpers; the late helper
+        /// is for the full level set (Sort Streak brings it in from ~L22). Board, Solver and the game already handle a
+        /// helper tray in the queue.
+        /// </summary>
+        public static bool LateHelper = false;
+        const float LateHelperAt = .5f;
+
+        // Win bands (2026-11-27): centred on the bot win rates of the boards Aaron played and approved ("the difficulty
+        // across the 5 levels feels good now": Easy 100%, Medium 73%, Hard 10%, Very Hard 1%, Super Hard 2%), so the
+        // re-design for the late helper keeps the same feel.
         static readonly Recipe[] Recipes =
         {
             new Recipe { Tier = "Easy", P = 4, Row = 5, Free = 2, Orders = 8,
                 Foods = new[] { "corn", "tomato", "sausage", "mushroom", "pepper" },
-                WinLo = .55f, WinHi = 1f, ParLo = 10, ParHi = 20 },
+                WinLo = .85f, WinHi = 1f, ParLo = 10, ParHi = 22 },
             new Recipe { Tier = "Medium", P = 5, Row = 5, Free = 2, Orders = 9,
                 Foods = new[] { "corn", "tomato", "sausage", "mushroom", "shrimp", "onion" },
                 RowHidden = 3, QueueHiddenPerTray = 1,
-                WinLo = .25f, WinHi = .55f, ParLo = 16, ParHi = 40 },
+                WinLo = .5f, WinHi = .85f, ParLo = 16, ParHi = 40 },
             new Recipe { Tier = "Hard", Hard = true, P = 5, Row = 6, Free = 2, Orders = 10, ExtraRoom = 0,
                 Foods = new[] { "corn", "tomato", "sausage", "beef", "mushroom", "shrimp", "onion" },
                 RowHidden = 5, QueueHiddenPerTray = 2, Locks = new[] { "spare-screen" },
-                WinLo = .08f, WinHi = .25f, ParLo = 22, ParHi = 55 },
+                WinLo = .06f, WinHi = .18f, ParLo = 22, ParHi = 55 },
             new Recipe { Tier = "Very Hard", Hard = true, P = 5, Row = 6, Free = 2, Orders = 11, ExtraRoom = 0,
                 Foods = new[] { "corn", "pineapple", "sausage", "beef", "mushroom", "shrimp", "tomato" },
                 RowHidden = 4, QueueHiddenPerTray = 2, Locks = new[] { "customer-queue" },
-                WinLo = .03f, WinHi = .15f, ParLo = 26, ParHi = 65 },
+                WinLo = .005f, WinHi = .04f, ParLo = 26, ParHi = 65 },
             new Recipe { Tier = "Super Hard", Hard = true, P = 6, Row = 6, Free = 2, Orders = 10, ExtraRoom = 0,
                 Foods = new[] { "corn", "pineapple", "sausage", "beef", "pepper", "zucchini", "tomato" },
                 RowHidden = 4, QueueHiddenPerTray = 2, Locks = new[] { "customer-screen" },
                 LockFallbacks = new[] { new[] { "spare-screen" } },
                 WinLo = .005f, WinHi = .05f, ParLo = 28, ParHi = 90 },
         };
+
+        [MenuItem("Grill Sort/Demo: Re-design All 5 (replaces the approved boards)")]
+        public static void RedesignAll()
+        {
+            int keep = KeepFirst;
+            KeepFirst = 0;
+            try { Design(); } finally { KeepFirst = keep; }
+        }
 
         const int Candidates = 200, Playouts = 200;
         /// <summary>Tiers before this index are kept from the existing DemoLevelBank (re-design only the rest).</summary>
@@ -67,7 +93,7 @@ namespace GrillSort.EditorTools
             var bank = ScriptableObject.CreateInstance<LevelBank>();
             bank.rule = MoveRule.AnyWithAbove;
             var report = new StringBuilder();
-            report.AppendLine("# 5-tier demo levels (designed 2026-11-26)\n");
+            report.AppendLine($"# 5-tier demo levels (designed {DateTime.Now:yyyy-MM-dd})\n");
             report.AppendLine("Built by `Grill Sort > Design Demo Levels (5 tiers)` (Editor/DemoLevels.cs). Each tier is a recipe we chose (Sort Streak model); every kept board is proven winnable by the solver; \"bot win\" = how often a simple bot that plays sensible random moves wins (lower = harder).\n");
             report.AppendLine("| Demo level | Tier | Tray size | Trays on screen | Orders | Foods | Wrapped | Lock | Par (min moves) | Bot win |");
             report.AppendLine("|---|---|---|---|---|---|---|---|---|---|");
@@ -93,7 +119,7 @@ namespace GrillSort.EditorTools
                 var lockParts = new List<string>();
                 for (int s = 0; s < lv.locks.Length; s++) if (lv.locks[s] >= 0) lockParts.Add((lv.orders[s] < 0 ? "spare tray" : "customer tray") + " opens on " + FoodCatalog.Names[lv.locks[s]]);
                 if (lockParts.Count > 0) lockTxt = string.Join("; ", lockParts);
-                report.AppendLine($"| {i + 1} | {r.Tier}{(r.Hard ? " (Hard label, x2 coins)" : "")} | {r.P} | {r.Row} | {lv.TotalOrders} | {string.Join(", ", r.Foods)} | {wrapped} | {lockTxt} | {lv.par}{(lv.parOptimal ? "" : "~")} | {win:P0} |");
+                report.AppendLine($"| {i + 1} | {r.Tier}{(r.Hard ? " (Hard label, x2 coins)" : "")} | {r.P} | {lv.skewers}{(LateHelper ? " (+1 empty tray joins mid-queue)" : "")} | {lv.TotalOrders} | {string.Join(", ", r.Foods)} | {wrapped} | {lockTxt} | {lv.par}{(lv.parOptimal ? "" : "~")} | {win:P0} |");
                 Debug.Log($"[Demo] {r.Tier}: par {lv.par} win {win:P0} ({solvable}/{tried} candidates solvable)");
             }
             report.AppendLine("\n`~` = a solution found by the fallback search (not proven shortest).\n");
@@ -107,6 +133,46 @@ namespace GrillSort.EditorTools
             File.WriteAllText(Path.Combine(Application.dataPath, "../Docs/DemoLevels.md"), report.ToString());
             Debug.Log("[Demo] wrote " + path + " and Docs/DemoLevels.md");
         }
+
+        /// <summary>The board with its last empty, unlocked helper moved into the queue at <see cref="LateHelperAt"/>, or null.</summary>
+        static LevelData WithLateHelper(LevelData lv)
+        {
+            int free = 0, pick = -1;
+            for (int s = 0; s < lv.skewers; s++)
+            {
+                if (lv.orders[s] >= 0 || lv.cells[s * lv.capacity] >= 0) continue;
+                free++;
+                if (lv.locks == null || s >= lv.locks.Length || lv.locks[s] < 0) pick = s;
+            }
+            if (free < 2 || pick < 0) return null;   // keep one helper on screen
+            int at = Mathf.Clamp(Mathf.RoundToInt(lv.queueOrders.Length * LateHelperAt), 0, Mathf.Max(0, lv.queueOrders.Length - 1));
+            return MoveHelperToQueue(lv, pick, at);
+        }
+
+        /// <summary>A copy of <paramref name="lv"/> with row tray <paramref name="s"/> (an empty helper) moved into the queue at <paramref name="at"/>.</summary>
+        static LevelData MoveHelperToQueue(LevelData lv, int s, int at)
+        {
+            int C = lv.capacity;
+            var c = JsonUtility.FromJson<LevelData>(JsonUtility.ToJson(lv));
+            int[] Without(int[] a, int stride) { var l = new List<int>(a); l.RemoveRange(s * stride, stride); return l.ToArray(); }
+            int[] Insert(int[] a, int stride, int[] item) { var l = new List<int>(a); l.InsertRange(at * stride, item); return l.ToArray(); }
+            // the late helper arrives unlocked: Board only opens locks on trays already in the row, so a lock whose food
+            // was served before it arrived would never open
+            const int lockFood = -1;
+            c.cells = Without(lv.cells, C);
+            c.hidden = lv.hidden != null && lv.hidden.Length == lv.cells.Length ? Without(lv.hidden, C) : new int[c.cells.Length];
+            c.orders = Without(lv.orders, 1);
+            c.locks = lv.locks != null && lv.locks.Length == lv.skewers ? Without(lv.locks, 1) : Filled(lv.skewers - 1, -1);
+            c.skewers = lv.skewers - 1;
+            int qn = lv.queueOrders.Length;
+            c.queueOrders = Insert(lv.queueOrders, 1, new[] { -1 });
+            c.queueCells = Insert(lv.queueCells, C, Filled(C, -1));
+            c.queueHidden = Insert(lv.queueHidden != null && lv.queueHidden.Length == qn * C ? lv.queueHidden : new int[qn * C], C, new int[C]);
+            c.queueLocks = Insert(lv.queueLocks != null && lv.queueLocks.Length == qn ? lv.queueLocks : Filled(qn, -1), 1, new[] { lockFood });
+            return c;
+        }
+
+        static int[] Filled(int n, int v) { var a = new int[n]; for (int i = 0; i < n; i++) a[i] = v; return a; }
 
         static int Food(string name) => Array.IndexOf(FoodCatalog.Names, name);
 
@@ -128,6 +194,8 @@ namespace GrillSort.EditorTools
             for (int c = 0; c < Candidates; c++)
             {
                 var rng = new Mulberry32((uint)(number * 100003 + c * 7919 + 17));
+                // one helper fewer on screen at the start: try a little more free room to make up for it
+                if (LateHelper) tier.ExtraRoom = r.ExtraRoom + c % (r.RoomSpread + 1);
                 var lv = LevelGenerator.Candidate(number, tier, rng, MoveRule.AnyWithAbove);
                 if (lv == null) continue;
                 tried++;
@@ -138,8 +206,10 @@ namespace GrillSort.EditorTools
                 foreach (var setup in setups)
                 {
                     AddLock(lv, setup);
-                    res = Solver.Solve(lv.ToBoard(), lv.rule, r.P >= 6 ? 300000 : 150000, r.P >= 6 ? 1500000 : 700000);
-                    if (res.Solvable) break;
+                    var play = LateHelper ? WithLateHelper(lv) : lv;
+                    if (play == null) { res = null; continue; }
+                    res = Solver.Solve(play.ToBoard(), play.rule, r.P >= 6 ? 300000 : 150000, r.P >= 6 ? 1500000 : 700000);
+                    if (res.Solvable) { lv = play; break; }
                 }
                 if (res == null || !res.Solvable) continue;
                 solvable++;

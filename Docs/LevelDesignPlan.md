@@ -243,3 +243,12 @@ Each `###` below is one card; its bullets are the checklist.
 ### Undo stays a free count + rewarded ad at 0 (kinder than Sort Streak's 400 coins, and earns ad views)
 ### Firebase Remote Config + Firebase Analytics
 ### Korean BBQ foods lead L1-10, then mix with the current foods
+### The 5-tier demo keeps 2 empty helper trays from the start (2026-11-27)
+- Aaron (2026-11-27): "The 2 empty grills show up a bit early compared to Sort Streak." Sort Streak starts with 1 white
+  helper and brings a 2nd one through the queue (from ~L22).
+- Tried on the demo: with full trays (no spare slot) the generator can't add room to make up for a missing helper.
+  Easy fell from a 99.7% bot win rate to 2-35%; Hard / Very Hard had no winnable board in 50 tries. Aaron had just
+  approved the demo difficulty, so the demo keeps 2 helpers.
+- The late helper is built (Board, Solver and the game handle an empty helper tray waiting in the queue;
+  `DemoLevels.LateHelper` / `WithLateHelper` put it mid-queue). Use it in the full level set with boards designed for
+  1 helper from the start, and bring the 2nd one in late from ~L22 like Sort Streak.

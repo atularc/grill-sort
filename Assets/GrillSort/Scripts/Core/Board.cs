@@ -88,7 +88,8 @@ namespace GrillSort
         {
             get
             {
-                int n = QueueLeft;
+                int n = 0;   // a queued helper tray (Sort Streak's late white rope) is not an order
+                for (int q = _queueNext; q < _queueTarget.Count; q++) if (_queueTarget[q] >= 0) n++;
                 foreach (var t in _target) if (t >= 0) n++;
                 return n;
             }
@@ -265,12 +266,7 @@ namespace GrillSort
         /// </summary>
         public List<Served> Apply(Move m)
         {
-            var src = _cells[m.From]; var dst = _cells[m.To];
-            var sh = _hid[m.From]; var dh = _hid[m.To];
-            for (int k = 0; k < m.Count; k++) { dh[_count[m.To]] = sh[m.Index + k]; dst[_count[m.To]++] = src[m.Index + k]; }
-            for (int k = m.Index; k < m.Index + m.Count; k++) { src[k] = -1; sh[k] = false; }
-            _count[m.From] = m.Index;
-            RevealBottom(m.From); RevealBottom(m.To);
+            ApplyMove(m);
             var r = new List<Served>(2);
             int to = m.To;
             if (IsComplete(m.From))
@@ -282,7 +278,23 @@ namespace GrillSort
             return r;
         }
 
-        Served ServeAt(int s)
+        /// <summary>
+        /// Moves the pieces only; a tray it completes stays in the row until <see cref="ServeAt"/>. The game uses this so
+        /// the row on screen and the Board keep the same tray numbers while a serve animation plays, and the player can
+        /// keep moving food meanwhile (Aaron 2026-11-27). The caller must keep completed trays out of later moves.
+        /// </summary>
+        public void ApplyMove(Move m)
+        {
+            var src = _cells[m.From]; var dst = _cells[m.To];
+            var sh = _hid[m.From]; var dh = _hid[m.To];
+            for (int k = 0; k < m.Count; k++) { dh[_count[m.To]] = sh[m.Index + k]; dst[_count[m.To]++] = src[m.Index + k]; }
+            for (int k = m.Index; k < m.Index + m.Count; k++) { src[k] = -1; sh[k] = false; }
+            _count[m.From] = m.Index;
+            RevealBottom(m.From); RevealBottom(m.To);
+        }
+
+        /// <summary>Serves complete tray <paramref name="s"/>: it leaves the row, later trays shift left, the next queued tray joins.</summary>
+        public Served ServeAt(int s)
         {
             var e = new Served { Slot = s, Food = _target[s] };
             _cells.RemoveAt(s); _count.RemoveAt(s); _target.RemoveAt(s); _hid.RemoveAt(s); _lock.RemoveAt(s);

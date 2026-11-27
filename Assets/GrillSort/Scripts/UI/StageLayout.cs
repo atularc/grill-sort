@@ -47,15 +47,25 @@ namespace GrillSort
 
         // ---- positions for a row of n trays (used to slide trays when an order is served, Sort Streak style)
         float _W = 1080f, _availH = 800f, _cs = 1f, _gs = 1f;
+        /// <summary>
+        /// The most trays the row has had this level. Size, column spacing and food boost are fitted to this, not to the
+        /// current count, so when served trays leave near the end the row only re-centres and the skewers keep their size
+        /// (Aaron 2026-11-27: "when the grills are reduced near the end of the level, the skewer size changes slightly").
+        /// Only grows (Extra tray); <see cref="ResetFit"/> at level load.
+        /// </summary>
+        [System.NonSerialized] public int fitTrays;
+        public void ResetFit() { fitTrays = 0; _dirty = true; }
+        int FitN(int n) => Mathf.Max(Mathf.Max(1, n), fitTrays);
         public static float SpacingFor(int n) => n > 5 ? 186f : GrillSpacing;
         public float ScaleFor(int n)
         {
-            bool many = n > 5;
+            int f = FitN(n);
+            bool many = f > 5;
             float aw = _W - (many ? 16f : 40f);
-            return Mathf.Min(1f, aw / (Mathf.Max(1, n) * SpacingFor(n)), _availH / GrillHeight);
+            return Mathf.Min(1f, aw / (f * SpacingFor(f)), _availH / GrillHeight);
         }
         /// <summary>X of tray i in a row of n, in the Grills container's units.</summary>
-        public float TrayX(int i, int n) => (i - (n - 1) * .5f) * SpacingFor(n);
+        public float TrayX(int i, int n) => (i - (n - 1) * .5f) * SpacingFor(FitN(n));
         /// <summary>X of the customer above tray i in a row of n, in the Customers container's units.</summary>
         public float CustomerX(int i, int n) => TrayX(i, n) * _gs / _cs;
 
@@ -108,13 +118,15 @@ namespace GrillSort
             float bottom = H - safeBottom - BoosterReserve;
             float availH = Mathf.Max(200f, bottom - top);
             int n = Mathf.Max(1, activeGrills);
+            fitTrays = Mathf.Max(fitTrays, n);
+            int fn = FitN(n);   // size is fitted to the level's widest row (see fitTrays); positions use n
             // fit (user 2026-11-22): with many trays use tighter columns and smaller side margins, a slightly bigger
             // food, and let the trays grow taller into the spare height instead of leaving an empty band at the bottom
-            bool many = n > 5;
-            Spacing = many ? 186f : GrillSpacing;
+            bool many = fn > 5;
+            Spacing = SpacingFor(fn);
             float availW = W - (many ? 16f : 40f);
             // always one row: every customer stands right above their own tray (Sort Streak style)
-            float gs = Mathf.Min(1f, availW / (n * Spacing), availH / GrillHeight);
+            float gs = Mathf.Min(1f, availW / (fn * Spacing), availH / GrillHeight);
             _W = W; _availH = availH; _cs = cs; _gs = gs;
             float k = Mathf.Clamp(availH * .97f / (GrillHeight * gs), 1f, maxStretch);
             if (GrillView.SetFit(k, many ? manyTraysFoodBoost : 1f) && grillSlots != null)

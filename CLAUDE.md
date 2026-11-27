@@ -349,6 +349,25 @@ Goal: a playable portrait prototype that looks like `Docs/Mockups/Grill-Sort-Moc
 
 ## Current state of the prototype
 
+**Update 2026-11-27: Aaron's feedback on the 5-tier demo APK** ("the difficulty across the 5 levels feels good
+now", plus 6 notes). New APK: `Build/Grill Sort - 5 Tier Demo.apk` (the one he played is
+`... (2026-11-26).apk`). Trello cards 33-39.
+1. **Food turns with the skewer** (serve flight and order bubbles): `SkewerStack.SetTilt` no longer keeps pieces
+   upright; `FitBoxWithStick` / `FitScale` count the turned pieces.
+2. **"2 empty grills show up early"**: NOT changed in the demo (decision in `Docs/LevelDesignPlan.md`, Decisions).
+   A helper tray can now wait in the order queue (target -1; `Board.OrdersLeft` / `LevelData.TotalOrders` skip it),
+   for the full level set.
+3. **"?" foil hides the food fully**: a wrapped piece and its shadow are not drawn at all (`GrillView.SetWrapped`);
+   every foil has one size (`GrillView.FoilSize`, so its size gives nothing away); a reveal grows the food in under the
+   puffing foil (`RevealPop`); the tutorial-hand ghost shows a foil for a wrapped piece.
+4. **Skewer size stays the same when trays leave**: `StageLayout.fitTrays` = the widest row this level (reset in
+   `LoadLevel`, grows with Extra tray). Size, spacing and food boost use it; positions use the current count.
+5. **Drag while a skewer is served**: a move only completes trays (`Board.ApplyMove`); they stay in the Board and the
+   row, marked `VisTray.serving` (no move may touch them), and `ServeRunner` plays `_serveQueue` one by one.
+   `Board.ServeAt` runs in `ShiftRow` at the moment the row slides; input is held only for that ~0.35 s. Hints,
+   boosters, stuck checks and autoplay wait for `Settling` (= busy or serves left). A tray locked by a food being served
+   opens when that serve ends. Stress test: all 5 demo levels won with 7-14 moves made during serves.
+6. **The last serve re-centres the grey trays** (`ShiftRow` for the last order too).
 **Update 2026-11-26: Aaron signed off the art phase (Slack thread "another version with a menu, daily rewards
 etc", 2026-11-25, on `Grill Sort - polish-cook-meta.apk`).** His last notes, all open:
 1. **Finished skewer:** it should detach fully from the grill, and that same skewer does the fly-up (today a separate
